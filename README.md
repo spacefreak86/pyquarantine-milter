@@ -6,6 +6,8 @@ It is useful in many cases because of its felxible configuration and the ability
 The MTA can check e-mail headers using regular expressions to determine if and which quarantine to use. 
 Each quarantine can be configured with a quarantine type, notification type, whitelist and an action to respond with.
 
+Addionally, pyquarantine-milter provides a sanitized, harmless version of the text parts of e-mails, which can be embedded in e-mail notifications. This makes it easier for users to decide, if a match is a false-positive or not. If a matching quarantine provides a quarantine ID of the original e-mail, it is also available as a template variable. This is useful if you want to add links to a webservice to notification e-mails, to give your users the ability to release e-mails or whitelist the from-address for example. The webservice then releases the e-mail from the quarantine.
+
 The project is currently in alpha status, but will soon be used in a productive enterprise environment and possibly existing bugs will be fixed.
 
 ## Requirements
@@ -68,6 +70,8 @@ The following configuration options are mandatory in each quarantine section:
     Configured e-mail subject.
   * **{EMAIL_QUARANTINE_ID}**  
     Quarantine-ID of the original e-mail if available, empty otherwise.
+  * **{EMAIL_HTML_TEXT}**  
+    Sanitized version of the e-mail text part of the original e-mail. Only harmless HTML tags and attributes are included. Images are replaced with the image set by notification_email_replacement_img option.
 
 The following configuration options are mandatory for this notification type:
 * **notification_email_from**  

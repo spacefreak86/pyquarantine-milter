@@ -1,0 +1,17 @@
+# /etc/conf.d/pyquarantine-milter: config file for /etc/init.d/pyquarantine-milter
+
+# Set the socket used to communicate with the MTA.
+# Examples:
+#   unix:/path/to/socket             a named pipe
+#   inet:8899                        listen on ANY interface
+#   inet:8899@localhost              listen on a specific interface
+#   inet6:8899                       listen on ANY interface
+#   inet6:8899@[2001:db8:1234::1]    listen on a specific interface
+SOCKET="inet:8899@127.0.0.1"
+
+# Start the daemon as the user. You can optionally append a group name here also.
+# USER="daemon"
+# USER="daemon:nobody"
+
+# Optional parameters for pyquarantine-milter
+# MILTER_OPTS=""

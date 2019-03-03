@@ -1,0 +1,10 @@
+<html>
+ <body>
+<h1>This is a spam notification mail</h1>
+<b>From:</b> {EMAIL_FROM}<br/>
+<b>To:</b> {EMAIL_TO}<br/>
+<b>Subject:</b> {EMAIL_SUBJECT}<br/>
+<b>Quarantine-ID:</b> {EMAIL_QUARANTINE_ID}<br/><br/><br/>
+{EMAIL_HTML_TEXT}
+ </body>
+</html>

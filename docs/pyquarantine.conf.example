@@ -1,0 +1,113 @@
+# This is an example /etc/pyquarantine/pyquarantine.conf file.
+# Copy it into place before use.
+#
+# Comments: use '#' for comment lines and ';' (following a space) for inline comments.
+#
+#           If an option is not present in a quarantine section, it will be read from
+#           the global section.
+#
+
+
+[global]
+
+# Option: quarantines
+# Notes:  Set active quarantines (comma-separated).
+#         Each active quarantine must have a section with the same name below.
+#         The quarantine name 'global' is forbidden and will be ignored.
+#         Quarantine names must be unique.
+# Values: [ ACTIVE ]
+#
+quarantines = spam
+
+# Option: smtp_host
+# Notes:  Set the SMTP host. It will be used to (re-)inject emails.
+# Values: [ HOSTNAME | IP_ADDRESS ]
+#
+smtp_host = 127.0.0.1
+
+# Option: smtp_port
+# Notes:  Set the SMTP port.
+# Values: [ PORT ]
+#
+smtp_port = 25
+
+
+[spam]
+
+# Option: regex
+# Notes:  Set the regular expression to match against email headers.
+#         If the regex matches any of the email headers, the email
+#         will be processed by this quarantine.
+# Values: [ REGEX ]
+#
+regex = ^X-Spam-Flag: YES
+
+# Option: type
+# Notes:  Set the quarantine type.
+# Values: [ file | none ]
+#
+type = file
+
+# Option: directory
+# Notes:  Set the directory to store quarantined emails.
+#         This option is needed by quarantine type 'file'.
+# Values: [ DIRECTORY ]
+#
+directory = /var/lib/pyquarantine/spam
+
+# Option: action
+# Notes:  Set the milter action to perform if email is processed by this quarantine.
+# Values: [ accept | discard | reject ]
+#
+action = discard
+
+# Option: notification
+# Notes:  Set the notification type.
+# Values: [ email | none ]
+#
+notification = email
+
+# Option: notification_email_from
+# Notes:  Set the from address used when sending notification emails.
+#         This option is needed by notification type 'email'.
+# Values: [ FROM_ADDRESS ]
+#
+notification_email_from = notification@domain.tld
+
+# Option: notification_email_usbject
+# Notes:  Set the subject used when sending notification emails.
+#         This option is needed by notification type 'email'.
+# Values: [ SUBJECT ]
+#
+notification_email_subject = Spam Quarantine Notification
+
+# Option: notification_email_template
+# Notes:  Set the template used when sending notification emails.
+#         A relative path to this config file can be used.
+#         This option is needed by notification type 'email'.
+# Values: [ TEMPLATE_FILE ]
+#
+notification_email_template = templates/notification.template
+
+# Option: notification_email_replacement_img
+# Notes:  Set the replacement image for images within emails.
+#         A relative path to this config file can be used.
+#         This option is needed by notification type 'email'.
+# Values: [ IMAGE_FILE ]
+#
+notification_email_replacement_img = templates/removed.png
+
+# Option: whitelist
+# Notes:  Set the whitelist of this quarantine.
+#         If a whitelist is used, the configured user must have
+#         read/write access to the table configured below.
+# Values: [ DB_CONNECTION_STRING | none ]
+#
+whitelist = mysql://user:password@localhost/database
+
+# Option: whitelist_table
+# Notes:  Set the database table name.
+#         This option is needed if a whitelist is configured.
+# Values: [ DATABASE_TABLE]
+#
+whitelist_table = whitelist

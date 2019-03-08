@@ -79,15 +79,15 @@ The following configuration options are mandatory in each quarantine section:
   * **{EMAIL_HTML_TEXT}**  
     Sanitized version of the e-mail text part of the original e-mail. Only harmless HTML tags and attributes are included. Images are replaced with the image set by notification_email_replacement_img option.
 
-The following configuration options are mandatory for this notification type:
-* **notification_email_from**  
-  Notification e-mail from-address.
-* **notification_email_subject**  
-  Notification e-mail subject.
-* **notification_email_template**  
-  Notification e-mail template to use.
-* **notification_email_replacement_img**  
-  An image to replace images in e-mail.
+  The following configuration options are mandatory for this notification type:
+  * **notification_email_from**  
+    Notification e-mail from-address.
+  * **notification_email_subject**  
+    Notification e-mail subject.
+  * **notification_email_template**  
+    Notification e-mail template to use.
+  * **notification_email_replacement_img**  
+    An image to replace images in e-mail.
 
 
 ### Actions
@@ -109,10 +109,10 @@ The following actions are available:
   A database whitelist will be used. All database types supported by peewee are available.  
 
   The following configuration options are mandatory for this whitelist type:
-* **whitelist_db_connection**  
+  * **whitelist_db_connection**  
   Database connection string (e.g. mysql://user:password@host:port).  
 
-* **whitelist_db_table**  
+  * **whitelist_db_table**  
   Database table to use.
 
 ## Developer information

@@ -51,11 +51,11 @@ smtp_port = 25
 #
 regex = ^X-Spam-Flag: YES
 
-# Option: type
+# Option: quarantine_type
 # Notes:  Set the quarantine type.
 # Values: [ file | none ]
 #
-type = file
+quarantine_type = file
 
 # Option: directory
 # Notes:  Set the directory to store quarantined emails.
@@ -74,7 +74,7 @@ action = discard
 # Notes:  Set the notification type.
 # Values: [ email | none ]
 #
-notification = email
+notification_type = email
 
 # Option: notification_email_from
 # Notes:  Set the from address used when sending notification emails.
@@ -106,17 +106,24 @@ notification_email_template = templates/notification.template
 #
 notification_email_replacement_img = templates/removed.png
 
-# Option: whitelist
-# Notes:  Set the whitelist of this quarantine.
-#         If a whitelist is used, the configured user must have
-#         read/write access to the table configured below.
+# Option: whitelist_type
+# Notes:  Set the whitelist type.
+# Values: [ db | none ]
+#
+whitelist_type = db
+
+# Option: whitelist_db_connection
+# Notes:  Set the connection string to connect to the database.
+#         The configured user must have read/write access to
+#         the whitelist_db_table configured below.
+#         This option is needed by whitelist type 'db'.
 # Values: [ DB_CONNECTION_STRING | none ]
 #
-whitelist = mysql://user:password@localhost/database
+whitelist_db_connection = mysql://user:password@localhost/database
 
-# Option: whitelist_table
+# Option: whitelist_db_table
 # Notes:  Set the database table name.
-#         This option is needed if a whitelist is configured.
+#         This option is needed by whitelist type 'db'.
 # Values: [ DATABASE_TABLE]
 #
-whitelist_table = whitelist
+whitelist_db_table = whitelist

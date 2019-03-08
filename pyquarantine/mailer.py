@@ -26,6 +26,13 @@ process = None
 
 
 
+def smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail):
+    s = smtplib.SMTP(host=smtp_host, port=smtp_port)
+    s.sendmail(mailfrom, [recipient], mail)
+    s.quit()
+
+
+
 def mailprocess():
     "Mailer process to send emails asynchronously."
     global logger
@@ -36,16 +43,15 @@ def mailprocess():
             if not m: break
             smtp_host, smtp_port, queueid, mailfrom, recipient, mail = m
             try:
-                s = smtplib.SMTP(host=smtp_host, port=smtp_port)
-                s.sendmail(mailfrom, [recipient], mail)
+                smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail)
             except Exception as e:
                 logger.error("{}: error while sending email to <{}> via {}: {}".format(queueid, recipient, smtp_host, e))
             else:
                 logger.info("{}: email to <{}> sent successfully".format(queueid, recipient))
-                s.quit()
     except KeyboardInterrupt:
         pass
     logger.debug("mailer process terminated")
+
 
 
 def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail):
@@ -62,4 +68,7 @@ def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail):
         logger.debug("starting mailer process")
         process.start()
     for recipient in recipients:
-        queue.put((smtp_host, smtp_port, queueid, mailfrom, recipient, mail))
+        try:
+            queue.put((smtp_host, smtp_port, queueid, mailfrom, recipient, mail), timeout=30)
+        except Queue.Full as e:
+            raise RuntimeError("e-mail queue is full")

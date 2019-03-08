@@ -92,105 +92,127 @@ class QuarantineMilter(Milter.Base):
         return Milter.CONTINUE
 
     def eoh(self):
-        self.matched = None
-        self.whitelist = whitelists.WhitelistCache()
-        # iterate email headers
-        for header in self.headers:
-            self.logger.debug("{}: checking header '{}' against regex of every configured quarantine".format(self.queueid, header))
-            # iterate quarantines
-            for name, quarantine in self.config.items():
-                if self.matched != None and quarantine["index"] == self.matched["index"]:
-                    # a quarantine with higher precedence already matched, skip checks of quarantines with lower precedence
-                    self.logger.debug("{}: quarantine '{}' matched already, skip further checks of this header".format(self.queueid, name))
+        try:
+            self.matched = None
+            self.whitelist_cache = whitelists.WhitelistCache()
+            # iterate email headers
+            for header in self.headers:
+                self.logger.debug("{}: checking header '{}' against regex of every configured quarantine".format(self.queueid, header))
+                # iterate quarantines
+                for name, quarantine in self.config.items():
+                    if self.matched != None and quarantine["index"] == self.matched["index"]:
+                        # a quarantine with higher precedence already matched, skip checks of quarantines with lower precedence
+                        self.logger.debug("{}: quarantine '{}' matched already, skip further checks of this header".format(self.queueid, name))
+                        break
+                    self.logger.debug("{}: checking header against quarantine '{}'".format(self.queueid, name))
+                    # check if header matches regex
+                    if quarantine["regex_compiled"].match(header):
+                        whitelist = quarantine["whitelist_obj"]
+                        if whitelist != None:
+                            try:
+                                whitelisted_recipients = self.whitelist_cache.get_whitelisted_recipients(whitelist, self.mailfrom, self.recipients)
+                            except RuntimeError as e:
+                                self.logger.error("{}: unable to query whitelist: {}".format(self.queueid, e))
+                                return Milter.TEMPFAIL
+                            if len(whitelisted_recipients) == len(self.recipients):
+                                # all recipients are whitelisted, continue with header checks
+                                self.logger.debug("{}: header matched regex, but all recipients are whitelisted in quarantine '{}', continue checking this header".format(self.queueid, name))
+                                continue
+                        self.matched = quarantine
+                        # skip checks of this header with quarantines with lower precedence
+                        self.logger.debug("{}: header matched regex in quarantine '{}', further checks of this header will be skipped".format(self.queueid, name))
+                        break
+                if self.matched != None and self.matched["index"] == 0:
+                    self.logger.debug("{}: skipping checks of remaining headers, the quarantine with highest precedence matched already".format(self.queueid))
                     break
-                self.logger.debug("{}: checking header against quarantine '{}'".format(self.queueid, name))
-                # check if header matches regex
-                if quarantine["regex_compiled"].match(header):
-                    if quarantine["whitelist"] != None and \
-                            len(self.whitelist.get_whitelisted_recipients(quarantine["whitelist"], self.mailfrom, self.recipients)) == len(self.recipients):
-                        # all recipients are whitelisted, continue with header checks
-                        self.logger.debug("{}: header matched regex, but all recipients are whitelisted in quarantine '{}', continue checking this header".format(self.queueid, name))
-                        continue
-                    self.matched = quarantine
-                    # skip checks of this header with quarantines with lower precedence
-                    self.logger.debug("{}: header matched regex in quarantine '{}', further checks of this header will be skipped".format(self.queueid, name))
-                    break
-            if self.matched != None and self.matched["index"] == 0:
-                self.logger.debug("{}: skipping checks of remaining headers, the quarantine with highest precedence matched already".format(self.queueid))
-                break
-        if self.matched != None:
-            self.logger.info("{}: email matched quarantine '{}'".format(self.queueid, self.matched["name"]))
-            # one of the configured quarantines matched
-            if self.matched["quarantine"] != None or self.matched["notification"] != None:
-                self.logger.debug("{}: initializing memory buffer to save email data".format(self.queueid))
-                # quarantine or notification configured, initialize memory buffer to save mail
-                self.fp = StringIO.StringIO()
-                # write email headers to memory buffer
-                self.fp.write("{}\n".format("\n".join(self.headers)))
+            if self.matched != None:
+                self.logger.info("{}: email matched quarantine '{}'".format(self.queueid, self.matched["name"]))
+                # one of the configured quarantines matched
+                if self.matched["quarantine_obj"] != None or self.matched["notification_obj"] != None:
+                    self.logger.debug("{}: initializing memory buffer to save email data".format(self.queueid))
+                    # quarantine or notification configured, initialize memory buffer to save mail
+                    self.fp = StringIO.StringIO()
+                    # write email headers to memory buffer
+                    self.fp.write("{}\n".format("\n".join(self.headers)))
+                else:
+                    # quarantine and notification disabled, return configured action
+                    self.logger.debug("{}: ".format(self.queueid))
+                    self.logger.info("{}: quarantine and notification disabled, responding with configured action: {}".format(self.queueid, self.matched["action"].upper()))
+                    return self.matched["milter_action"]
             else:
-                # quarantine and notification disabled, return configured action
-                self.logger.debug("{}: ".format(self.queueid))
-                self.logger.info("{}: quarantine and notification disabled, responding with configured action: {}".format(self.queueid, self.matched["action"].upper()))
-                return self.matched["milter_action"]
-        else:
-            # no quarantine matched, accept mail
-            self.logger.info("{}: email passed clean".format(self.queueid))
-            return Milter.ACCEPT
-        return Milter.CONTINUE
+                # no quarantine matched, accept mail
+                self.logger.info("{}: email passed clean".format(self.queueid))
+                return Milter.ACCEPT
+            return Milter.CONTINUE
+        except Exception as e:
+            self.logger.exception("an exception occured in eoh function: {}".format(e))
+            return Milter.TEMPFAIL
 
     def body(self, chunk):
-        # save received body chunk
-        self.fp.write(chunk)
+        try:
+            # save received body chunk
+            self.fp.write(chunk)
+        except Exception as e:
+            self.logger.exception("an exception occured in body function: {}".format(e))
+            return Milter.TEMPFAIL
         return Milter.CONTINUE
 
     def eom(self):
-        if self.matched["whitelist"] != None:
-            whitelisted_recipients = self.whitelist.get_whitelisted_recipients(self.matched["whitelist"], self.mailfrom, self.recipients)
-            if len(whitelisted_recipients) > 0:
-                for recipient in whitelisted_recipients:
-                    self.recipients.remove(recipient)
-                self.fp.seek(0)
-                self.logger.info("{}: sending original email to whitelisted recipient(s): {}".format(self.queueid, "<{}>".format(">,<".join(whitelisted_recipients))))
+        try:
+            if self.matched["whitelist_obj"] != None:
                 try:
-                    mailer.sendmail(self.matched["smtp_host"], self.matched["smtp_port"], self.queueid, self.mailfrom, whitelisted_recipients, self.fp.read())
-                except Exception as e:
-                    self.logger.error("{}: unable to send original email: {}".format(self.queueid, e))
+                    whitelisted_recipients = self.whitelist_cache.get_whitelisted_recipients(self.matched["whitelist_obj"], self.mailfrom, self.recipients)
+                except RuntimeError as e:
+                    self.logger.error("{}: unable to query whitelist: {}".format(self.queueid, e))
                     return Milter.TEMPFAIL
-        if len(self.recipients) > 0:
-            quarantine_id = ""
-            if self.matched["quarantine"] != None:
-                # add email to quarantine
-                self.fp.seek(0)
-                try:
-                    quarantine_id = self.matched["quarantine"].add(self.queueid, self.mailfrom, self.recipients, fp=self.fp)
-                except Exception as e:
-                    self.logger.error("{}: unable to add email to quarantine: {}".format(self.queueid, e))
-                    return Milter.TEMPFAIL
-                else:
-                    self.logger.info("{}: added email to quarantine of recipient(s): {}".format(self.queueid, "<{}>".format(">,<".join(self.recipients))))
-            if self.matched["notification"] != None:
-                # notify
-                self.fp.seek(0)
-                try:
-                    self.matched["notification"].notify(self.queueid, quarantine_id, self.subject, self.mailfrom, self.recipients, fp=self.fp)
-                except Exception as e:
-                    self.logger.error("{}: unable to send notification(s): {}".format(self.queueid, e))
-                    return Milter.TEMPFAIL
-                else:
-                    self.logger.info("{}: sent notification(s) to: {}".format(self.queueid, "<{}>".format(">,<".join(self.recipients))))
-        self.fp.close()
-        # return configured action
-        self.logger.info("{}: responding with configured action: {}".format(self.queueid, self.matched["action"].upper()))
-        return self.matched["milter_action"]
+                if len(whitelisted_recipients) > 0:
+                    for recipient in whitelisted_recipients:
+                        self.recipients.remove(recipient)
+                    self.fp.seek(0)
+                    self.logger.info("{}: sending original email to whitelisted recipient(s): {}".format(self.queueid, "<{}>".format(">,<".join(whitelisted_recipients))))
+                    try:
+                        mailer.sendmail(self.matched["smtp_host"], self.matched["smtp_port"], self.queueid, self.mailfrom, whitelisted_recipients, self.fp.read())
+                    except RuntimeError as e:
+                        self.logger.error("{}: unable to send original email: {}".format(self.queueid, e))
+                        return Milter.TEMPFAIL
+            if len(self.recipients) > 0:
+                quarantine_id = ""
+                if self.matched["quarantine_obj"] != None:
+                    # add email to quarantine
+                    self.fp.seek(0)
+                    self.logger.info("{}: adding email to quarantine of recipient(s): {}".format(self.queueid, "<{}>".format(">,<".join(self.recipients))))
+                    try:
+                        quarantine_id = self.matched["quarantine_obj"].add(self.queueid, self.mailfrom, self.recipients, fp=self.fp)
+                    except RuntimeError as e:
+                        self.logger.error("{}: unable to add email to quarantine: {}".format(self.queueid, e))
+                        return Milter.TEMPFAIL
+                if self.matched["notification_obj"] != None:
+                    # notify
+                    self.fp.seek(0)
+                    self.logger.info("{}: sending notification(s) to: {}".format(self.queueid, "<{}>".format(">,<".join(self.recipients))))
+                    try:
+                        self.matched["notification_obj"].notify(self.queueid, quarantine_id, self.subject, self.mailfrom, self.recipients, fp=self.fp)
+                    except RuntimeError as e:
+                        self.logger.error("{}: unable to send notification(s): {}".format(self.queueid, e))
+                        return Milter.TEMPFAIL
+            self.fp.close()
+            # return configured action
+            self.logger.info("{}: responding with configured action: {}".format(self.queueid, self.matched["action"].upper()))
+            return self.matched["milter_action"]
+        except Exception as e:
+            self.logger.exception("an exception occured in eom function: {}".format(e))
+            return Milter.TEMPFAIL
 
 
-
-def generate_milter_config(configtest=False):
+def generate_milter_config(configtest=False, config_files=[]):
     "Generate the configuration for QuarantineMilter class."
     logger = logging.getLogger(__name__)
     # read config file
     parser = ConfigParser.ConfigParser()
-    config_files = parser.read(QuarantineMilter.get_configfiles())
+    if len(config_files) == 0:
+        config_files = parser.read(QuarantineMilter.get_configfiles())
+    else:
+        config_files = parser.read(config_files)
     if len(config_files) == 0:
         raise RuntimeError("config file not found")
     QuarantineMilter.set_configfiles(config_files)
@@ -219,7 +241,7 @@ def generate_milter_config(configtest=False):
         config[name] = dict(parser.items(name))
         config[name]["name"] = name
         # check if mandatory config options are present in config
-        for option in ["regex", "type", "notification", "action", "whitelist", "smtp_host", "smtp_port"]:
+        for option in ["regex", "quarantine_type", "notification_type", "action", "whitelist_type", "smtp_host", "smtp_port"]:
             if option not in config[name].keys() and \
                     option in config["global"].keys():
                 config[name][option] = config["global"][option]
@@ -234,7 +256,7 @@ def generate_milter_config(configtest=False):
         logger.debug("=> compiling regex '{}'".format(regex))
         config[name]["regex_compiled"] = re.compile(regex)
         # create quarantine instance
-        quarantine_type = config[name]["type"].lower()
+        quarantine_type = config[name]["quarantine_type"].lower()
         if quarantine_type in quarantines.quarantine_types.keys():
             logger.debug("=> initializing quarantine type '{}'".format(quarantine_type))
             quarantine = quarantines.quarantine_types[quarantine_type](name, config, configtest)
@@ -243,17 +265,18 @@ def generate_milter_config(configtest=False):
             quarantine = None
         else:
             raise RuntimeError("unknown quarantine_type '{}'".format(quarantine_type))
-        config[name]["quarantine"] = quarantine
+        config[name]["quarantine_obj"] = quarantine
         # create whitelist instance
-        whitelist = config[name]["whitelist"]
-        if whitelist.lower() == "none":
-            logger.debug("=> setting whitelist to NONE")
-            config[name]["whitelist"] = None
-        else:
+        whitelist_type = config[name]["whitelist_type"].lower()
+        if whitelist_type in whitelists.whitelist_types.keys():
             logger.debug("=> initializing whitelist database")
-            config[name]["whitelist"] = whitelists.Whitelist(name, config, configtest)
+            whitelist = whitelists.whitelist_types[whitelist_type](name, config, configtest)
+        else:
+            logger.debug("=> setting whitelist to NONE")
+            whitelist = None
+        config[name]["whitelist_obj"] = whitelist
         # create notification instance
-        notification_type = config[name]["notification"].lower()
+        notification_type = config[name]["notification_type"].lower()
         if notification_type in notifications.notification_types.keys():
             logger.debug("=> initializing notification type '{}'".format(notification_type))
             notification = notifications.notification_types[notification_type](name, config, configtest)
@@ -262,7 +285,7 @@ def generate_milter_config(configtest=False):
             notification = None
         else:
             raise RuntimeError("unknown notification type '{}'".format(notification_type))
-        config[name]["notification"] = notification
+        config[name]["notification_obj"] = notification
         # determining milter action for this quarantine
         action = config[name]["action"].upper()
         if action in QuarantineMilter.get_actions().keys():
@@ -272,8 +295,6 @@ def generate_milter_config(configtest=False):
             raise RuntimeError("unknown action '{}' configured for quarantine '{}'".format(action, name))
     # remove global section from config, every section should be a quarantine
     del(config["global"])
-    if configtest:
-        print("Configuration ok")
     return config
 
 

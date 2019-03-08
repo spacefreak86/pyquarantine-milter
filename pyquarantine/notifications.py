@@ -113,12 +113,12 @@ class EMailNotification(BaseNotification):
         self.subject = self.config["notification_email_subject"]
         try:
             self.template = open(self.config["notification_email_template"], "rb").read()
-        except Exception as e:
-            raise RuntimeError("error reading email template: {}".format(e))
+        except IOError as e:
+            raise RuntimeError("error reading template: {}".format(e))
         try:
             self.replacement_img = MIMEImage(open(self.config["notification_email_replacement_img"], "rb").read())
-        except Exception as e:
-            raise RuntimeError("error reading email replacement image: {}".format(e))
+        except IOError as e:
+            raise RuntimeError("error reading replacement image: {}".format(e))
         else:
             self.replacement_img.add_header("Content-ID", "<removed_for_security_reasons>")
 

@@ -27,13 +27,13 @@ import pyquarantine
 def main():
     "Run PyQuarantine-Milter."
     # parse command line
-    parser = argparse.ArgumentParser(description="Quarantine milter daemon",
+    parser = argparse.ArgumentParser(description="PyQuarantine milter daemon",
             formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=45, width=140))
-    parser.add_argument('-c', '--config', help='list of config files', nargs='+',
+    parser.add_argument("-c", "--config", help="List of config files to read.", nargs="+",
             default=pyquarantine.QuarantineMilter.get_configfiles())
-    parser.add_argument('-s', '--socket', help='socket used to communicatewith the MTA', required=True)
-    parser.add_argument('-d', '--debug', help='log debugging messages', action='store_true')
-    parser.add_argument('-t', '--test', help='check configuration', action='store_true')
+    parser.add_argument("-s", "--socket", help="Socket used to communicate with the MTA.", required=True)
+    parser.add_argument("-d", "--debug", help="Log debugging messages.", action="store_true")
+    parser.add_argument("-t", "--test", help="Check configuration.", action="store_true")
     args = parser.parse_args()
     # setup logging
     loglevel = logging.INFO
@@ -45,18 +45,19 @@ def main():
         syslog_name = "{}: [%(name)s] %(levelname)s".format(syslog_name)
     # set config files for milter class
     pyquarantine.QuarantineMilter.set_configfiles(args.config)
-    logger = logging.getLogger()
-    logger.setLevel(loglevel)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(loglevel)
     # setup console log
     stdouthandler = logging.StreamHandler(sys.stdout)
     stdouthandler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(message)s".format(logname))
     stdouthandler.setFormatter(formatter)
-    logger.addHandler(stdouthandler)
+    root_logger.addHandler(stdouthandler)
     logger = logging.getLogger(__name__)
     if args.test:
         try:
             pyquarantine.generate_milter_config(args.test)
+            print("Configuration ok")
         except RuntimeError as e:
             logger.error(e)
             sys.exit(255)
@@ -69,14 +70,15 @@ def main():
     sysloghandler.setLevel(loglevel)
     formatter = logging.Formatter("{}: %(message)s".format(syslog_name))
     sysloghandler.setFormatter(formatter)
-    logger.addHandler(sysloghandler)
+    root_logger.addHandler(sysloghandler)
     logger.info("PyQuarantine-Milter starting")
     try:
         # generate milter config
-        pyquarantine.QuarantineMilter.config = pyquarantine.generate_milter_config()
+        config = pyquarantine.generate_milter_config()
     except RuntimeError as e:
         logger.error(e)
         sys.exit(255)
+    pyquarantine.QuarantineMilter.config = config
     # register to have the Milter factory create instances of your class:
     Milter.factory = pyquarantine.QuarantineMilter
     Milter.set_exception_policy(Milter.TEMPFAIL)

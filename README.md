@@ -33,14 +33,14 @@ The following configuration options are mandatory in the global section:
 The following configuration options are mandatory in each quarantine section:
 * **regex**  
   Regular expression to filter e-mail headers.
-* **type**  
+* **quarantine_type**  
   One of the quarantine-types described below.
 * **action**  
   One of the actions described below.
-* **notification**  
+* **notification_type**  
   One of the notification types described below.
-* **whitelist**  
-  Database connection string (e.g. mysql://user:password@host:port) or NONE to disable whitelist.
+* **whitelist_type**  
+  One of the whitelist types described below.
 
 ### Quarantine types
 * **NONE**  
@@ -95,9 +95,18 @@ The following actions are available:
   Reject e-mails.
 
 
-### Whitelist
-If a whitelist database connection string is configured, the following configuration options are mandatory:
-* **whitelist_table**  
+### Whitelist types
+* **NONE**  
+  No whitelist will be used.
+
+* **DB**  
+  A database whitelist will be used. All database types supported by peewee are available.  
+
+  The following configuration options are mandatory for this whitelist type:
+* **whitelist_db_connection**  
+  Database connection string (e.g. mysql://user:password@host:port).  
+
+* **whitelist_db_table**  
   Database table to use.
 
 ## Developer information

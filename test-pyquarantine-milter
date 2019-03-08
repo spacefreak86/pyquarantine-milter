@@ -1,0 +1,9 @@
+#!/usr/bin/env python2
+
+import sys
+import pyquarantine.run
+
+if __name__ == '__main__':
+    sys.exit(
+        pyquarantine.run.main()
+    )

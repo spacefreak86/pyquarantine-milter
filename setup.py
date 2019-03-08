@@ -27,9 +27,10 @@ setup(name = "pyquarantine",
     ],
     entry_points = {
         "console_scripts": [
-            "pyquarantine-milter=pyquarantine.run:main"
+            "pyquarantine-milter=pyquarantine.run:main",
+            "pyquarantine=pyquarantine.cli:main"
         ]
     },
     install_requires = ["pymilter", "peewee"],
     python_requires = ">=2.7,<3"
-) 
+)

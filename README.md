@@ -24,10 +24,12 @@ Any available configuration option can be set in the global section as default i
 The following configuration options are mandatory in the global section:
 * **quarantines**  
   Comma-separated, ordered list of active quarantines. For each, there must be a section of the same name in the configuration.
-* **smtp_host**  
-  SMTP host to inject original e-mails. This is needed if not all recipients of an e-mail are whitelisted
-* **smtp_port**  
-  SMTP port
+* **preferred_quarantin_action**  
+  Defines which quarantine action should be preferred if multiple quarantines are matching for multiple recipients.  
+  If at least one recipient receives the original e-mail due to whitelisting, the action is always ACCEPT.
+  Possible values are:
+  * **first**
+  * **last**
 
 ### Quarantine sections
 The following configuration options are mandatory in each quarantine section:
@@ -41,6 +43,10 @@ The following configuration options are mandatory in each quarantine section:
   One of the notification types described below.
 * **whitelist_type**  
   One of the whitelist types described below.
+* **smtp_host**  
+  SMTP host to inject original e-mails. This is needed if not all recipients of an e-mail are whitelisted
+* **smtp_port**  
+  SMTP port
 
 ### Quarantine types
 * **NONE**  

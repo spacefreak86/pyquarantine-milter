@@ -1,10 +1,25 @@
 <html>
  <body>
-<h1>This is a spam notification mail</h1>
-<b>From:</b> {EMAIL_FROM}<br/>
-<b>To:</b> {EMAIL_TO}<br/>
-<b>Subject:</b> {EMAIL_SUBJECT}<br/>
-<b>Quarantine-ID:</b> {EMAIL_QUARANTINE_ID}<br/><br/><br/>
-{EMAIL_HTML_TEXT}
+  <h1>Quarantine ntification</h1>
+  <table>
+   <tr>
+    <td><b>From:</b></td>
+    <td>{EMAIL_FROM}</td>
+   </tr>
+   <tr>
+    <td><b>To:</b></td>
+    <td>{EMAIL_TO}</td>
+   </tr>
+   <tr>
+    <td><b>Subject:</b></td>
+    <td>{EMAIL_SUBJECT}</td>
+   </tr>
+   <tr>
+    <td><b>Quarantine ID:</b></td>
+    <td>{EMAIL_QUARANTINE_ID}</td>
+   </tr>
+  </table><br/>
+  <h2>Preview of the original e-mail</h2>
+  {EMAIL_HTML_TEXT}
  </body>
 </html>

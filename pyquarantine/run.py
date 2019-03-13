@@ -23,7 +23,6 @@ import sys
 import pyquarantine
 
 
-
 def main():
     "Run PyQuarantine-Milter."
     # parse command line
@@ -35,6 +34,7 @@ def main():
     parser.add_argument("-d", "--debug", help="Log debugging messages.", action="store_true")
     parser.add_argument("-t", "--test", help="Check configuration.", action="store_true")
     args = parser.parse_args()
+
     # setup logging
     loglevel = logging.INFO
     logname = "pyquarantine-milter"
@@ -43,10 +43,12 @@ def main():
         loglevel = logging.DEBUG
         logname = "{}[%(name)s]".format(logname)
         syslog_name = "{}: [%(name)s] %(levelname)s".format(syslog_name)
+
     # set config files for milter class
     pyquarantine.QuarantineMilter.set_configfiles(args.config)
     root_logger = logging.getLogger()
     root_logger.setLevel(loglevel)
+
     # setup console log
     stdouthandler = logging.StreamHandler(sys.stdout)
     stdouthandler.setLevel(logging.DEBUG)
@@ -63,26 +65,32 @@ def main():
             sys.exit(255)
         else:
             sys.exit(0)
-    formatter = logging.Formatter("%(asctime)s {}: %(levelname)s - %(message)s".format(logname), datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter("%(asctime)s {}: [%(levelname)s] %(message)s".format(logname), datefmt="%Y-%m-%d %H:%M:%S")
     stdouthandler.setFormatter(formatter)
+
     # setup syslog
     sysloghandler = logging.handlers.SysLogHandler(address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
     sysloghandler.setLevel(loglevel)
     formatter = logging.Formatter("{}: %(message)s".format(syslog_name))
     sysloghandler.setFormatter(formatter)
     root_logger.addHandler(sysloghandler)
+
     logger.info("PyQuarantine-Milter starting")
     try:
         # generate milter config
-        config = pyquarantine.generate_milter_config()
+        global_config, config = pyquarantine.generate_milter_config()
     except RuntimeError as e:
         logger.error(e)
         sys.exit(255)
+
+    pyquarantine.QuarantineMilter.global_config = global_config
     pyquarantine.QuarantineMilter.config = config
+
     # register to have the Milter factory create instances of your class:
     Milter.factory = pyquarantine.QuarantineMilter
     Milter.set_exception_policy(Milter.TEMPFAIL)
     #Milter.set_flags(0)       # tell sendmail which features we use
+
     # run milter
     rc = 0
     try:
@@ -93,7 +101,6 @@ def main():
     pyquarantine.mailer.queue.put(None)
     logger.info("PyQuarantine-Milter terminated")
     sys.exit(rc)
-
 
 
 if __name__ == "__main__":

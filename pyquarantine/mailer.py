@@ -25,50 +25,52 @@ queue = Queue(maxsize=50)
 process = None
 
 
-
 def smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail):
     s = smtplib.SMTP(host=smtp_host, port=smtp_port)
     s.sendmail(mailfrom, [recipient], mail)
     s.quit()
 
 
-
 def mailprocess():
     "Mailer process to send emails asynchronously."
     global logger
     global queue
+
     try:
         while True:
             m = queue.get()
             if not m: break
-            smtp_host, smtp_port, queueid, mailfrom, recipient, mail = m
+
+            smtp_host, smtp_port, queueid, mailfrom, recipient, mail, emailtype = m
             try:
                 smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail)
             except Exception as e:
-                logger.error("{}: error while sending email to <{}> via {}: {}".format(queueid, recipient, smtp_host, e))
+                logger.error("{}: error while sending {} to '{}': {}".format(queueid, emailtype, recipient, e))
             else:
-                logger.info("{}: email to <{}> sent successfully".format(queueid, recipient))
+                logger.info("{}: successfully sent {} to: {}".format(queueid, emailtype, recipient))
     except KeyboardInterrupt:
         pass
     logger.debug("mailer process terminated")
 
 
-
-def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail):
+def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail, emailtype="email"):
     "Send an email."
     global logger
     global process
     global queue
+
     if type(recipients) == str:
         recipients = [recipients]
+
     # start mailprocess if it is not started yet
     if process == None:
         process = Process(target=mailprocess)
         process.daemon = True
         logger.debug("starting mailer process")
         process.start()
+
     for recipient in recipients:
         try:
-            queue.put((smtp_host, smtp_port, queueid, mailfrom, recipient, mail), timeout=30)
+            queue.put((smtp_host, smtp_port, queueid, mailfrom, recipient, mail, emailtype), timeout=30)
         except Queue.Full as e:
-            raise RuntimeError("e-mail queue is full")
+            raise RuntimeError("email queue is full")

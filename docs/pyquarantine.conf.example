@@ -19,6 +19,15 @@
 #
 quarantines = spam
 
+# Option: quarantine_action_precedence
+# Notes:  Set if the action of the first or the last matching quarantine should
+#         be used if multiple recipients match multiple quarantines. If an original
+#         email is delivered to at least one recipient due to whitelisting, the
+#         email will always be accepted.
+# Values: [ first | last ]
+#
+preferred_quarantine_action = last
+
 # Option: smtp_host
 # Notes:  Set the SMTP host. It will be used to (re-)inject emails.
 # Values: [ HOSTNAME | IP_ADDRESS ]

@@ -26,16 +26,18 @@ from time import gmtime
 
 import mailer
 
+
 class BaseQuarantine(object):
     "Quarantine base class"
-    def __init__(self, name, config, configtest=False):
-        self.name = name
-        self.config = config[name]
-        self.global_config = config["global"]
+    def __init__(self, global_config, config, configtest=False):
+        self.name = config["name"]
+        self.global_config = global_config
+        self.config = config
         self.logger = logging.getLogger(__name__)
 
     def add(self, queueid, mailfrom, recipients, fp):
         "Add e-mail to quarantine."
+        fp.seek(0)
         return ""
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
@@ -55,11 +57,11 @@ class BaseQuarantine(object):
         return
 
 
-
 class FileQuarantine(BaseQuarantine):
     "Quarantine class to store mails on filesystem."
-    def __init__(self, name, config, configtest=False):
-        super(FileQuarantine, self).__init__(name, config, configtest)
+    def __init__(self, global_config, config, configtest=False):
+        super(FileQuarantine, self).__init__(global_config, config, configtest)
+
         # check if mandatory options are present in config
         for option in ["directory"]:
             if option not in self.config.keys() and option in self.global_config.keys():
@@ -67,6 +69,7 @@ class FileQuarantine(BaseQuarantine):
             if option not in self.config.keys():
                 raise RuntimeError("mandatory option '{}' not present in config section '{}' or 'global'".format(option, self.name))
         self.directory = self.config["directory"]
+
         # check if quarantine directory exists and is writable
         if not os.path.isdir(self.directory) or not os.access(self.directory, os.W_OK):
             raise RuntimeError("file quarantine directory '{}' does not exist or is not writable".format(self.directory))
@@ -91,10 +94,12 @@ class FileQuarantine(BaseQuarantine):
     def _remove(self, quarantine_id):
         datafile = os.path.join(self.directory, quarantine_id)
         metafile = "{}{}".format(datafile, self._metadata_suffix)
+
         try:
             os.remove(metafile)
         except IOError as e:
             raise RuntimeError("unable to remove metadata file: {}".format(e))
+
         try:
             os.remove(datafile)
         except IOError as e:
@@ -104,8 +109,10 @@ class FileQuarantine(BaseQuarantine):
         "Add e-mail to file quarantine and return quarantine-id."
         super(FileQuarantine, self).add(queueid, mailfrom, recipients, fp)
         quarantine_id = "{}_{}".format(datetime.now().strftime("%Y%m%d%H%M%S"), queueid)
+
         # save mail
         self._save_datafile(quarantine_id, fp)
+
         # save metadata
         metadata = {
             "from": mailfrom,
@@ -119,19 +126,23 @@ class FileQuarantine(BaseQuarantine):
             datafile = os.path.join(self.directory, quarantine_id)
             os.remove(datafile)
             raise e
+
         return quarantine_id
 
     def get_metadata(self, quarantine_id):
         "Return metadata of quarantined e-mail."
         super(FileQuarantine, self).get_metadata(quarantine_id)
+
         metafile = os.path.join(self.directory, "{}{}".format(quarantine_id, self._metadata_suffix))
         if not os.path.isfile(metafile):
             raise RuntimeError("invalid quarantine id '{}'".format(quarantine_id))
+
         try:
             with open(metafile, "rb") as f:
                 metadata = json.load(f)
         except IOError as e:
             raise RuntimeError("unable to read metadata file: {}".format(e))
+
         return metadata
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
@@ -139,40 +150,49 @@ class FileQuarantine(BaseQuarantine):
         super(FileQuarantine, self).find(mailfrom, recipients, older_than)
         if type(mailfrom) == str: mailfrom = [mailfrom]
         if type(recipients) == str: recipients = [recipients]
+
         emails = {}
         metafiles = glob(os.path.join(self.directory, "*{}".format(self._metadata_suffix)))
         for metafile in metafiles:
             if not os.path.isfile(metafile): continue
+
             quarantine_id = os.path.basename(metafile[:-len(self._metadata_suffix)])
             metadata = self.get_metadata(quarantine_id)
             if older_than != None:
                 if timegm(gmtime()) - metadata["date"] < (older_than * 24 * 3600):
                     continue
+
             if mailfrom != None:
                 if metadata["from"] not in mailfrom:
                     continue
+
             if recipients != None:
                 if len(recipients) == 1 and recipients[0] not in metadata["recipients"]:
                     continue
                 elif len(set(recipients + metadata["recipients"])) == len(recipients + metadata["recipients"]):
                     continue
+
             emails[quarantine_id] = metadata
+
         return emails
 
     def delete(self, quarantine_id, recipient=None):
         "Delete e-mail in quarantine."
         super(FileQuarantine, self).delete(quarantine_id, recipient)
+
         try:
             metadata = self.get_metadata(quarantine_id)
         except RuntimeError as e:
             raise RuntimeError("unable to delete e-mail: {}".format(e))
+
         if recipient == None:
             self._remove(quarantine_id)
         else:
             if recipient not in metadata["recipients"]:
                 raise RuntimeError("invalid recipient '{}'".format(recipient))
+
             metadata["recipients"].remove(recipient)
-            if len(metadata["recipients"]) == 0:
+            if not metadata["recipients"]:
                 self._remove(quarantine_id)
             else:
                 self._save_metafile(quarantine_id, metadata)
@@ -180,10 +200,12 @@ class FileQuarantine(BaseQuarantine):
     def release(self, quarantine_id, recipient=None):
         "Release e-mail from quarantine."
         super(FileQuarantine, self).release(quarantine_id, recipient)
+
         try:
             metadata = self.get_metadata(quarantine_id)
         except RuntimeError as e:
             raise RuntimeError("unable to release e-mail: {}".format(e))
+
         datafile = os.path.join(self.directory, quarantine_id)
         if recipient != None:
             if recipient not in metadata["recipients"]:
@@ -191,19 +213,21 @@ class FileQuarantine(BaseQuarantine):
             recipients = [recipient]
         else:
             recipients = metadata["recipients"]
+
         try:
             with open(datafile, "rb") as f:
                 mail = f.read()
         except IOError as e:
             raise RuntimeError("unable to read data file: {}".format(e))
+
         for recipient in recipients:
             try:
                 mailer.smtp_send(self.config["smtp_host"], self.config["smtp_port"], metadata["from"], recipient, mail)
             except Exception as e:
                 raise RuntimeError("error while sending e-mail to '{}': {}".format(recipient, e))
+
             self.delete(quarantine_id, recipient)
 
 
-
 # list of quarantine types and their related quarantine classes
-quarantine_types = {"file": FileQuarantine}
+TYPES = {"file": FileQuarantine}

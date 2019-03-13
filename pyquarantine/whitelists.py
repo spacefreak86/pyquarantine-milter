@@ -22,19 +22,18 @@ import sys
 from playhouse.db_url import connect
 
 
-
 class WhitelistBase(object):
     "Whitelist base class"
-    def __init__(self, name, config, configtest=False):
-        self.name = name
-        self.config = config[name]
+    def __init__(self, global_config, config, configtest=False):
+        self.global_config = global_config
+        self.config = config
         self.configtest = configtest
-        self.global_config = config["global"]
+        self.name = config["name"]
         self.logger = logging.getLogger(__name__)
         self.valid_entry_regex = re.compile(r"^[a-zA-Z0-9_.+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
 
     def check(self, mailfrom, recipient):
-        # check if mailfrom/recipient combination is whitelisted
+        "Check if mailfrom/recipient combination is whitelisted."
         return
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
@@ -55,7 +54,6 @@ class WhitelistBase(object):
         return
 
 
-
 class WhitelistModel(peewee.Model):
     mailfrom = peewee.CharField()
     recipient = peewee.CharField()
@@ -65,51 +63,60 @@ class WhitelistModel(peewee.Model):
     permanent = peewee.BooleanField(default=False)
 
 
-
 class Meta(object):
     indexes = (
         (('mailfrom', 'recipient'), True), # trailing comma is mandatory if only one index should be created
     )
 
 
-
 class DatabaseWhitelist(WhitelistBase):
     "Whitelist class to store whitelist in a database"
-    _whitelists = {}
+    _db_connections = {}
+    _db_tables = {}
 
-    def __init__(self, name, config, configtest=False):
-        super(DatabaseWhitelist, self).__init__(name, config, configtest)
+    def __init__(self, global_config, config, configtest=False):
+        super(DatabaseWhitelist, self).__init__(global_config, config, configtest)
+
         # check if mandatory options are present in config
         for option in ["whitelist_db_connection", "whitelist_db_table"]:
             if option not in self.config.keys() and option in self.global_config.keys():
                 self.config[option] = self.global_config[option]
             if option not in self.config.keys():
                 raise RuntimeError("mandatory option '{}' not present in config section '{}' or 'global'".format(option, self.name))
-        self.tablename = self.config["whitelist_db_table"]
+
+        tablename = self.config["whitelist_db_table"]
         connection_string = self.config["whitelist_db_connection"]
-        if connection_string in DatabaseWhitelist._whitelists.keys():
-            new_connection = False
-            self.db = DatabaseWhitelist._whitelists[connection_string]
+
+        if connection_string in DatabaseWhitelist._db_connections.keys():
+            db = DatabaseWhitelist._db_connections[connection_string]
         else:
-            new_connection = True
             try:
                 # connect to database
                 self.logger.debug("connecting to database '{}'".format(re.sub(r"(.*?://.*?):.*?(@.*)", r"\1:<PASSWORD>\2", connection_string)))
-                self.db = connect(connection_string)
+                db = connect(connection_string)
             except Exception as e:
                 raise RuntimeError("unable to connect to database: {}".format(e))
-            DatabaseWhitelist._whitelists[connection_string] = self.db
+
+            DatabaseWhitelist._db_connections[connection_string] = db
+
+        # generate model meta class
         self.meta = Meta
-        self.meta.database = self.db
-        self.meta.table_name = self.tablename
-        self.model = type("WhitelistModel_{}".format(name), (WhitelistModel,), {
+        self.meta.database = db
+        self.meta.table_name = tablename
+        self.model = type("WhitelistModel_{}".format(self.name), (WhitelistModel,), {
             "Meta": self.meta 
         })
-        if new_connection and not self.configtest:
-            try:
-                self.db.create_tables([self.model])
-            except Exception as e:
-                raise RuntimeError("unable to initialize table '{}': {}".format(self.tablename, e))
+
+        if connection_string not in DatabaseWhitelist._db_tables.keys():
+            DatabaseWhitelist._db_tables[connection_string] = []
+
+        if tablename not in DatabaseWhitelist._db_tables[connection_string]:
+            DatabaseWhitelist._db_tables[connection_string].append(tablename)
+            if not self.configtest:
+                try:
+                    db.create_tables([self.model])
+                except Exception as e:
+                    raise RuntimeError("unable to initialize table '{}': {}".format(tablename, e))
 
     def _entry_to_dict(self, entry):
         result = {}
@@ -136,27 +143,33 @@ class DatabaseWhitelist(WhitelistBase):
     def check(self, mailfrom, recipient):
         # check if mailfrom/recipient combination is whitelisted
         super(DatabaseWhitelist, self).check(mailfrom, recipient)
+
         # generate list of possible mailfroms
         self.logger.debug("query database for whitelist entries from <{}> to <{}>".format(mailfrom, recipient))
         mailfroms = [""]
         if "@" in mailfrom and not mailfrom.startswith("@"):
             mailfroms.append("@{}".format(mailfrom.split("@")[1]))
         mailfroms.append(mailfrom)
+
         # generate list of possible recipients
         recipients = [""]
         if "@" in recipient and not recipient.startswith("@"):
             recipients.append("@{}".format(recipient.split("@")[1]))
         recipients.append(recipient)
+
         # query the database
         try:
             entries = list(self.model.select().where(self.model.mailfrom.in_(mailfroms), self.model.recipient.in_(recipients)))
         except Exception as e:
             raise RuntimeError("unable to query database: {}".format(e))
-        if len(entries) == 0:
+
+        if not entries:
             # no whitelist entry found
             return {}
+
         if len(entries) > 1:
             entries.sort(key=lambda x: self.get_weight(x), reverse=True)
+
         # use entry with the highest weight
         entry = entries[0]
         entry.last_used = datetime.datetime.now()
@@ -164,33 +177,41 @@ class DatabaseWhitelist(WhitelistBase):
         result = {}
         for entry in entries:
             result.update(self._entry_to_dict(entry))
+
         return result
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
         "Find whitelist entries."
         super(DatabaseWhitelist, self).find(mailfrom, recipients, older_than)
+
         if type(mailfrom) == str: mailfrom = [mailfrom]
         if type(recipients) == str: recipients = [recipients]
+
         entries = {}
         try:
             for entry in list(self.model.select()):
                 if older_than != None: 
                     if (datetime.datetime.now() - entry.last_used).total_seconds() < (older_than * 24 * 3600):
                         continue
+
                 if mailfrom != None:
                     if entry.mailfrom not in mailfrom:
                         continue
+
                 if recipients != None:
                     if entry.recipient not in recipients:
                         continue
+
                 entries.update(self._entry_to_dict(entry))
         except Exception as e:
             raise RuntimeError("unable to query database: {}".format(e))
+
         return entries
 
     def add(self, mailfrom, recipient, comment, permanent):
         "Add entry to whitelist."
         super(DatabaseWhitelist, self).add(mailfrom, recipient, comment, permanent)
+
         try:
             self.model.create(mailfrom=mailfrom, recipient=recipient, comment=comment, permanent=permanent)
         except Exception as e:
@@ -199,14 +220,15 @@ class DatabaseWhitelist(WhitelistBase):
     def delete(self, whitelist_id):
         "Delete entry from whitelist."
         super(DatabaseWhitelist, self).delete(whitelist_id)
+
         try:
             query = self.model.delete().where(self.model.id == whitelist_id)
             deleted = query.execute()
         except Exception as e:
             raise RuntimeError("unable to delete entry from database: {}".format(e))
+
         if deleted == 0:
             raise RuntimeError("invalid whitelist id")
-
 
 
 class WhitelistCache(object):
@@ -226,9 +248,8 @@ class WhitelistCache(object):
 
     def get_whitelisted_recipients(self, whitelist, mailfrom, recipients):
         self.load(whitelist, mailfrom, recipients)
-        return filter(lambda x: len(self.cache[whitelist][x]) > 0, self.cache[whitelist].keys())
-
+        return filter(lambda x: self.cache[whitelist][x], self.cache[whitelist].keys())
 
 
 # list of whitelist types and their related whitelist classes
-whitelist_types = {"db": DatabaseWhitelist}
+TYPES = {"db": DatabaseWhitelist}

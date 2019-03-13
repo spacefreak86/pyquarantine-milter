@@ -28,6 +28,17 @@ quarantines = spam
 #
 preferred_quarantine_action = last
 
+
+[spam]
+
+# Option: regex
+# Notes:  Set the regular expression to match against email headers.
+#         If the regex matches any of the email headers, the email
+#         will be processed by this quarantine.
+# Values: [ REGEX ]
+#
+regex = ^X-Spam-Flag: YES
+
 # Option: smtp_host
 # Notes:  Set the SMTP host. It will be used to (re-)inject emails.
 # Values: [ HOSTNAME | IP_ADDRESS ]
@@ -39,17 +50,6 @@ smtp_host = 127.0.0.1
 # Values: [ PORT ]
 #
 smtp_port = 25
-
-
-[spam]
-
-# Option: regex
-# Notes:  Set the regular expression to match against email headers.
-#         If the regex matches any of the email headers, the email
-#         will be processed by this quarantine.
-# Values: [ REGEX ]
-#
-regex = ^X-Spam-Flag: YES
 
 # Option: quarantine_type
 # Notes:  Set the quarantine type.

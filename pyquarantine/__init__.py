@@ -14,21 +14,20 @@
 
 __all__ = ["QuarantineMilter", "generate_milter_config", "reload_config", "mailer", "notifications", "run", "quarantines", "whitelists"]
 
-import ConfigParser
 import Milter
-import StringIO
+import configparser
 import logging
 import os
 import re
 import sys
 
-import mailer
-import quarantines
-import notifications
-import whitelists
-
 from Milter.utils import parse_addr
+from io import BytesIO
 from itertools import groupby
+
+from pyquarantine import quarantines
+from pyquarantine import notifications
+from pyquarantine import whitelists
 
 
 class QuarantineMilter(Milter.Base):
@@ -171,9 +170,9 @@ class QuarantineMilter(Milter.Base):
             if keep_body:
                 self.logger.debug("{}: initializing memory buffer to save email data".format(self.queueid))
                 # initialize memory buffer to save email data
-                self.fp = StringIO.StringIO()
+                self.fp = BytesIO()
                 # write email headers to memory buffer
-                self.fp.write("{}\n".format("\n".join(self.headers)))
+                self.fp.write("{}\n".format("\n".join(self.headers)).encode())
             else:
                 # quarantine and notification are disabled on all matching quarantines, return configured action
                 quarantine = self._get_preferred_quarantine()
@@ -256,7 +255,7 @@ def generate_milter_config(configtest=False, config_files=[]):
     logger = logging.getLogger(__name__)
 
     # read config file
-    parser = ConfigParser.ConfigParser()
+    parser = configparser.ConfigParser()
     if not config_files:
         config_files = parser.read(QuarantineMilter.get_configfiles())
     else:

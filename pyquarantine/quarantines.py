@@ -22,7 +22,7 @@ from glob import glob
 from shutil import copyfileobj
 from time import gmtime
 
-import mailer
+from pyquarantine import mailer
 
 
 class BaseQuarantine(object):
@@ -84,7 +84,7 @@ class FileQuarantine(BaseQuarantine):
     def _save_metafile(self, quarantine_id, metadata):
         metafile = os.path.join(self.directory, "{}{}".format(quarantine_id, self._metadata_suffix))
         try:
-            with open(metafile, "wb") as f:
+            with open(metafile, "w") as f:
                 json.dump(metadata, f, indent=2)
         except IOError as e:
             raise RuntimeError("unable to save metadata file: {}".format(e))
@@ -136,10 +136,12 @@ class FileQuarantine(BaseQuarantine):
             raise RuntimeError("invalid quarantine id '{}'".format(quarantine_id))
 
         try:
-            with open(metafile, "rb") as f:
+            with open(metafile, "r") as f:
                 metadata = json.load(f)
         except IOError as e:
             raise RuntimeError("unable to read metadata file: {}".format(e))
+        except json.JSONDecodeError as e:
+            raise RuntimeError("invalid meta file '{}': {}".format(metafile, e))
 
         return metadata
 

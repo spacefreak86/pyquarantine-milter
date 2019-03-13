@@ -201,7 +201,10 @@ def release_email(config, args):
         raise RuntimeError("quarantine type is set to None, unable to release e-mail")
 
     quarantine.release(args.quarantine_id, args.recipient)
-    logger.info("successfully released e-mail [quarantine-id: {}] to '{}' from quarantine '{}'".format(args.quarantine_id, args.recipient, args.quarantine))
+    if args.recipient:
+        logger.info("successfully released quarantined email '{}' to '{}' from quarantine '{}'".format(args.quarantine_id, args.recipient, args.quarantine))
+    else:
+        logger.info("successfully released quarantined email '{}' from quarantine '{}'".format(args.quarantine_id, args.quarantine))
 
 
 def delete_email(config, args):

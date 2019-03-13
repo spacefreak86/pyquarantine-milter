@@ -14,7 +14,6 @@
 
 import email
 import logging
-import mailer
 import re
 
 from bs4 import BeautifulSoup
@@ -23,6 +22,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 
+from pyquarantine import mailer
 
 class BaseNotification(object):
     "Notification base class"
@@ -118,7 +118,7 @@ class EMailNotification(BaseNotification):
 
         # read email notification template
         try:
-            self.template = open(self.config["notification_email_template"], "rb").read()
+            self.template = open(self.config["notification_email_template"], "r").read()
         except IOError as e:
             raise RuntimeError("error reading template: {}".format(e))
 
@@ -139,7 +139,7 @@ class EMailNotification(BaseNotification):
 
         if mimetype == EMailNotification._plain_text:
             self.logger.debug("{}: content mimetype is {}, converting to {}".format(queueid, mimetype, self._html_text))
-            text = re.sub(r"^(.*)$", r"\1<br/>\n", text, flags=re.MULTILINE)
+            text = re.sub(r"^(.*)$", r"\1<br/>\n", text.decode(), flags=re.MULTILINE)
         else:
             self.logger.debug("{}: content mimetype is {}".format(queueid, mimetype))
 
@@ -211,7 +211,7 @@ class EMailNotification(BaseNotification):
 
         # extract html text from email
         self.logger.debug("{}: extraction email text from original email".format(queueid))
-        soup = self.get_html_text_part(queueid, email.message_from_file(fp))
+        soup = self.get_html_text_part(queueid, email.message_from_binary_file(fp))
 
         # replace picture sources
         picture_replaced = False

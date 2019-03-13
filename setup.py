@@ -5,10 +5,10 @@ def read_file(fname):
         return f.read()
 
 setup(name = "pyquarantine",
-    version = "1.0.0",
+    version = "0.0.1",
     author = "Thomas Oettli",
-    author_email = "spacefreak86@gmx.ch",
-    description = "A milter to handle multiple quarantines.",
+    author_email = "spacefreak@noop.ch",
+    description = "A pymilter based sendmail/postfix pre-queue filter.",
     license = "GPL 3",
     keywords = "quarantine milter",
     url = "https://github.com/spacefreak86/pyquarantine-milter",
@@ -22,7 +22,7 @@ setup(name = "pyquarantine",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
         "Topic :: Communications :: Email :: Quarantine"
     ],
     entry_points = {
@@ -31,6 +31,6 @@ setup(name = "pyquarantine",
             "pyquarantine=pyquarantine.cli:main"
         ]
     },
-    install_requires = ["pymilter", "peewee"],
-    python_requires = ">=2.7,<3"
+    install_requires = ["pymilter", "beautifulsoup4", "peewee"],
+    python_requires = ">=3"
 )

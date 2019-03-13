@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-#
 # PyQuarantine-Milter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -108,7 +106,7 @@ class QuarantineMilter(Milter.Base):
             self.recipients_quarantines = {}
 
             # iterate email headers
-            recipients_to_check = self.recipients[:]
+            recipients_to_check = self.recipients.copy()
             for header in self.headers:
                 self.logger.debug("{}: checking header against configured quarantines: {}".format(self.queueid, header))
                 # iterate quarantines
@@ -137,7 +135,7 @@ class QuarantineMilter(Milter.Base):
                             whitelisted_recipients = {}
 
                         # iterate recipients
-                        for recipient in recipients_to_check[:]:
+                        for recipient in recipients_to_check.copy():
 
                             if recipient in whitelisted_recipients:
                                 # recipient is whitelisted in this quarantine

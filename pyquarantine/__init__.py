@@ -112,8 +112,8 @@ class QuarantineMilter(Milter.Base):
                 for quarantine in self.config:
                     if len(self.recipients_quarantines) == len(self.recipients):
                         # every recipient matched a quarantine already
-                        if min([q["index"] for q in self.recipients_quarantines.values()]) <= quarantine["index"]:
-                             # every recipient matched a quarantine with at least the same precedence already, skip checks against quarantines with lower precedence
+                        if quarantine["index"] >= max([q["index"] for q in self.recipients_quarantines.values()]):
+                             # all recipients matched a quarantine with at least the same precedence already, skip checks against quarantines with lower precedence
                              self.logger.debug("{}: {}: skip further checks of this header".format(self.queueid, quarantine["name"]))
                              break
 
@@ -280,7 +280,9 @@ def generate_milter_config(configtest=False, config_files=[]):
         raise RuntimeError("option preferred_quarantine_action has illegal value")
 
     # read active quarantine names
-    quarantine_names = list(set(map(str.strip, global_config["quarantines"].split(","))))
+    quarantine_names = [ q.strip() for q in global_config["quarantines"].split(",") ]
+    if len(quarantine_names) != len(set(quarantine_names)):
+        raise RuntimeError("at least one quarantine is specified multiple times in quarantines option")
     if "global" in quarantine_names:
         quarantine_names.remove("global")
         logger.warning("removed illegal quarantine name 'global' from list of active quarantines")

@@ -33,7 +33,7 @@ class BaseQuarantine(object):
         self.config = config
         self.logger = logging.getLogger(__name__)
 
-    def add(self, queueid, mailfrom, recipients, fp):
+    def add(self, queueid, mailfrom, recipients, subject, fp):
         "Add email to quarantine."
         fp.seek(0)
         return ""
@@ -48,6 +48,12 @@ class BaseQuarantine(object):
 
     def delete(self, quarantine_id, recipient=None):
         "Delete email from quarantine."
+        return
+
+    def notify(self, quarantine_id, recipient=None):
+        "Notify recipient about email in quarantine."
+        if not self.config["notification_obj"]:
+            raise RuntimeError("notification type is set to None, unable to send notifications")
         return
 
     def release(self, quarantine_id, recipient=None):
@@ -103,9 +109,9 @@ class FileQuarantine(BaseQuarantine):
         except IOError as e:
             raise RuntimeError("unable to remove data file: {}".format(e))
 
-    def add(self, queueid, mailfrom, recipients, fp):
+    def add(self, queueid, mailfrom, recipients, subject, fp):
         "Add email to file quarantine and return quarantine-id."
-        super(FileQuarantine, self).add(queueid, mailfrom, recipients, fp)
+        super(FileQuarantine, self).add(queueid, mailfrom, recipients, subject, fp)
         quarantine_id = "{}_{}".format(datetime.now().strftime("%Y%m%d%H%M%S"), queueid)
 
         # save mail
@@ -113,8 +119,9 @@ class FileQuarantine(BaseQuarantine):
 
         # save metadata
         metadata = {
-            "from": mailfrom,
+            "mailfrom": mailfrom,
             "recipients": recipients,
+            "subject": subject,
             "date": timegm(gmtime()),
             "queue_id": queueid
         }
@@ -163,7 +170,7 @@ class FileQuarantine(BaseQuarantine):
                     continue
 
             if mailfrom != None:
-                if metadata["from"] not in mailfrom:
+                if metadata["mailfrom"] not in mailfrom:
                     continue
 
             if recipients != None:
@@ -197,6 +204,30 @@ class FileQuarantine(BaseQuarantine):
             else:
                 self._save_metafile(quarantine_id, metadata)
 
+    def notify(self, quarantine_id, recipient=None):
+        "Notify recipient about email in quarantine."
+        super(FileQuarantine, self).notify(quarantine_id, recipient)
+
+        try:
+            metadata = self.get_metadata(quarantine_id)
+        except RuntimeError as e:
+            raise RuntimeError("unable to release email: {}".format(e))
+
+        if recipient != None:
+            if recipient not in metadata["recipients"]:
+                raise RuntimeError("invalid recipient '{}'".format(recipient))
+            recipients = [recipient]
+        else:
+            recipients = metadata["recipients"]
+
+        datafile = os.path.join(self.directory, quarantine_id)
+        try:
+            with open(datafile, "rb") as fp:
+                self.config["notification_obj"].notify(metadata["queue_id"], quarantine_id, metadata["subject"], metadata["mailfrom"], recipients, fp, synchronous=True)
+        except IOError as e:
+            raise(RuntimeError("unable to read data file: {}".format(e)))
+
+
     def release(self, quarantine_id, recipient=None):
         "Release email from quarantine."
         super(FileQuarantine, self).release(quarantine_id, recipient)
@@ -206,7 +237,6 @@ class FileQuarantine(BaseQuarantine):
         except RuntimeError as e:
             raise RuntimeError("unable to release email: {}".format(e))
 
-        datafile = os.path.join(self.directory, quarantine_id)
         if recipient != None:
             if recipient not in metadata["recipients"]:
                 raise RuntimeError("invalid recipient '{}'".format(recipient))
@@ -214,6 +244,7 @@ class FileQuarantine(BaseQuarantine):
         else:
             recipients = metadata["recipients"]
 
+        datafile = os.path.join(self.directory, quarantine_id)
         try:
             with open(datafile, "rb") as f:
                 mail = f.read()
@@ -222,7 +253,7 @@ class FileQuarantine(BaseQuarantine):
 
         for recipient in recipients:
             try:
-                mailer.smtp_send(self.config["smtp_host"], self.config["smtp_port"], metadata["from"], recipient, mail)
+                mailer.smtp_send(self.config["smtp_host"], self.config["smtp_port"], metadata["mailfrom"], recipient, mail)
             except Exception as e:
                 raise RuntimeError("error while sending email to '{}': {}".format(recipient, e))
 

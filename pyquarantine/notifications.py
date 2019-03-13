@@ -32,7 +32,7 @@ class BaseNotification(object):
         self.config = config
         self.logger = logging.getLogger(__name__)
 
-    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp):
+    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, synchronous=False):
         fp.seek(0)
         pass
 
@@ -143,7 +143,7 @@ class EMailNotification(BaseNotification):
         else:
             self.logger.debug("{}: content mimetype is {}".format(queueid, mimetype))
 
-        return BeautifulSoup(text, "lxml", from_encoding=part.get_content_charset())
+        return BeautifulSoup(text, "lxml")
 
     def get_text_multipart(self, queueid, msg, preferred=_html_text):
         "Get the mail text of a multipart email in html form."
@@ -205,9 +205,9 @@ class EMailNotification(BaseNotification):
 
         return soup
 
-    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp):
+    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, synchronous=False):
         "Notify recipients via email."
-        super(EMailNotification, self).notify(queueid, quarantine_id, subject, mailfrom, recipients, fp)
+        super(EMailNotification, self).notify(queueid, quarantine_id, subject, mailfrom, recipients, fp, synchronous)
 
         # extract html text from email
         self.logger.debug("{}: extraction email text from original email".format(queueid))
@@ -252,7 +252,13 @@ class EMailNotification(BaseNotification):
                 msg.attach(self.replacement_img)
 
             self.logger.debug("{}: sending notification email to: {}".format(queueid, recipient))
-            mailer.sendmail(self.smtp_host, self.smtp_port, queueid, self.mailfrom, recipient, msg.as_string(), "notification email")
+            if synchronous:
+                try:
+                    mailer.smtp_send(self.smtp_host, self.smtp_port, self.mailfrom, recipient, msg.as_string())
+                except Exception as e:
+                    raise RuntimeError("error while sending email to '{}': {}".format(recipient, e))
+            else:
+                mailer.sendmail(self.smtp_host, self.smtp_port, queueid, self.mailfrom, recipient, msg.as_string(), "notification email")
 
 
 # list of notification types and their related notification classes

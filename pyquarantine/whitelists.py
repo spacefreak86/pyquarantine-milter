@@ -247,7 +247,7 @@ class WhitelistCache(object):
 
     def get_whitelisted_recipients(self, whitelist, mailfrom, recipients):
         self.load(whitelist, mailfrom, recipients)
-        return filter(lambda x: self.cache[whitelist][x], self.cache[whitelist].keys())
+        return list(filter(lambda x: self.cache[whitelist][x], self.cache[whitelist].keys()))
 
 
 # list of whitelist types and their related whitelist classes

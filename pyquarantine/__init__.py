@@ -112,7 +112,7 @@ class QuarantineMilter(Milter.Base):
                 for quarantine in self.config:
                     if len(self.recipients_quarantines) == len(self.recipients):
                         # every recipient matched a quarantine already
-                        if max([q["index"] for q in self.recipients_quarantines.values()]) <= quarantine["index"]:
+                        if min([q["index"] for q in self.recipients_quarantines.values()]) <= quarantine["index"]:
                              # every recipient matched a quarantine with at least the same precedence already, skip checks against quarantines with lower precedence
                              self.logger.debug("{}: {}: skip further checks of this header".format(self.queueid, quarantine["name"]))
                              break
@@ -135,7 +135,6 @@ class QuarantineMilter(Milter.Base):
 
                         # iterate recipients
                         for recipient in recipients_to_check.copy():
-
                             if recipient in whitelisted_recipients:
                                 # recipient is whitelisted in this quarantine
                                 self.logger.debug("{}: {}: recipient '{}' is whitelisted".format(self.queueid, quarantine["name"], recipient))
@@ -199,8 +198,9 @@ class QuarantineMilter(Milter.Base):
         try:
             # processing recipients grouped by quarantines
             quarantines = []
-            keyfunc = lambda x: self.recipients_quarantines[x]
-            for quarantine, recipients in groupby(sorted(self.recipients_quarantines, key=keyfunc), keyfunc):
+            for quarantine, recipients in groupby(
+                    sorted(self.recipients_quarantines, key=lambda x: self.recipients_quarantines[x]["index"])
+                    , lambda x: self.recipients_quarantines[x]):
                 quarantines.append((quarantine, list(recipients)))
 
             # iterate quarantines sorted by index
@@ -212,7 +212,7 @@ class QuarantineMilter(Milter.Base):
                     # add email to quarantine
                     self.logger.info("{}: adding to quarantine '{}' for: {}".format(self.queueid, quarantine["name"], ", ".join(recipients)))
                     try:
-                        quarantine_id = quarantine["quarantine_obj"].add(self.queueid, self.mailfrom, recipients, fp=self.fp)
+                        quarantine_id = quarantine["quarantine_obj"].add(self.queueid, self.mailfrom, recipients, self.subject, fp=self.fp)
                     except RuntimeError as e:
                         self.logger.error("{}: unable to add to quarantine '{}': {}".format(self.queueid, quarantine["name"], e))
                         return Milter.TEMPFAIL

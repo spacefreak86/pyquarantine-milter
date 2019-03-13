@@ -95,7 +95,7 @@ def list_quarantine_emails(config, args):
     # get quarantine object
     quarantine = _get_quarantine_obj(config, args.quarantine)
     if quarantine == None:
-        raise RuntimeError("quarantine type is set to None, unable to list e-mails")
+        raise RuntimeError("quarantine type is set to None, unable to list emails")
 
     # find emails and transform some metadata values to strings
     emails = quarantine.find(mailfrom=args.mailfrom, recipients=args.recipients, older_than=args.older_than)
@@ -198,7 +198,7 @@ def release_email(config, args):
 
     quarantine = _get_quarantine_obj(config, args.quarantine)
     if quarantine == None:
-        raise RuntimeError("quarantine type is set to None, unable to release e-mail")
+        raise RuntimeError("quarantine type is set to None, unable to release email")
 
     quarantine.release(args.quarantine_id, args.recipient)
     if args.recipient:
@@ -212,13 +212,13 @@ def delete_email(config, args):
 
     quarantine = _get_quarantine_obj(config, args.quarantine)
     if quarantine == None:
-        raise RuntimeError("quarantine type is set to None, unable to delete e-mail")
+        raise RuntimeError("quarantine type is set to None, unable to delete email")
 
     quarantine.delete(args.quarantine_id, args.recipient)
     if args.recipient:
-        logger.info("successfully deleted e-mail [quarantine-id: {}] to '{}' from quarantine '{}'".format(args.quarantine_id, args.recipient, args.quarantine))
+        logger.info("successfully deleted email [quarantine-id: {}] to '{}' from quarantine '{}'".format(args.quarantine_id, args.recipient, args.quarantine))
     else:
-        logger.info("successfully deleted e-mail [quarantine-id: {}] from quarantine '{}'".format(args.quarantine_id, args.quarantine))
+        logger.info("successfully deleted email [quarantine-id: {}] from quarantine '{}'".format(args.quarantine_id, args.quarantine))
 
 
 class StdErrFilter(logging.Filter):
@@ -252,27 +252,27 @@ def main():
     quarantine_parser.add_argument("quarantine", metavar="QUARANTINE", help="Quarantine name.")
     quarantine_subparsers = quarantine_parser.add_subparsers()
     # quarantine list command
-    quarantine_list_parser = quarantine_subparsers.add_parser("list", description="List e-mails in quarantines.", help="List e-mails in quarantine.", formatter_class=formatter_class)
-    quarantine_list_parser.add_argument("-f", "--from", dest="mailfrom", help="Filter e-mails by from address.", default=None, nargs="+")
-    quarantine_list_parser.add_argument("-t", "--to", dest="recipients", help="Filter e-mails by recipient address.", default=None, nargs="+")
-    quarantine_list_parser.add_argument("-o", "--older-than", dest="older_than", help="Filter e-mails by age (days).", default=None, type=float)
-    quarantine_list_parser.add_argument("-b", "--batch", help="Print results using only e-mail quarantine IDs, each on a new line.", action="store_true")
+    quarantine_list_parser = quarantine_subparsers.add_parser("list", description="List emails in quarantines.", help="List emails in quarantine.", formatter_class=formatter_class)
+    quarantine_list_parser.add_argument("-f", "--from", dest="mailfrom", help="Filter emails by from address.", default=None, nargs="+")
+    quarantine_list_parser.add_argument("-t", "--to", dest="recipients", help="Filter emails by recipient address.", default=None, nargs="+")
+    quarantine_list_parser.add_argument("-o", "--older-than", dest="older_than", help="Filter emails by age (days).", default=None, type=float)
+    quarantine_list_parser.add_argument("-b", "--batch", help="Print results using only email quarantine IDs, each on a new line.", action="store_true")
     quarantine_list_parser.set_defaults(func=list_quarantine_emails)
     # quarantine release command
-    quarantine_release_parser = quarantine_subparsers.add_parser("release", description="Release e-mail from quarantine.", help="Release e-mail from quarantine.", formatter_class=formatter_class)
+    quarantine_release_parser = quarantine_subparsers.add_parser("release", description="Release email from quarantine.", help="Release email from quarantine.", formatter_class=formatter_class)
     quarantine_release_parser.add_argument("quarantine_id", metavar="ID", help="Quarantine ID.")
     quarantine_release_parser.add_argument("-n", "--disable-syslog", dest="syslog", help="Disable syslog messages.", action="store_false")
     quarantine_release_parser_group = quarantine_release_parser.add_mutually_exclusive_group(required=True)
-    quarantine_release_parser_group.add_argument("-t", "--to", dest="recipient", help="Release e-mail for one recipient address.")
-    quarantine_release_parser_group.add_argument("-a", "--all", help="Release e-mail for all recipients.", action="store_true")
+    quarantine_release_parser_group.add_argument("-t", "--to", dest="recipient", help="Release email for one recipient address.")
+    quarantine_release_parser_group.add_argument("-a", "--all", help="Release email for all recipients.", action="store_true")
     quarantine_release_parser.set_defaults(func=release_email)
     # quarantine delete command
-    quarantine_delete_parser = quarantine_subparsers.add_parser("delete", description="Delete e-mail from quarantine.", help="Delete e-mail from quarantine.", formatter_class=formatter_class)
+    quarantine_delete_parser = quarantine_subparsers.add_parser("delete", description="Delete email from quarantine.", help="Delete email from quarantine.", formatter_class=formatter_class)
     quarantine_delete_parser.add_argument("quarantine_id", metavar="ID", help="Quarantine ID.")
     quarantine_delete_parser.add_argument("-n", "--disable-syslog", dest="syslog", help="Disable syslog messages.", action="store_false")
     quarantine_delete_parser_group = quarantine_delete_parser.add_mutually_exclusive_group(required=True)
-    quarantine_delete_parser_group.add_argument("-t", "--to", dest="recipient", help="Delete e-mail for one recipient address.")
-    quarantine_delete_parser_group.add_argument("-a", "--all", help="Delete e-mail for all recipients.", action="store_true")
+    quarantine_delete_parser_group.add_argument("-t", "--to", dest="recipient", help="Delete email for one recipient address.")
+    quarantine_delete_parser_group.add_argument("-a", "--all", help="Delete email for all recipients.", action="store_true")
     quarantine_delete_parser.set_defaults(func=delete_email)
 
     # whitelist command group
@@ -283,7 +283,7 @@ def main():
     whitelist_list_parser = whitelist_subparsers.add_parser("list", description="List whitelist entries.", help="List whitelist entries.", formatter_class=formatter_class)
     whitelist_list_parser.add_argument("-f", "--from", dest="mailfrom", help="Filter entries by from address.", default=None, nargs="+")
     whitelist_list_parser.add_argument("-t", "--to", dest="recipients", help="Filter entries by recipient address.", default=None, nargs="+")
-    whitelist_list_parser.add_argument("-o", "--older-than", dest="older_than", help="Filter e-mails by last used date (days).", default=None, type=float)
+    whitelist_list_parser.add_argument("-o", "--older-than", dest="older_than", help="Filter emails by last used date (days).", default=None, type=float)
     whitelist_list_parser.set_defaults(func=list_whitelist)
     # whitelist add command
     whitelist_add_parser = whitelist_subparsers.add_parser("add", description="Add whitelist entry.", help="Add whitelist entry.", formatter_class=formatter_class)

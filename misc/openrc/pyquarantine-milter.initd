@@ -1,6 +1,6 @@
 #!/sbin/openrc-run
 
-user=${USER:-daemon:nobody}
+user=${USER:-daemon}
 socket="${SOCKET:-}"
 milter_opts="${MILTER_OPTS:-}"
 

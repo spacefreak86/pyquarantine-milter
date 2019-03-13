@@ -56,7 +56,7 @@ The following configuration options are mandatory in each quarantine section:
   Original e-mails are stored on the filesystem with a unique filename. The filename is available as a
   template variable used in notifiaction templates.  
   The following configuration options are mandatory for this quarantine type:
-  * **directory**  
+  * **quarantine_directory**  
     The directory in which quarantined e-mails are stored.
 
 

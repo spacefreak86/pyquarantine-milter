@@ -57,12 +57,12 @@ smtp_port = 25
 #
 quarantine_type = file
 
-# Option: directory
+# Option: quarantine_directory
 # Notes:  Set the directory to store quarantined emails.
 #         This option is needed by quarantine type 'file'.
 # Values: [ DIRECTORY ]
 #
-directory = /var/lib/pyquarantine/spam
+quarantine_directory = /var/lib/pyquarantine/spam
 
 # Option: action
 # Notes:  Set the milter action to perform if email is processed by this quarantine.

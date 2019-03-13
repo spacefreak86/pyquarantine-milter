@@ -67,12 +67,12 @@ class FileQuarantine(BaseQuarantine):
         super(FileQuarantine, self).__init__(global_config, config, configtest)
 
         # check if mandatory options are present in config
-        for option in ["directory"]:
+        for option in ["quarantine_directory"]:
             if option not in self.config.keys() and option in self.global_config.keys():
                 self.config[option] = self.global_config[option]
             if option not in self.config.keys():
                 raise RuntimeError("mandatory option '{}' not present in config section '{}' or 'global'".format(option, self.name))
-        self.directory = self.config["directory"]
+        self.directory = self.config["quarantine_directory"]
 
         # check if quarantine directory exists and is writable
         if not os.path.isdir(self.directory) or not os.access(self.directory, os.W_OK):

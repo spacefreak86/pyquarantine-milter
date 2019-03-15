@@ -16,7 +16,7 @@ The project is currently in alpha status, but will soon be used in a productive 
 * BeautifulSoup <https://www.crummy.com/software/BeautifulSoup/>
 
 ## Configuration
-The pyquarantine module uses an INI-style configuration file. The sections are described below.
+The pyquarantine module uses an INI-style configuration file. The sections are described below. If you have to specify a path in the config, you can always use a relative path to the last loaded config file.
 
 ### Section "global"
 Any available configuration option can be set in the global section as default instead of in a quarantine section.  
@@ -85,10 +85,12 @@ The following configuration options are mandatory in each quarantine section:
   * **notification_email_subject**  
     Notification e-mail subject.
   * **notification_email_template**  
-    Notification e-mail template to use.
+    Path to the notification e-mail template. It is hold in memory during runtime.
   * **notification_email_replacement_img**  
-    An image to replace images in e-mail.
-
+    Path to the image to replace images in e-mails. It is hold in memory during runtime. Leave it empty to disable.
+  * **notification_email_embedded_imgs**  
+    Comma-separated list of images to attach to the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template. All images are hold in memory during runtime. 
+    Leave empty to disable.
 
 ### Actions
 Every quarantine responds with a milter-action if an e-mail header matches the configured regular expression.  

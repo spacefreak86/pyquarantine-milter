@@ -94,17 +94,25 @@ notification_email_subject = Spam Quarantine Notification
 # Notes:  Set the template used when sending notification emails.
 #         A relative path to this config file can be used.
 #         This option is needed by notification type 'email'.
-# Values: [ TEMPLATE_FILE ]
+# Values: [ TEMPLATE_PATH ]
 #
 notification_email_template = templates/notification.template
 
 # Option: notification_email_replacement_img
-# Notes:  Set the replacement image for images within emails.
+# Notes:  Set the path to the replacement image for img tags within emails.
 #         A relative path to this config file can be used.
 #         This option is needed by notification type 'email'.
-# Values: [ IMAGE_FILE ]
+# Values: [ IMAGE_PATH ]
 #
 notification_email_replacement_img = templates/removed.png
+
+# Option: notification_email_embedded_imgs
+# Notes:  Set a list of paths to images to embed in e-mails (comma-separated).
+#         Relative paths to this config file can be used.
+#         This option is needed by notification type 'email'.
+# Values: [ IMAGE_PATH ]
+#
+notification_email_embedded_imgs = templates/logo.png
 
 # Option: whitelist_type
 # Notes:  Set the whitelist type.

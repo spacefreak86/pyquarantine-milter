@@ -21,6 +21,7 @@ from cgi import escape
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from os.path import basename
 
 from pyquarantine import mailer
 
@@ -105,7 +106,7 @@ class EMailNotification(BaseNotification):
         super(EMailNotification, self).__init__(global_config, config, configtest)
 
         # check if mandatory options are present in config
-        for option in ["smtp_host", "smtp_port", "notification_email_from", "notification_email_subject", "notification_email_template", "notification_email_replacement_img"]:
+        for option in ["smtp_host", "smtp_port", "notification_email_from", "notification_email_subject", "notification_email_template", "notification_email_replacement_img", "notification_email_embedded_imgs"]:
             if option not in self.config.keys() and option in self.global_config.keys():
                 self.config[option] = self.global_config[option]
             if option not in self.config.keys():
@@ -122,13 +123,31 @@ class EMailNotification(BaseNotification):
         except IOError as e:
             raise RuntimeError("error reading template: {}".format(e))
 
-        # read email replacement image
-        try:
-            self.replacement_img = MIMEImage(open(self.config["notification_email_replacement_img"], "rb").read())
-        except IOError as e:
-            raise RuntimeError("error reading replacement image: {}".format(e))
+        # read email replacement image if specified
+        replacement_img_path = self.config["notification_email_replacement_img"].strip()
+        if replacement_img_path:
+            try:
+                self.replacement_img = MIMEImage(open(replacement_img_path, "rb").read())
+            except IOError as e:
+                raise RuntimeError("error reading replacement image: {}".format(e))
+            else:
+                self.replacement_img.add_header("Content-ID", "<removed_for_security_reasons>")
         else:
-            self.replacement_img.add_header("Content-ID", "<removed_for_security_reasons>")
+            self.replacement_img = None
+
+        # read images to embed if specified
+        embedded_img_paths = [ p.strip() for p in self.config["notification_email_embedded_imgs"].split(",") if p]
+        self.embedded_imgs = []
+        for img_path in embedded_img_paths:
+            # read image
+            try:
+                img = MIMEImage(open(img_path, "rb").read())
+            except IOError as e:
+                raise RuntimeError("error reading image: {}".format(e))
+            else:
+                img.add_header("Content-ID", "<{}>".format(basename(img_path)))
+                self.embedded_imgs.append(img)
+
 
     def get_text(self, queueid, part):
         "Get the mail text in html form from email part."
@@ -214,12 +233,13 @@ class EMailNotification(BaseNotification):
         soup = self.get_html_text_part(queueid, email.message_from_binary_file(fp))
 
         # replace picture sources
-        picture_replaced = False
-        for element in soup("img"):
-            if "src" in element.attrs.keys():
-                self.logger.debug("{}: replacing image: {}".format(queueid, element["src"]))
-            element["src"] = "cid:removed_for_security_reasons"
-            picture_replaced = True
+        image_replaced = False
+        if self.replacement_img:
+            for element in soup("img"):
+                if "src" in element.attrs.keys():
+                    self.logger.debug("{}: replacing image: {}".format(queueid, element["src"]))
+                element["src"] = "cid:removed_for_security_reasons"
+                image_replaced = True
 
         # sanitizing email text of original email
         sanitized_text = self.sanitize(queueid, soup)
@@ -247,9 +267,13 @@ class EMailNotification(BaseNotification):
             msg["Date"] = email.utils.formatdate()
             msg.attach(MIMEText(htmltext, "html", 'UTF-8'))
 
-            if picture_replaced:
+            if image_replaced:
                 self.logger.debug("{}: attaching notification_replacement_img".format(queueid))
                 msg.attach(self.replacement_img)
+
+            for img in self.embedded_imgs:
+                self.logger.debug("{}: attaching imgage".format(queueid))
+                msg.attach(img)
 
             self.logger.debug("{}: sending notification email to: {}".format(queueid, recipient))
             if synchronous:

@@ -89,7 +89,7 @@ The following configuration options are mandatory in each quarantine section:
   * **notification_email_replacement_img**  
     Path to the image to replace images in e-mails. It is hold in memory during runtime. Leave it empty to disable.
   * **notification_email_embedded_imgs**  
-    Comma-separated list of images to attach to the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template. All images are hold in memory during runtime. 
+    Comma-separated list of images to embed into the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template. All images are hold in memory during runtime.  
     Leave empty to disable.
 
 ### Actions

@@ -93,14 +93,14 @@ The following configuration options are mandatory in each quarantine section:
     Leave empty to disable.
 
 ### Actions
-Every quarantine responds with a milter-action if an e-mail header matches the configured regular expression.  
+Every quarantine responds with a milter-action if an e-mail header matches the configured regular expression. Please think carefully what you set here or your MTA will do something you do not want.  
 The following actions are available:
 * **ACCEPT**  
-  Continue processing e-mails.
+  Tell the MTA to continue processing the e-mail.
 * **DISCARD**  
-  Silently discard e-mails.
+  Tell the MTA to silently discard the e-mail.
 * **REJECT**  
-  Reject e-mails.
+  Tell the MTA to reject the e-mail.
 
 
 ### Whitelist types

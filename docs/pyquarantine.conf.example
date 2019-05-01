@@ -70,6 +70,12 @@ quarantine_directory = /var/lib/pyquarantine/spam
 #
 action = discard
 
+# Option: reject_reason
+# Notes:  Optionally set the reason to return if action is set to reject.
+# Values: [ REASON ]
+#
+reject_reason = Message rejected
+
 # Option: notification
 # Notes:  Set the notification type.
 # Values: [ email | none ]

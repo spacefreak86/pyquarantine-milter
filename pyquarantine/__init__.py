@@ -181,6 +181,8 @@ class QuarantineMilter(Milter.Base):
                 quarantine = self._get_preferred_quarantine()
                 self.logger.info("{}: {} matching quarantine is '{}', performing milter action {}".format(self.queueid, self.global_config["preferred_quarantine_action"],
                         quarantine["name"], quarantine["action"].upper()))
+                if quarantine["action"] == "reject":
+                    self.setreply("554", "5.7.0", quarantine["reject_reason"])
                 return quarantine["milter_action"]
 
             return Milter.CONTINUE
@@ -249,6 +251,8 @@ class QuarantineMilter(Milter.Base):
             quarantine = self._get_preferred_quarantine()
             self.logger.info("{}: {} matching quarantine is '{}', performing milter action {}".format(self.queueid, self.global_config["preferred_quarantine_action"],
                     quarantine["name"], quarantine["action"].upper()))
+            if quarantine["action"] == "reject":
+                self.setreply("554", "5.7.0", quarantine["reject_reason"])
             return quarantine["milter_action"]
 
         except Exception as e:
@@ -313,6 +317,17 @@ def generate_milter_config(configtest=False, config_files=[]):
                 config[option] = global_config[option]
             if option not in config.keys():
                 raise RuntimeError("mandatory option '{}' not present in config section '{}' or 'global'".format(option, quarantine_name))
+
+        # check if optional config options are present in config
+        defaults = {
+            "reject_reason": "Message rejected"
+        }
+        for option in defaults.keys():
+            if option not in config.keys() and \
+                    option in global_config.keys():
+                config[option] = global_config[option]
+            if option not in config.keys():
+                config[option] = defaults[option]
 
         # set quarantine name
         config["name"] = quarantine_name

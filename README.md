@@ -48,6 +48,11 @@ The following configuration options are mandatory in each quarantine section:
 * **smtp_port**  
   SMTP port
 
+The following configuration options are optional in each quarantine section:
+* **reject_reason**  
+  Reason to return to the client if action is set to reject.
+
+
 ### Quarantine types
 * **NONE**  
   Original e-mails scrapped, sent to nirvana, black-holed or however you want to call it.

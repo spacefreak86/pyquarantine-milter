@@ -33,7 +33,7 @@ class BaseNotification(object):
         self.config = config
         self.logger = logging.getLogger(__name__)
 
-    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, synchronous=False):
+    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, subgroups=None, named_subgroups=None, synchronous=False):
         fp.seek(0)
         pass
 
@@ -224,9 +224,9 @@ class EMailNotification(BaseNotification):
 
         return soup
 
-    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, synchronous=False):
+    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, subgroups=None, named_subgroups=None, synchronous=False):
         "Notify recipients via email."
-        super(EMailNotification, self).notify(queueid, quarantine_id, subject, mailfrom, recipients, fp, synchronous)
+        super(EMailNotification, self).notify(queueid, quarantine_id, subject, mailfrom, recipients, fp, subgroups, named_subgroups, synchronous)
 
         # extract html text from email
         self.logger.debug("{}: extraction email text from original email".format(queueid))
@@ -244,21 +244,29 @@ class EMailNotification(BaseNotification):
         # sanitizing email text of original email
         sanitized_text = self.sanitize(queueid, soup)
 
-        # escape possible html entities in subject
-        subject = escape(subject)
-
         # sending email notifications
         for recipient in recipients:
             self.logger.debug("{}: generating notification email for '{}'".format(queueid, recipient))
             self.logger.debug("{}: parsing email template".format(queueid))
 
-            htmltext = self.template.format( \
-                EMAIL_HTML_TEXT=sanitized_text, \
-                EMAIL_FROM=escape(mailfrom), \
-                EMAIL_TO=escape(recipient), \
-                EMAIL_SUBJECT=subject, \
-                EMAIL_QUARANTINE_ID=quarantine_id
-            )
+            # generate dict containing all template variables
+            variables = {
+                "EMAIL_HTML_TEXT": sanitized_text,
+                "EMAIL_FROM": escape(mailfrom),
+                "EMAIL_TO": escape(recipient),
+                "EMAIL_SUBJECT": escape(subject),
+                "EMAIL_QUARANTINE_ID": quarantine_id
+            }
+            if subgroups:
+                number = 0
+                for subgroup in subgroups:
+                    variables["SUBGROUP_{}".format(number)] = escape(subgroup)
+            if named_subgroups:
+                for key, value in named_subgroups.items(): named_subgroups[key] = escape(value)
+                variables.update(named_subgroups)
+
+            # parse template
+            htmltext = self.template.format(**variables)
 
             msg = MIMEMultipart('alternative')
             msg["Subject"] = self.subject

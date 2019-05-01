@@ -33,7 +33,7 @@ class BaseQuarantine(object):
         self.config = config
         self.logger = logging.getLogger(__name__)
 
-    def add(self, queueid, mailfrom, recipients, subject, fp):
+    def add(self, queueid, mailfrom, recipients, subject, fp, subgroups=None, named_subgroups=None):
         "Add email to quarantine."
         fp.seek(0)
         return ""
@@ -109,9 +109,9 @@ class FileQuarantine(BaseQuarantine):
         except IOError as e:
             raise RuntimeError("unable to remove data file: {}".format(e))
 
-    def add(self, queueid, mailfrom, recipients, subject, fp):
+    def add(self, queueid, mailfrom, recipients, subject, fp, subgroups=None, named_subgroups=None):
         "Add email to file quarantine and return quarantine-id."
-        super(FileQuarantine, self).add(queueid, mailfrom, recipients, subject, fp)
+        super(FileQuarantine, self).add(queueid, mailfrom, recipients, subject, fp, subgroups, named_subgroups)
         quarantine_id = "{}_{}".format(datetime.now().strftime("%Y%m%d%H%M%S"), queueid)
 
         # save mail
@@ -123,7 +123,9 @@ class FileQuarantine(BaseQuarantine):
             "recipients": recipients,
             "subject": subject,
             "date": timegm(gmtime()),
-            "queue_id": queueid
+            "queue_id": queueid,
+            "subgroups": subgroups,
+            "named_subgroups": named_subgroups
         }
         try:
             self._save_metafile(quarantine_id, metadata)
@@ -223,7 +225,8 @@ class FileQuarantine(BaseQuarantine):
         datafile = os.path.join(self.directory, quarantine_id)
         try:
             with open(datafile, "rb") as fp:
-                self.config["notification_obj"].notify(metadata["queue_id"], quarantine_id, metadata["subject"], metadata["mailfrom"], recipients, fp, synchronous=True)
+                self.config["notification_obj"].notify(metadata["queue_id"], quarantine_id, metadata["subject"], metadata["mailfrom"], recipients, fp,
+                        metadata["subgroups"], metadata["named_subgroups"], synchronous=True)
         except IOError as e:
             raise(RuntimeError("unable to read data file: {}".format(e)))
 

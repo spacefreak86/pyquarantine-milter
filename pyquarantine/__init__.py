@@ -119,9 +119,13 @@ class QuarantineMilter(Milter.Base):
 
                     # check email header against quarantine regex
                     self.logger.debug("{}: {}: checking header against regex '{}'".format(self.queueid, quarantine["name"], quarantine["regex"]))
-                    if quarantine["regex_compiled"].match(header):
+                    match = quarantine["regex_compiled"].search(header)
+                    if match:
                         self.logger.debug("{}: {}: header matched regex".format(self.queueid, quarantine["name"]))
-
+                        if "subgroups" not in quarantine.keys():
+                            # save subgroups of match into the quarantine object for later use as template variables
+                            quarantine["subgroups"] = match.groups(default="")
+                            quarantine["named_subgroups"] = match.groupdict(default="")
                         # check for whitelisted recipients
                         whitelist = quarantine["whitelist_obj"]
                         if whitelist != None:
@@ -212,7 +216,8 @@ class QuarantineMilter(Milter.Base):
                     # add email to quarantine
                     self.logger.info("{}: adding to quarantine '{}' for: {}".format(self.queueid, quarantine["name"], ", ".join(recipients)))
                     try:
-                        quarantine_id = quarantine["quarantine_obj"].add(self.queueid, self.mailfrom, recipients, self.subject, fp=self.fp)
+                        quarantine_id = quarantine["quarantine_obj"].add(self.queueid, self.mailfrom, recipients, self.subject, self.fp,
+                                quarantine["subgroups"], quarantine["named_subgroups"])
                     except RuntimeError as e:
                         self.logger.error("{}: unable to add to quarantine '{}': {}".format(self.queueid, quarantine["name"], e))
                         return Milter.TEMPFAIL
@@ -222,7 +227,8 @@ class QuarantineMilter(Milter.Base):
                     # notify
                     self.logger.info("{}: sending notification for quarantine '{}' to: {}".format(self.queueid, quarantine["name"], ", ".join(recipients)))
                     try:
-                        quarantine["notification_obj"].notify(self.queueid, quarantine_id, self.subject, self.mailfrom, recipients, fp=self.fp)
+                        quarantine["notification_obj"].notify(self.queueid, quarantine_id, self.subject, self.mailfrom, recipients, self.fp,
+                                quarantine["subgroups"], quarantine["named_subgroups"])
                     except RuntimeError as e:
                         self.logger.error("{}: unable to send notification for quarantine '{}': {}".format(self.queueid, quarantine["name"], e))
                         return Milter.TEMPFAIL
@@ -316,7 +322,7 @@ def generate_milter_config(configtest=False, config_files=[]):
 
         # pre-compile regex
         logger.debug("{}: compiling regex '{}'".format(quarantine_name, config["regex"]))
-        config["regex_compiled"] = re.compile(config["regex"])
+        config["regex_compiled"] = re.compile(config["regex"], re.MULTILINE + re.DOTALL)
 
         # create quarantine instance
         quarantine_type = config["quarantine_type"].lower()

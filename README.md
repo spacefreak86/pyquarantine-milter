@@ -80,7 +80,7 @@ The following configuration options are mandatory in each quarantine section:
     Sanitized version of the e-mail text part of the original e-mail. Only harmless HTML tags and attributes are included. Images are replaced with the image set by notification_email_replacement_img option.
 
   Some template variables are only available if the regex of the matching quarantine contains subgroups or named subgroups (python syntax). This is useful to include information (e.g. virus names, spam points, ...) of the matching header within the notification.  
-  The following dynamic tempalte variables are available:
+  The following dynamic template variables are available:
   * **{SUBGROUP_n}**  
     Content of a subgroup, 'n' will be replaced by the index number of each subgroup, starting with 0.
   * **{subgroup_name}**  

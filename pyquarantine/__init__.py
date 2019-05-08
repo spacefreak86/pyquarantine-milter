@@ -101,8 +101,9 @@ class QuarantineMilter(Milter.Base):
         try:
             self.whitelist_cache = whitelists.WhitelistCache()
 
-            # initialize a dict to set quaranines per recipient
+            # initialize dicts to set quaranines per recipient and keep matches
             self.recipients_quarantines = {}
+            self.quarantines_matches = {}
 
             # iterate email headers
             recipients_to_check = self.recipients.copy()
@@ -122,10 +123,6 @@ class QuarantineMilter(Milter.Base):
                     match = quarantine["regex_compiled"].search(header)
                     if match:
                         self.logger.debug("{}: {}: header matched regex".format(self.queueid, quarantine["name"]))
-                        if "subgroups" not in quarantine.keys():
-                            # save subgroups of match into the quarantine object for later use as template variables
-                            quarantine["subgroups"] = match.groups(default="")
-                            quarantine["named_subgroups"] = match.groupdict(default="")
                         # check for whitelisted recipients
                         whitelist = quarantine["whitelist_obj"]
                         if whitelist != None:
@@ -146,6 +143,8 @@ class QuarantineMilter(Milter.Base):
 
                             if recipient not in self.recipients_quarantines.keys() or self.recipients_quarantines[recipient]["index"] > quarantine["index"]:
                                 self.logger.debug("{}: {}: set quarantine for recipient '{}'".format(self.queueid, quarantine["name"], recipient))
+                                # save match for later use as template variables
+                                self.quarantines_matches[quarantine["name"]] = match
                                 self.recipients_quarantines[recipient] = quarantine
                                 if quarantine["index"] == 0:
                                     # we do not need to check recipients which matched the quarantine with the highest precedence already
@@ -212,6 +211,8 @@ class QuarantineMilter(Milter.Base):
             # iterate quarantines sorted by index
             for quarantine, recipients in sorted(quarantines, key=lambda x: x[0]["index"]):
                 quarantine_id = ""
+                subgroups = self.quarantines_matches[quarantine["name"]].groups(default="")
+                named_subgroups = self.quarantines_matches[quarantine["name"]].groupdict(default="")
 
                 # check if a quarantine is configured
                 if quarantine["quarantine_obj"] != None:
@@ -219,7 +220,7 @@ class QuarantineMilter(Milter.Base):
                     self.logger.info("{}: adding to quarantine '{}' for: {}".format(self.queueid, quarantine["name"], ", ".join(recipients)))
                     try:
                         quarantine_id = quarantine["quarantine_obj"].add(self.queueid, self.mailfrom, recipients, self.subject, self.fp,
-                                quarantine["subgroups"], quarantine["named_subgroups"])
+                                subgroups, named_subgroups)
                     except RuntimeError as e:
                         self.logger.error("{}: unable to add to quarantine '{}': {}".format(self.queueid, quarantine["name"], e))
                         return Milter.TEMPFAIL
@@ -230,7 +231,7 @@ class QuarantineMilter(Milter.Base):
                     self.logger.info("{}: sending notification for quarantine '{}' to: {}".format(self.queueid, quarantine["name"], ", ".join(recipients)))
                     try:
                         quarantine["notification_obj"].notify(self.queueid, quarantine_id, self.subject, self.mailfrom, recipients, self.fp,
-                                quarantine["subgroups"], quarantine["named_subgroups"])
+                                subgroups, named_subgroups)
                     except RuntimeError as e:
                         self.logger.error("{}: unable to send notification for quarantine '{}': {}".format(self.queueid, quarantine["name"], e))
                         return Milter.TEMPFAIL

@@ -117,11 +117,14 @@ class EMailNotification(BaseNotification):
         self.mailfrom = self.config["notification_email_from"]
         self.subject = self.config["notification_email_subject"]
 
-        # read email notification template
+        # read and parse email notification template
         try:
             self.template = open(self.config["notification_email_template"], "r").read()
+            self.template.format(TEST="test")
         except IOError as e:
             raise RuntimeError("error reading template: {}".format(e))
+        except KeyError as e:
+            raise RuntimeError("error parsing template: {}".format(e))
 
         # read email replacement image if specified
         replacement_img_path = self.config["notification_email_replacement_img"].strip()

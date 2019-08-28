@@ -3,6 +3,10 @@
   <h1>Quarantine notification</h1>
   <table>
    <tr>
+    <td><b>Envelope-From:</b></td>
+    <td>{EMAIL_ENVELOPE_FROM}</td>
+   </tr>
+   <tr>
     <td><b>From:</b></td>
     <td>{EMAIL_FROM}</td>
    </tr>

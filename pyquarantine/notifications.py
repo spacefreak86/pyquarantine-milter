@@ -18,6 +18,7 @@ import re
 
 from bs4 import BeautifulSoup
 from cgi import escape
+from collections import defaultdict
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -33,7 +34,7 @@ class BaseNotification(object):
         self.config = config
         self.logger = logging.getLogger(__name__)
 
-    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, subgroups=None, named_subgroups=None, synchronous=False):
+    def notify(self, queueid, quarantine_id, mailfrom, recipients, headers, fp, subgroups=None, named_subgroups=None, synchronous=False):
         fp.seek(0)
         pass
 
@@ -106,7 +107,7 @@ class EMailNotification(BaseNotification):
         super(EMailNotification, self).__init__(global_config, config, configtest)
 
         # check if mandatory options are present in config
-        for option in ["smtp_host", "smtp_port", "notification_email_from", "notification_email_subject", "notification_email_template", "notification_email_replacement_img", "notification_email_embedded_imgs"]:
+        for option in ["smtp_host", "smtp_port", "notification_email_envelope_from", "notification_email_from", "notification_email_subject", "notification_email_template", "notification_email_replacement_img", "notification_email_embedded_imgs"]:
             if option not in self.config.keys() and option in self.global_config.keys():
                 self.config[option] = self.global_config[option]
             if option not in self.config.keys():
@@ -114,16 +115,31 @@ class EMailNotification(BaseNotification):
 
         self.smtp_host = self.config["smtp_host"]
         self.smtp_port = self.config["smtp_port"]
-        self.mailfrom = self.config["notification_email_from"]
+        self.mailfrom = self.config["notification_email_envelope_from"]
+        self.from_header = self.config["notification_email_from"]
         self.subject = self.config["notification_email_subject"]
+
+        testvars = defaultdict(str, test="TEST")
+
+        # test-parse from header
+        try:
+            self.from_header.format_map(testvars)
+        except ValueError as e:
+            raise RuntimeError("error parsing notification_email_from: {}".format(e))
+
+        # test-parse subject
+        try:
+            self.subject.format_map(testvars)
+        except ValueError as e:
+            raise RuntimeError("error parsing notification_email_subject: {}".format(e))
 
         # read and parse email notification template
         try:
             self.template = open(self.config["notification_email_template"], "r").read()
-            self.template.format(TEST="test")
+            self.template.format_map(testvars)
         except IOError as e:
             raise RuntimeError("error reading template: {}".format(e))
-        except KeyError as e:
+        except ValueError as e:
             raise RuntimeError("error parsing template: {}".format(e))
 
         # read email replacement image if specified
@@ -227,9 +243,9 @@ class EMailNotification(BaseNotification):
 
         return soup
 
-    def notify(self, queueid, quarantine_id, subject, mailfrom, recipients, fp, subgroups=None, named_subgroups=None, synchronous=False):
+    def notify(self, queueid, quarantine_id, mailfrom, recipients, headers, fp, subgroups=None, named_subgroups=None, synchronous=False):
         "Notify recipients via email."
-        super(EMailNotification, self).notify(queueid, quarantine_id, subject, mailfrom, recipients, fp, subgroups, named_subgroups, synchronous)
+        super(EMailNotification, self).notify(queueid, quarantine_id, mailfrom, recipients, headers, fp, subgroups, named_subgroups, synchronous)
 
         # extract html text from email
         self.logger.debug("{}: extraction email text from original email".format(queueid))
@@ -246,6 +262,7 @@ class EMailNotification(BaseNotification):
 
         # sanitizing email text of original email
         sanitized_text = self.sanitize(queueid, soup)
+        del soup
 
         # sending email notifications
         for recipient in recipients:
@@ -253,13 +270,14 @@ class EMailNotification(BaseNotification):
             self.logger.debug("{}: parsing email template".format(queueid))
 
             # generate dict containing all template variables
-            variables = {
-                "EMAIL_HTML_TEXT": sanitized_text,
-                "EMAIL_FROM": escape(mailfrom),
-                "EMAIL_TO": escape(recipient),
-                "EMAIL_SUBJECT": escape(subject),
-                "EMAIL_QUARANTINE_ID": quarantine_id
-            }
+            variables = defaultdict(str,
+                    EMAIL_HTML_TEXT=sanitized_text,
+                    EMAIL_FROM=escape(headers["from"]),
+                    EMAIL_ENVELOPE_FROM=escape(mailfrom),
+                    EMAIL_TO=escape(recipient),
+                    EMAIL_SUBJECT=escape(headers["subject"]),
+                    EMAIL_QUARANTINE_ID=quarantine_id)
+
             if subgroups:
                 number = 0
                 for subgroup in subgroups:
@@ -269,11 +287,11 @@ class EMailNotification(BaseNotification):
                 variables.update(named_subgroups)
 
             # parse template
-            htmltext = self.template.format(**variables)
+            htmltext = self.template.format_map(variables)
 
             msg = MIMEMultipart('alternative')
-            msg["Subject"] = self.subject
-            msg["From"] = "<{}>".format(self.mailfrom)
+            msg["Subject"] = self.subject.format_map(variables)
+            msg["From"] = "<{}>".format(self.from_header.format_map(variables))
             msg["To"] = "<{}>".format(recipient)
             msg["Date"] = email.utils.formatdate()
             msg.attach(MIMEText(htmltext, "html", 'UTF-8'))

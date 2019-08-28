@@ -82,12 +82,19 @@ reject_reason = Message rejected
 #
 notification_type = email
 
-# Option: notification_email_from
-# Notes:  Set the from address used when sending notification emails.
+# Option: notification_email_envelope_from
+# Notes:  Set the envelope-from address used when sending notification emails.
 #         This option is needed by notification type 'email'.
-# Values: [ FROM_ADDRESS ]
+# Values: [ ENVELOPE_FROM_ADDRESS ]
 #
-notification_email_from = notification@domain.tld
+notification_email_envelope_from = notification@domain.tld
+
+# Option: notification_email_from
+# Notes:  Set the from header used when sending notification emails.
+#         This option is needed by notification type 'email'.
+# Values: [ FROM_HEADER ]
+#
+notification_email_from = Notification <notification@domain.tld>
 
 # Option: notification_email_usbject
 # Notes:  Set the subject used when sending notification emails.

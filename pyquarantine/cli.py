@@ -106,7 +106,7 @@ def list_quarantine_emails(config, args):
         row["date"] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(metadata["date"]))
         row["mailfrom"] = metadata["mailfrom"]
         row["recipient"] = metadata["recipients"].pop(0)
-        row["subject"] = emails[quarantine_id]["subject"][:60]
+        row["subject"] = emails[quarantine_id]["headers"]["subject"][:60]
         rows.append(row)
 
         if metadata["recipients"]:

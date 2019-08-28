@@ -73,8 +73,10 @@ The following configuration options are optional in each quarantine section:
   Quarantine e-mail notifications are sent to recipients. The SMTP host and port, E-mail template, from-address and the subject are configurable for each quarantine. The templates must contain the notification e-mail text in HTML form.  
 
   The following template variables are available:
+  * **{EMAIL_ENVELOPE_FROM}**  
+    E-mail from-address received by the milter.
   * **{EMAIL_FROM}**  
-    E-mail from-address received by the milter (envelope-from).
+    Value of the from header of the original e-mail.
   * **{EMAIL_TO}**  
     E-mail recipient address of this notification.
   * **{EMAIL_SUBJECT}**  
@@ -92,10 +94,12 @@ The following configuration options are optional in each quarantine section:
     Content of a named subgroup, 'subgroup_name' will be replaced by its name.
 
   The following configuration options are mandatory for this notification type:
+  * **notification_email_envelope_from**  
+    Notification e-mail envelope from-address.
   * **notification_email_from**  
-    Notification e-mail from-address.
+    Value of the notification e-mail from header. Every e-mail template variable described above is usable.
   * **notification_email_subject**  
-    Notification e-mail subject.
+    Notification e-mail subject. All e-mail template variable described above is usable.
   * **notification_email_template**  
     Path to the notification e-mail template. It is hold in memory during runtime.
   * **notification_email_replacement_img**  

@@ -22,6 +22,7 @@ import re
 import sys
 
 from Milter.utils import parse_addr
+from collections import defaultdict
 from io import BytesIO
 from itertools import groupby
 
@@ -87,14 +88,11 @@ class QuarantineMilter(Milter.Base):
         self.logger.debug("{}: received queue-id from MTA".format(self.queueid))
         self.recipients = list(self.recipients)
         self.headers = []
-        self.subject = ""
         return Milter.CONTINUE
 
     @Milter.noreply
     def header(self, name, value):
-        self.headers.append("{}: {}".format(name, value))
-        if name.lower() == "subject":
-            self.subject = value
+        self.headers.append((name, value))
         return Milter.CONTINUE
 
     def eoh(self):
@@ -107,7 +105,8 @@ class QuarantineMilter(Milter.Base):
 
             # iterate email headers
             recipients_to_check = self.recipients.copy()
-            for header in self.headers:
+            for name, value in self.headers:
+                header = "{}: {}".format(name, value)
                 self.logger.debug("{}: checking header against configured quarantines: {}".format(self.queueid, header))
                 # iterate quarantines
                 for quarantine in self.config:
@@ -174,7 +173,9 @@ class QuarantineMilter(Milter.Base):
                 # initialize memory buffer to save email data
                 self.fp = BytesIO()
                 # write email headers to memory buffer
-                self.fp.write("{}\n".format("\n".join(self.headers)).encode())
+                for name, value in self.headers:
+                    self.fp.write("{}: {}\n".format(name, value).encode())
+                self.fp.write("\n".encode())
             else:
                 # quarantine and notification are disabled on all matching quarantines, return configured action
                 quarantine = self._get_preferred_quarantine()
@@ -211,6 +212,9 @@ class QuarantineMilter(Milter.Base):
             # iterate quarantines sorted by index
             for quarantine, recipients in sorted(quarantines, key=lambda x: x[0]["index"]):
                 quarantine_id = ""
+                headers = defaultdict(str)
+                for name, value in self.headers:
+                    headers[name.lower()] = value
                 subgroups = self.quarantines_matches[quarantine["name"]].groups(default="")
                 named_subgroups = self.quarantines_matches[quarantine["name"]].groupdict(default="")
 
@@ -219,7 +223,7 @@ class QuarantineMilter(Milter.Base):
                     # add email to quarantine
                     self.logger.info("{}: adding to quarantine '{}' for: {}".format(self.queueid, quarantine["name"], ", ".join(recipients)))
                     try:
-                        quarantine_id = quarantine["quarantine_obj"].add(self.queueid, self.mailfrom, recipients, self.subject, self.fp,
+                        quarantine_id = quarantine["quarantine_obj"].add(self.queueid, self.mailfrom, recipients, headers, self.fp,
                                 subgroups, named_subgroups)
                     except RuntimeError as e:
                         self.logger.error("{}: unable to add to quarantine '{}': {}".format(self.queueid, quarantine["name"], e))
@@ -230,7 +234,7 @@ class QuarantineMilter(Milter.Base):
                     # notify
                     self.logger.info("{}: sending notification for quarantine '{}' to: {}".format(self.queueid, quarantine["name"], ", ".join(recipients)))
                     try:
-                        quarantine["notification_obj"].notify(self.queueid, quarantine_id, self.subject, self.mailfrom, recipients, self.fp,
+                        quarantine["notification_obj"].notify(self.queueid, quarantine_id, self.mailfrom, recipients, headers, self.fp,
                                 subgroups, named_subgroups)
                     except RuntimeError as e:
                         self.logger.error("{}: unable to send notification for quarantine '{}': {}".format(self.queueid, quarantine["name"], e))

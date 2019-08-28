@@ -289,7 +289,7 @@ class EMailNotification(BaseNotification):
             # parse template
             htmltext = self.template.format_map(variables)
 
-            msg = MIMEMultipart('alternative')
+            msg = MIMEMultipart('related')
             msg["Subject"] = self.subject.format_map(variables)
             msg["From"] = "<{}>".format(self.from_header.format_map(variables))
             msg["To"] = "<{}>".format(recipient)

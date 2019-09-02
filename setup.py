@@ -31,6 +31,6 @@ setup(name = "pyquarantine",
             "pyquarantine=pyquarantine.cli:main"
         ]
     },
-    install_requires = ["pymilter", "beautifulsoup4", "peewee"],
+    install_requires = ["pymilter", "netaddr", "beautifulsoup4", "peewee"],
     python_requires = ">=3"
 )

@@ -25,7 +25,7 @@ from Milter.utils import parse_addr
 from collections import defaultdict
 from io import BytesIO
 from itertools import groupby
-
+from netaddr import IPAddress, IPNetwork
 from pyquarantine import quarantines
 from pyquarantine import notifications
 from pyquarantine import whitelists
@@ -70,6 +70,20 @@ class QuarantineMilter(Milter.Base):
     @staticmethod
     def set_configfiles(config_files):
         QuarantineMilter._config_files = config_files
+
+    def connect(self, IPname, family, hostaddr):
+        self.logger.debug("accepted milter connection from {} port {}".format(*hostaddr))
+        ip = IPAddress(hostaddr[0])
+        for quarantine in self.config.copy():
+            for ignore in quarantine["ignore_hosts_list"]:
+                if ip in ignore:
+                    self.logger.debug("host {} is ignored by quarantine {}".format(hostaddr[0], quarantine["name"]))
+                    self.config.remove(quarantine)
+                    break
+            if not self.config:
+                self.logger.debug("host {} is ignored by all quarantines, skip further processing", hostaddr[0])
+                return Milter.ACCEPT
+        return Milter.CONTINUE 
 
     @Milter.noreply
     def envfrom(self, mailfrom, *str):
@@ -325,7 +339,8 @@ def generate_milter_config(configtest=False, config_files=[]):
 
         # check if optional config options are present in config
         defaults = {
-            "reject_reason": "Message rejected"
+            "reject_reason": "Message rejected",
+            "ignore_hosts": ""
         }
         for option in defaults.keys():
             if option not in config.keys() and \
@@ -390,6 +405,22 @@ def generate_milter_config(configtest=False, config_files=[]):
             config["milter_action"] = QuarantineMilter.get_actions()[action]
         else:
             raise RuntimeError("{}: unknown action '{}'".format(quarantine_name, action))
+
+        # create host/network whitelist
+        config["ignore_hosts_list"] = []
+        ignored = set([ p.strip() for p in config["ignore_hosts"].split(",") if p])
+        for ignore in ignored:
+            if not ignore:
+                continue
+            # parse network notation
+            try:
+                net = IPNetwork(ignore)
+            except AddrFormatError as e:
+                raise RuntimeError("error parsing ignore_hosts: {}".format(e))
+            else:
+                config["ignore_hosts_list"].append(net)
+        if config["ignore_hosts_list"]:
+            logger.debug("{}: ignore hosts: {}".format(quarantine_name, ", ".join(ignored)))
 
         milter_config.append(config)
 

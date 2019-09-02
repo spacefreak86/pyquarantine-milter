@@ -30,6 +30,12 @@ preferred_quarantine_action = last
 
 
 [spam]
+# Option: ignore_hosts
+# Notes:  Set a list of host and network addresses to be ignored by this quarantine.
+#         All the common host/network notations are supported, including IPv6.
+# Value:  [ HOST ]
+#
+ignore_hosts = 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 
 # Option: regex
 # Notes:  Set the regular expression to match against email headers.

@@ -49,6 +49,8 @@ The following configuration options are mandatory in each quarantine section:
   SMTP port
 
 The following configuration options are optional in each quarantine section:
+* **ignore_hosts**  
+  Comma-separated list of host and network addresses to be ignored by this quarantine.
 * **reject_reason**  
   Reason to return to the client if action is set to reject.
 

@@ -12,6 +12,7 @@ The project is currently in alpha status, but will soon be used in a productive 
 
 ## Requirements
 * pymilter <https://pythonhosted.org/pymilter/>
+* netaddr <https://github.com/drkjam/netaddr/>
 * peewee <https://github.com/coleifer/peewee/>
 * BeautifulSoup <https://www.crummy.com/software/BeautifulSoup/>
 

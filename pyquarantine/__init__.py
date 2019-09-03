@@ -357,7 +357,7 @@ def generate_milter_config(configtest=False, config_files=[]):
 
         # pre-compile regex
         logger.debug("{}: compiling regex '{}'".format(quarantine_name, config["regex"]))
-        config["regex_compiled"] = re.compile(config["regex"], re.MULTILINE + re.DOTALL)
+        config["regex_compiled"] = re.compile(config["regex"], re.MULTILINE + re.DOTALL + re.IGNORECASE)
 
         # create quarantine instance
         quarantine_type = config["quarantine_type"].lower()

@@ -35,7 +35,7 @@ The following configuration options are mandatory in the global section:
 ### Quarantine sections
 The following configuration options are mandatory in each quarantine section:
 * **regex**  
-  Regular expression to filter e-mail headers.
+  Case insensitive regular expression to filter e-mail headers.
 * **quarantine_type**  
   One of the quarantine-types described below.
 * **action**  

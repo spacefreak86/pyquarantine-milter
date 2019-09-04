@@ -11,7 +11,7 @@ The project is currently in alpha status, but will soon be used in a productive 
 The pyheader-milter uses an INI-style configuration file. The sections are described below.
 
 ### Section "global"
-Any available configuration option can be set in the global section as default instead of in a quarantine section.
+Any available configuration option can be set in the global section as default instead of in a rule section.
 
 The following configuration options are mandatory in the global section:
 * **rules**  

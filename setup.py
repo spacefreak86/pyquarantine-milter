@@ -14,6 +14,7 @@ setup(name = "pyheadermilter",
     url = "https://github.com/spacefreak86/pyheader-milter",
     packages = ["pyheadermilter"],
     long_description = read_file("README.md"),
+    long_description_content_type="text/markdown",
     classifiers = [
         #   3 - Alpha
         #   4 - Beta
@@ -23,7 +24,7 @@ setup(name = "pyheadermilter",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Topic :: Communications :: Email :: Header"
+        "Topic :: Communications :: Email :: Filters"
     ],
     entry_points = {
         "console_scripts": [

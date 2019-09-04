@@ -1,0 +1,97 @@
+# This is an example /etc/pyheader-milter.conf file.
+# Copy it into place before use.
+#
+# Comments: use '#' for comment lines and ';' (following a space) for inline comments.
+#
+#           If an option is not present in a modification section, it will be read from
+#           the global section.
+#
+
+
+[global]
+
+# Option: rules
+# Notes:  Set active rules (comma-separated).
+#         Each rule must have a section with the same name below.
+#         The rule name 'global' is forbidden and will be ignored.
+#         Rule names must be unique.
+# Values: [ ACTIVE ]
+#
+rules = add_header,del_header,mod_header
+
+# Option: ignore_hosts
+# Notes:  Set a list of host and network addresses to be ignored.
+#         All the common host/network notations are supported, including IPv6.
+# Value:  [ HOST ]
+#
+ignore_hosts = 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+
+# Option: only_hosts
+# Notes:  Set a list of host and network addresses.
+#         All the common host/network notations are supported, including IPv6.
+# Value:  [ HOST ]
+#
+only_hosts = 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+
+# Option: log
+# Notes:  Set if modifications are logged.
+# Value:  [ true | false ]
+#
+log = true
+
+
+[add_header]
+
+# Option: action
+# Notes:  Set the modification action.
+# Values: [ add ]
+action = add
+
+# Option: header
+# Notes:  Set the name of the header.
+# Values: [ NAME ]
+#
+header = X-My-Own-Header
+
+# Option: value
+# Notes:  Set the value of the header.
+# Values: [ VALUE ]
+value = my own value
+
+
+[del_header]
+
+# Option: action
+# Notes:  Set the modification action.
+# Values: [ del ]
+action = del
+
+# Option: header
+# Notes:  Set a regular expression to match the header lines to delete.
+# Values: [ REGEX ]
+#
+header = ^Received:.*
+
+
+[mod_header]
+
+# Option: action
+# Notes:  Set the modification action.
+# Values: [ mod ]
+action = mod
+
+# Option: header
+# Notes:  Set a regular expression to match the header lines to modify.
+# Values: [ REGEX ]
+#
+header = ^Subject:.*
+
+# Option: search
+# Notes:  Set a regular expression to match the headers value.
+# Values: [ VALUE ]
+search = (?P<subject>.*)
+
+# Option: value
+# Notes:  Set the value of the header.
+# Values: [ VALUE ]
+value = [SPAM] \g<subject>

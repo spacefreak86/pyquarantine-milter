@@ -13,6 +13,7 @@
 #
 
 __all__ = ["HeaderRule", "HeaderMilter"]
+name = "pyheadermilter"
 
 import Milter
 import argparse

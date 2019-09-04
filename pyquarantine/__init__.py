@@ -13,6 +13,7 @@
 #
 
 __all__ = ["QuarantineMilter", "generate_milter_config", "reload_config", "mailer", "notifications", "run", "quarantines", "whitelists"]
+name = "pyquarantine"
 
 import Milter
 import configparser

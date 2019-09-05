@@ -29,38 +29,48 @@ from netaddr import IPAddress, IPNetwork, AddrFormatError
 
 
 class HeaderRule:
-    def __init__(self, name, action, header, search=None, value=None, ignore_hosts=[], only_hosts=[], log=True):
+    """HeaderRule to implement a rule to apply on e-mail headers."""
+
+    def __init__(self, name, action, header, search="", value="", ignore_hosts=[], only_hosts=[], log=True):
         self.logger = logging.getLogger(__name__)
         self.name = name
         self._action = action
-        if action == "add":
-            self.header = header
-        else:
+        self.header = header
+        self.search = search
+        self.value = value
+        self.ignore_hosts = ignore_hosts
+        self.only_hosts = only_hosts
+        self.log = log
+
+        if action in ["del", "mod"]:
+            # compile header regex
             try:
                 self.header = re.compile(header, re.MULTILINE + re.DOTALL + re.IGNORECASE)
             except re.error as e:
                 raise RuntimeError("unable to parse option 'header' of rule '{}': {}".format(name, e))
-        if action == "mod":
-            try:
-                self.search = re.compile(search, re.MULTILINE + re.DOTALL + re.IGNORECASE)
-            except re.error as e:
-                raise RuntimeError("unable to parse option 'search' of rule '{}': {}".format(name, e))
-        else:
-            self.search = search
-        self.value = value
-        self.ignore_hosts = []
+
+            if action == "mod":
+                # compile search regex
+                try:
+                    self.search = re.compile(search, re.MULTILINE + re.DOTALL + re.IGNORECASE)
+                except re.error as e:
+                    raise RuntimeError("unable to parse option 'search' of rule '{}': {}".format(name, e))
+
+        if action in ["add", "mod"] and not value:
+            raise RuntimeError("value of option 'value' is empty")
+
+        # replace strings in ignore_hosts and only_hosts with IPNetwork instances
         try:
-            for ignore in ignore_hosts:
-                self.ignore_hosts.append(IPNetwork(ignore))
+            for index, ignore in enumerate(ignore_hosts):
+                self.ignore_hosts[index] = IPNetwork(ignore)
         except AddrFormatError as e:
             raise RuntimeError("unable to parse option 'ignore_hosts' of rule '{}': {}".format(name, e))
-        self.only_hosts = []
+
         try:
-            for only in only_hosts:
-                self.only_hosts.append(IPNetwork(only))
+            for index, only in enumerate(only_hosts):
+                self.only_hosts[index] = IPNetwork(only)
         except AddrFormatError as e:
             raise RuntimeError("unable to parse option 'only_hosts' of rule '{}': {}".format(name, e))
-        self.log = log
 
     def get_action(self):
         return self._action
@@ -71,39 +81,51 @@ class HeaderRule:
     def ignore_host(self, host):
         ip = IPAddress(host)
         ignore = False
+
+        # check if host matches ignore_hosts
         for ignored in self.ignore_hosts:
             if ip in ignored:
                 ignore = True
                 break
+
         if not ignore and self.only_hosts:
+            # host does not match ignore_hosts, check if it matches only_hosts
             ignore = True
             for only in self.only_hosts:
                 if ip in only:
                     ignore = False
                     break
+
         if ignore:
             self.logger.debug("host {} is ignored by rule {}".format(host, self.name))
         return ignore
 
     def execute(self, headers):
-        modified = []
+        """Execute rule on given headers and return list with modified headers."""
         if self._action == "add":
-            modified.append((self.header, self.value, 0, 1))
-        else:
-            index = 0
-            occurrences = {}
-            for name, value in headers:
-                if name not in occurrences.keys():
-                    occurrences[name] = 1
+            return [(self.header, self.value, 0, 1)]
+
+        modified = []
+        index = 0
+        occurrences = {}
+
+        # iterate headers
+        for name, value in headers:
+            # keep track of the occurrence of each header, needed by Milter.Base.chgheader
+            if name not in occurrences.keys():
+                occurrences[name] = 1
+            else:
+                occurrences[name] += 1
+
+            # check if header line matches regex
+            if self.header.search("{}: {}".format(name, value)):
+                if self._action == "del":
+                    # set an empty value to delete the header
+                    value = ""
                 else:
-                    occurrences[name] += 1
-                if self.header.search("{}: {}".format(name, value)):
-                    if self._action == "del":
-                        value = ""
-                    else:
-                        value = self.search.sub(self.value, value)
-                    modified.append((name, value, index, occurrences[name]))
-                index += 1
+                    value = self.search.sub(self.value, value)
+                modified.append((name, value, index, occurrences[name]))
+            index += 1
         return modified
 
 
@@ -124,9 +146,12 @@ class HeaderMilter(Milter.Base):
     def connect(self, IPname, family, hostaddr):
         self.logger.debug("accepted milter connection from {} port {}".format(*hostaddr))
         ip = IPAddress(hostaddr[0])
+
+        # remove rules which ignore this host
         for rule in self.rules.copy():
             if rule.ignore_host(ip):
                 self.rules.remove(rule)
+
         if not self.rules:
             self.logger.debug("host {} is ignored by all rules, skip further processing".format(hostaddr[0]))
             return Milter.ACCEPT
@@ -147,20 +172,21 @@ class HeaderMilter(Milter.Base):
     def eom(self):
         try:
             for rule in self.rules:
-                action = rule.get_action()
-                log = rule.log_modification()
                 self.logger.debug("{}: executing rule '{}'".format(self.queueid, rule.name))
                 modified = rule.execute(self.headers)
+                action = rule.get_action()
+                log = rule.log_modification()
+
                 for name, value, index, occurrence in modified:
                     if action == "add":
                         if log:
                             self.logger.info("{}: add: header: {}".format(self.queueid, "{}: {}".format(name, value)[0:50]))
                         else:
                             self.logger.debug("{}: add: header: {}".format(self.queueid, "{}: {}".format(name, value)[0:50]))
+
                         self.headers.insert(0, (name, value))
                         self.addheader(name, value, 1)
                     else:
-                        self.chgheader(name, occurrence, value)
                         if action == "mod":
                             if log:
                                 self.logger.info("{}: modify: header: {}".format(self.queueid, "{}: {}".format(name, self.headers[index][1])[0:50]))
@@ -173,6 +199,7 @@ class HeaderMilter(Milter.Base):
                             else:
                                 self.logger.debug("{}: delete: header (occ. {}): {}".format(self.queueid, occurrence, "{}: {}".format(name, self.headers[index][1])[0:50]))
                             del self.headers[index]
+                        self.chgheader(name, occurrence, value)
             return Milter.ACCEPT
         except Exception as e:
             self.logger.exception("an exception occured in eom function: {}".format(e))
@@ -293,6 +320,7 @@ def main():
                 config["log"] = False
             else:
                 raise RuntimeError("invalid value specified for option 'log' for rule '{}'".format(rule_name))
+
             # add rule
             logging.debug("adding rule '{}'".format(rule_name))
             rules.append(HeaderRule(name=rule_name, **config))

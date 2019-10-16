@@ -5,7 +5,7 @@ def read_file(fname):
         return f.read()
 
 setup(name = "pyquarantine",
-    version = "0.0.1",
+    version = "0.0.2",
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",
@@ -32,6 +32,6 @@ setup(name = "pyquarantine",
             "pyquarantine=pyquarantine.cli:main"
         ]
     },
-    install_requires = ["pymilter", "netaddr", "beautifulsoup4", "peewee"],
+    install_requires = ["pymilter", "netaddr", "beautifulsoup4[lxml]", "peewee"],
     python_requires = ">=3"
 )

@@ -2,12 +2,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # PyQuarantine-Milter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with PyQuarantineMilter.  If not, see <http://www.gnu.org/licenses/>.
 #
@@ -38,31 +38,37 @@ def mailprocess():
     try:
         while True:
             m = queue.get()
-            if not m: break
+            if not m:
+                break
 
             smtp_host, smtp_port, queueid, mailfrom, recipient, mail, emailtype = m
             try:
                 smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail)
             except Exception as e:
-                logger.error("{}: error while sending {} to '{}': {}".format(queueid, emailtype, recipient, e))
+                logger.error(
+                    "{}: error while sending {} to '{}': {}".format(
+                        queueid, emailtype, recipient, e))
             else:
-                logger.info("{}: successfully sent {} to: {}".format(queueid, emailtype, recipient))
+                logger.info(
+                    "{}: successfully sent {} to: {}".format(
+                        queueid, emailtype, recipient))
     except KeyboardInterrupt:
         pass
     logger.debug("mailer process terminated")
 
 
-def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail, emailtype="email"):
+def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail,
+             emailtype="email"):
     "Send an email."
     global logger
     global process
     global queue
 
-    if type(recipients) == str:
+    if isinstance(recipients, str):
         recipients = [recipients]
 
     # start mailprocess if it is not started yet
-    if process == None:
+    if process is None:
         process = Process(target=mailprocess)
         process.daemon = True
         logger.debug("starting mailer process")
@@ -70,6 +76,9 @@ def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail, emailtyp
 
     for recipient in recipients:
         try:
-            queue.put((smtp_host, smtp_port, queueid, mailfrom, recipient, mail, emailtype), timeout=30)
+            queue.put(
+                (smtp_host, smtp_port, queueid, mailfrom, recipient, mail,
+                 emailtype),
+                timeout=30)
         except Queue.Full as e:
             raise RuntimeError("email queue is full")

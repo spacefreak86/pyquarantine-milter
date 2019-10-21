@@ -87,6 +87,7 @@ class EMailNotification(BaseNotification):
         "border",
         "cellpadding",
         "cellspacing",
+        "class",
         "color",
         "colspan",
         "dir",
@@ -247,7 +248,7 @@ class EMailNotification(BaseNotification):
 
         # remove not whitelisted attributes
         for element in soup.find_all(True):
-            for attribute in element.attrs.keys():
+            for attribute in list(element.attrs.keys()):
                 if attribute not in EMailNotification.good_attributes:
                     if element.name == "a" and attribute == "href":
                         self.logger.debug(

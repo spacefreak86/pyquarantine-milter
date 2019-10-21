@@ -119,7 +119,6 @@ class EMailNotification(BaseNotification):
             "notification_email_from",
             "notification_email_subject",
             "notification_email_template",
-            "notification_email_replacement_img",
                 "notification_email_embedded_imgs"]:
             if option not in self.config.keys() and option in self.global_config.keys():
                 self.config[option] = self.global_config[option]
@@ -127,6 +126,18 @@ class EMailNotification(BaseNotification):
                 raise RuntimeError(
                     "mandatory option '{}' not present in config section '{}' or 'global'".format(
                         option, self.quarantine_name))
+
+        # check if optional config options are present in config
+        defaults = {
+            "notification_email_replacement_img": "",
+            "notification_email_strip_images": "false"
+        }
+        for option in defaults.keys():
+            if option not in config.keys() and \
+                    option in global_config.keys():
+                config[option] = global_config[option]
+            if option not in config.keys():
+                config[option] = defaults[option]
 
         self.smtp_host = self.config["smtp_host"]
         self.smtp_port = self.config["smtp_port"]
@@ -160,13 +171,20 @@ class EMailNotification(BaseNotification):
         except ValueError as e:
             raise RuntimeError("error parsing template: {}".format(e))
 
+        strip_images = self.config["notification_email_strip_images"].strip().upper()
+        if strip_images in ["TRUE", "ON", "YES"]:
+            self.strip_images = True
+        elif strip_images in ["FALSE", "OFF", "NO"]:
+            self.strip_images = False
+        else:
+            raise RuntimeError("error parsing notification_email_strip_images: unknown value")
+
         # read email replacement image if specified
-        replacement_img_path = self.config["notification_email_replacement_img"].strip(
-        )
-        if replacement_img_path:
+        replacement_img = self.config["notification_email_replacement_img"].strip()
+        if not strip_images and replacement_img:
             try:
                 self.replacement_img = MIMEImage(
-                    open(replacement_img_path, "rb").read())
+                    open(replacement_img, "rb").read())
             except IOError as e:
                 raise RuntimeError(
                     "error reading replacement image: {}".format(e))
@@ -307,7 +325,14 @@ class EMailNotification(BaseNotification):
 
         # replace picture sources
         image_replaced = False
-        if self.replacement_img:
+        if self.strip_images:
+            for element in soup("img"):
+                if "src" in element.attrs.keys():
+                    self.logger.debug(
+                        "{}: removing image: {}".format(
+                            queueid, element["src"]))
+                element.extract()
+        elif self.replacement_img:
             for element in soup("img"):
                 if "src" in element.attrs.keys():
                     self.logger.debug(

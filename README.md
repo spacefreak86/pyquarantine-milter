@@ -87,7 +87,7 @@ The following configuration options are optional in each quarantine section:
   * **{EMAIL_QUARANTINE_ID}**  
     Quarantine-ID of the original e-mail if available, empty otherwise.
   * **{EMAIL_HTML_TEXT}**  
-    Sanitized version of the e-mail text part of the original e-mail. Only harmless HTML tags and attributes are included. Images are replaced with the image set by notification_email_replacement_img option.
+    Sanitized version of the e-mail text part of the original e-mail. Only harmless HTML tags and attributes are included. Images are optionally stripped or replaced with the image set by notification_email_replacement_img option.
 
   Some template variables are only available if the regex of the matching quarantine contains subgroups or named subgroups (python syntax). This is useful to include information (e.g. virus names, spam points, ...) of the matching header within the notification.  
   The following dynamic template variables are available:
@@ -105,11 +105,16 @@ The following configuration options are optional in each quarantine section:
     Notification e-mail subject. All e-mail template variable described above is usable.
   * **notification_email_template**  
     Path to the notification e-mail template. It is hold in memory during runtime.
-  * **notification_email_replacement_img**  
-    Path to the image to replace images in e-mails. It is hold in memory during runtime. Leave it empty to disable.
   * **notification_email_embedded_imgs**  
     Comma-separated list of images to embed into the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template. All images are hold in memory during runtime.  
     Leave empty to disable.
+
+The following configuration options are optional for this notification type:
+  * **notification_email_strip_images**  
+    Enable to strip images from e-mails. This option superseeds notification_email_replacement_img.
+  * **notification_email_replacement_img**  
+    Path to an image to replace images in e-mails. It is hold in memory during runtime.
+
 
 ### Actions
 Every quarantine responds with a milter-action if an e-mail header matches the configured regular expression. Please think carefully what you set here or your MTA will do something you do not want.  

@@ -117,10 +117,15 @@ notification_email_subject = Spam Quarantine Notification
 #
 notification_email_template = templates/notification.template
 
+# Option: notification_email_strip_images
+# Notes:  Optionally enable this option to strip img tags from emails.
+# Values: [ TRUE|ON|YES|FALSE|OFF|NO ]
+#
+notification_email_strip_images = False
+
 # Option: notification_email_replacement_img
-# Notes:  Set the path to the replacement image for img tags within emails.
+# Notes:  Optionally set the path to a replacement image for img tags within emails.
 #         A relative path to this config file can be used.
-#         This option is needed by notification type 'email'.
 # Values: [ IMAGE_PATH ]
 #
 notification_email_replacement_img = templates/removed.png

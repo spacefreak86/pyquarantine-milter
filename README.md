@@ -109,7 +109,7 @@ The following configuration options are optional in each quarantine section:
     Comma-separated list of images to embed into the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template. All images are hold in memory during runtime.  
     Leave empty to disable.
 
-The following configuration options are optional for this notification type:
+  The following configuration options are optional for this notification type:
   * **notification_email_strip_images**  
     Enable to strip images from e-mails. This option superseeds notification_email_replacement_img.
   * **notification_email_replacement_img**  

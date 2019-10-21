@@ -111,7 +111,7 @@ def main():
     # run milter
     rc = 0
     try:
-        Miltei.runmilter("pyquarantine-milter", socketname=args.socket,
+        Milter.runmilter("pyquarantine-milter", socketname=args.socket,
                          timeout=300)
     except Milter.milter.error as e:
         logger.error(e)

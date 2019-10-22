@@ -81,7 +81,7 @@ class EMailNotification(BaseNotification):
         "u",
         "ul"
     ]
-    good_attributes = [
+    _good_attributes = [
         "align",
         "alt",
         "bgcolor",
@@ -268,7 +268,7 @@ class EMailNotification(BaseNotification):
         # remove not whitelisted attributes
         for element in soup.find_all(True):
             for attribute in list(element.attrs.keys()):
-                if attribute not in EMailNotification.good_attributes:
+                if attribute not in EMailNotification._good_attributes:
                     if element.name == "a" and attribute == "href":
                         self.logger.debug(
                             "{}: setting attribute href to '#' on tag '{}'".format(

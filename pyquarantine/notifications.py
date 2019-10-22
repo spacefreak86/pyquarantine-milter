@@ -221,8 +221,8 @@ class EMailNotification(BaseNotification):
             self.logger.debug(
                 "{}: content mimetype is {}, converting to {}".format(
                     queueid, mimetype, self._html_text))
-            text = re.sub(r"^(.*)$", r"\1<br/>\n",
-                          text.decode(), flags=re.MULTILINE)
+            text = re.sub(r"^(.*)$", r"\1<br/>",
+                          escape(text.decode()), flags=re.MULTILINE)
         else:
             self.logger.debug(
                 "{}: content mimetype is {}".format(

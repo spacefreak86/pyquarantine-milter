@@ -227,7 +227,8 @@ class EMailNotification(BaseNotification):
             self.logger.debug(
                 "{}: content mimetype is {}".format(
                     queueid, mimetype))
-
+        self.logger.debug(
+            "{}: creating BeatufilSoup object".format(queueid))
         return BeautifulSoup(text, "lxml")
 
     def get_text_multipart(self, queueid, msg, preferred=_html_text):
@@ -327,13 +328,17 @@ class EMailNotification(BaseNotification):
         # replace picture sources
         image_replaced = False
         if self.strip_images:
+            self.logger.debug(
+                "{}: looking for images to strip".format(queueid)
             for element in soup("img"):
                 if "src" in element.attrs.keys():
                     self.logger.debug(
-                        "{}: removing image: {}".format(
+                        "{}: strip image: {}".format(
                             queueid, element["src"]))
                 element.extract()
         elif self.replacement_img:
+            self.logger.debug(
+                "{}: looking for images to replace".format(queueid)
             for element in soup("img"):
                 if "src" in element.attrs.keys():
                     self.logger.debug(

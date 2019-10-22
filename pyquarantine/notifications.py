@@ -230,7 +230,7 @@ class EMailNotification(BaseNotification):
 
         return BeautifulSoup(text, "lxml")
 
-    def get_text_multipart(self, queueid, msg, preferred=_plain_text):
+    def get_text_multipart(self, queueid, msg, preferred=_html_text):
         "Get the mail text of a multipart email in html form."
         soup = None
 

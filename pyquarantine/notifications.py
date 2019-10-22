@@ -72,6 +72,7 @@ class EMailNotification(BaseNotification):
         "img",
         "li",
         "p",
+        "pre",
         "span",
         "table",
         "td",

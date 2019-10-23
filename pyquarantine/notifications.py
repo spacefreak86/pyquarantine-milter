@@ -330,7 +330,7 @@ class EMailNotification(BaseNotification):
         image_replaced = False
         if self.strip_images:
             self.logger.debug(
-                "{}: looking for images to strip".format(queueid)
+                "{}: looking for images to strip".format(queueid))
             for element in soup("img"):
                 if "src" in element.attrs.keys():
                     self.logger.debug(
@@ -339,7 +339,7 @@ class EMailNotification(BaseNotification):
                 element.extract()
         elif self.replacement_img:
             self.logger.debug(
-                "{}: looking for images to replace".format(queueid)
+                "{}: looking for images to replace".format(queueid))
             for element in soup("img"):
                 if "src" in element.attrs.keys():
                     self.logger.debug(

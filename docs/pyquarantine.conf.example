@@ -119,7 +119,7 @@ notification_email_template = templates/notification.template
 
 # Option: notification_email_strip_images
 # Notes:  Optionally enable this option to strip img tags from emails.
-# Values: [ TRUE|ON|YES|FALSE|OFF|NO ]
+# Values: [ TRUE | ON | YES | FALSE | OFF | NO ]
 #
 notification_email_strip_images = False
 
@@ -137,6 +137,13 @@ notification_email_replacement_img = templates/removed.png
 # Values: [ IMAGE_PATH ]
 #
 notification_email_embedded_imgs = templates/logo.png
+
+# Option: notification_email_parser_lib
+# Notes:  Optionally set the parser library used to parse
+#         the text part of emails.
+# Values: [ lxml | html.parser ]
+#
+notification_email_parser_lib = lxml
 
 # Option: whitelist_type
 # Notes:  Set the whitelist type.

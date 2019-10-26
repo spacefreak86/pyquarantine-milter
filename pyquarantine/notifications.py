@@ -132,7 +132,8 @@ class EMailNotification(BaseNotification):
         # check if optional config options are present in config
         defaults = {
             "notification_email_replacement_img": "",
-            "notification_email_strip_images": "false"
+            "notification_email_strip_images": "false",
+            "notification_email_parser_lib": "lxml"
         }
         for option in defaults.keys():
             if option not in config.keys() and \
@@ -180,6 +181,10 @@ class EMailNotification(BaseNotification):
             self.strip_images = False
         else:
             raise RuntimeError("error parsing notification_email_strip_images: unknown value")
+
+        self.parser_lib = self.config["notification_email_parser_lib"].strip()
+        if self.parser_lib not in ["lxml", "html.parser"]:
+            raise RuntimeError("error parsing notification_email_parser_lib: unknown value")
 
         # read email replacement image if specified
         replacement_img = self.config["notification_email_replacement_img"].strip()
@@ -229,8 +234,13 @@ class EMailNotification(BaseNotification):
                 "{}: content mimetype is {}".format(
                     queueid, mimetype))
         self.logger.debug(
-            "{}: creating BeatufilSoup object".format(queueid))
-        return BeautifulSoup(text, "lxml")
+            "{}: trying to create BeatufilSoup object with parser lib {}, "
+            "text length is {} bytes".format(
+                queueid, self.parser_lib, len(text)))
+        soup = BeautifulSoup(text, self.parser_lib)
+        self.logger.debug(
+            "{}: sucessfully created BeautifulSoup object".format(queueid))
+        return soup
 
     def get_text_multipart(self, queueid, msg, preferred=_html_text):
         "Get the mail text of a multipart email in html form."

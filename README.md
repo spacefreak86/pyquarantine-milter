@@ -114,6 +114,8 @@ The following configuration options are optional in each quarantine section:
     Enable to strip images from e-mails. This option superseeds notification_email_replacement_img.
   * **notification_email_replacement_img**  
     Path to an image to replace images in e-mails. It is hold in memory during runtime.
+  * **notification_email_parser_lib**  
+    HTML parser library used to parse text part of emails.
 
 
 ### Actions

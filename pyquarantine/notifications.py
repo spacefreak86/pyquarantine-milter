@@ -392,7 +392,7 @@ class EMailNotification(BaseNotification):
 
             msg = MIMEMultipart('related')
             msg["Subject"] = self.subject.format_map(variables)
-            msg["From"] = "<{}>".format(self.from_header.format_map(variables))
+            msg["From"] = "{}".format(self.from_header.format_map(variables))
             msg["To"] = "<{}>".format(recipient)
             msg["Date"] = email.utils.formatdate()
             msg.attach(MIMEText(htmltext, "html", 'UTF-8'))

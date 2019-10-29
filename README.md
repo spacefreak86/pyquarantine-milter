@@ -100,9 +100,9 @@ The following configuration options are optional in each quarantine section:
   * **notification_email_envelope_from**  
     Notification e-mail envelope from-address.
   * **notification_email_from**  
-    Value of the notification e-mail from header. Every e-mail template variable described above is usable.
+    Value of the notification e-mail from header. Optionally, you may use the EMAIL_FROM template variable described above.
   * **notification_email_subject**  
-    Notification e-mail subject. All e-mail template variable described above is usable.
+    Notification e-mail subject. Optionally, you may use the EMAIL_SUBJECT template variable described above.
   * **notification_email_template**  
     Path to the notification e-mail template. It is hold in memory during runtime.
   * **notification_email_embedded_imgs**  

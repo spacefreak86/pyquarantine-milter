@@ -188,7 +188,7 @@ class EMailNotification(BaseNotification):
 
         # read email replacement image if specified
         replacement_img = self.config["notification_email_replacement_img"].strip()
-        if not strip_images and replacement_img:
+        if not self.strip_images and replacement_img:
             try:
                 self.replacement_img = MIMEImage(
                     open(replacement_img, "rb").read())
@@ -391,9 +391,11 @@ class EMailNotification(BaseNotification):
             htmltext = self.template.format_map(variables)
 
             msg = MIMEMultipart('related')
-            msg["Subject"] = self.subject.format_map(variables)
-            msg["From"] = "{}".format(self.from_header.format_map(variables))
-            msg["To"] = "<{}>".format(recipient)
+            msg["From"] = self.from_header.format_map(
+                defaultdict(str, EMAIL_FROM=headers["from"]))
+            msg["To"] = headers["to"]
+            msg["Subject"] = self.subject.format_map(
+                defaultdict(str, EMAIL_SUBJECT=headers["subject"]))
             msg["Date"] = email.utils.formatdate()
             msg.attach(MIMEText(htmltext, "html", 'UTF-8'))
 

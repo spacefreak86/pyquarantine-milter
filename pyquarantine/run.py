@@ -22,6 +22,7 @@ import sys
 
 import pyquarantine
 
+from pyquarantine.version import __version__ as version
 
 def main():
     "Run PyQuarantine-Milter."
@@ -47,6 +48,11 @@ def main():
         "-t", "--test",
         help="Check configuration.",
         action="store_true")
+    parser.add_argument(
+        "-v", "--version",
+        help="Print version.",
+        action="version",
+        version="%(prog)s ({})".format(version))
     args = parser.parse_args()
 
     # setup logging

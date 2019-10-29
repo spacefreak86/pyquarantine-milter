@@ -22,6 +22,7 @@ import time
 
 import pyquarantine
 
+from pyquarantine.version import __version__ as version
 
 def _get_quarantine_obj(config, quarantine):
     try:
@@ -302,6 +303,11 @@ def main():
         "-d", "--debug",
         help="Log debugging messages.",
         action="store_true")
+    parser.add_argument(
+        "-v", "--version",
+        help="Print version.",
+        action="version",
+        version="%(prog)s ({})".format(version))
     parser.set_defaults(syslog=False)
     subparsers = parser.add_subparsers(
         dest="command",

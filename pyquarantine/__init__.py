@@ -16,10 +16,12 @@ __all__ = [
     "QuarantineMilter",
     "generate_milter_config",
     "reload_config",
+    "cli",
     "mailer",
     "notifications",
-    "run",
     "quarantines",
+    "run",
+    "version",
     "whitelists"]
 
 name = "pyquarantine"

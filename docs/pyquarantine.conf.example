@@ -88,6 +88,18 @@ reject_reason = Message rejected
 #
 notification_type = email
 
+# Option: notification_email_smtp_host
+# Notes:  Set the SMTP host. It will be used to send notification e-mails.
+# Values: [ HOSTNAME | IP_ADDRESS ]
+#
+notification_email_smtp_host = 127.0.0.1
+
+# Option: notification_email_smtp_port
+# Notes:  Set the SMTP port.
+# Values: [ PORT ]
+#
+notification_email_smtp_port = 25
+
 # Option: notification_email_envelope_from
 # Notes:  Set the envelope-from address used when sending notification emails.
 #         This option is needed by notification type 'email'.

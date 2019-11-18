@@ -45,7 +45,7 @@ The following configuration options are mandatory in each quarantine section:
 * **whitelist_type**  
   One of the whitelist types described below.
 * **smtp_host**  
-  SMTP host to inject original e-mails. This is needed if not all recipients of an e-mail are whitelisted
+  SMTP host used to release original e-mails from the quarantine.
 * **smtp_port**  
   SMTP port
 
@@ -97,6 +97,10 @@ The following configuration options are optional in each quarantine section:
     Content of a named subgroup, 'subgroup_name' will be replaced by its name.
 
   The following configuration options are mandatory for this notification type:
+  * **notification_email_smtp_host**  
+    SMTP host used to send notification e-mails.
+  * **notification_email_smtp_port**  
+    SMTP port.
   * **notification_email_envelope_from**  
     Notification e-mail envelope from-address.
   * **notification_email_from**  

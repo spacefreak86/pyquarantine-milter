@@ -115,8 +115,8 @@ class EMailNotification(BaseNotification):
 
         # check if mandatory options are present in config
         for option in [
-            "smtp_host",
-            "smtp_port",
+            "notification_email_smtp_host",
+            "notification_email_smtp_port",
             "notification_email_envelope_from",
             "notification_email_from",
             "notification_email_subject",
@@ -142,8 +142,8 @@ class EMailNotification(BaseNotification):
             if option not in config.keys():
                 config[option] = defaults[option]
 
-        self.smtp_host = self.config["smtp_host"]
-        self.smtp_port = self.config["smtp_port"]
+        self.smtp_host = self.config["notification_email_smtp_host"]
+        self.smtp_port = self.config["notification_email_smtp_port"]
         self.mailfrom = self.config["notification_email_envelope_from"]
         self.from_header = self.config["notification_email_from"]
         self.subject = self.config["notification_email_subject"]

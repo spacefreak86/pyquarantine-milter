@@ -26,6 +26,10 @@ process = None
 
 def smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail):
     s = smtplib.SMTP(host=smtp_host, port=smtp_port)
+    s.ehlo()
+    if s.has_extn("STARTTLS"):
+        s.starttls()
+        s.ehlo()
     s.sendmail(mailfrom, [recipient], mail)
     s.quit()
 

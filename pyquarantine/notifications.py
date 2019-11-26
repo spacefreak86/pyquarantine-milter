@@ -215,48 +215,47 @@ class EMailNotification(BaseNotification):
                 img.add_header("Content-ID", "<{}>".format(basename(img_path)))
                 self.embedded_imgs.append(img)
 
-    def get_text(self, queueid, part):
-        "Get the mail text in html form from email part."
-        mimetype = part.get_content_type()
+    def get_decoded_email_body(self, queueid, msg, preferred=_html_text):
+        "Find and decode email body."
+        # try to find the body part
+        self.logger.debug("{}: trying to find email body".format(queueid))
+        body = None
+        for part in msg.walk():
+            content_type = part.get_content_type()
+            if content_type in [EMailNotification._plain_text,
+                                EMailNotification._html_text]:
+                body = part
+                if content_type == preferred:
+                    break
 
-        self.logger.debug(
-            "{}: extracting content of email text part".format(queueid))
-        text = part.get_payload(decode=True)
+        if body is not None:
+            # get the character set, fallback to utf-8 if not defined in header
+            charset = body.get_content_charset()
+            if charset is None:
+                charset = "utf-8"
 
-        if mimetype == EMailNotification._plain_text:
-            self.logger.debug(
-                "{}: content mimetype is {}, converting to {}".format(
-                    queueid, mimetype, self._html_text))
-            text = re.sub(r"^(.*)$", r"\1<br/>",
-                          escape(text.decode()), flags=re.MULTILINE)
+            # decode content
+            content = body.get_payload(decode=True).decode(
+                encoding=charset, errors="replace")
+
+            content_type = body.get_content_type()
+            if content_type == EMailNotification._plain_text:
+                # convert text/plain to text/html
+                self.logger.debug(
+                    "{}: content type is {}, converting to {}".format(
+                        queueid, content_type, EMailNotification._html_text))
+                content = re.sub(r"^(.*)$", r"\1<br/>",
+                                 escape(content), flags=re.MULTILINE)
+            else:
+                self.logger.debug(
+                    "{}: content type is {}".format(
+                        queueid, content_type))
         else:
-            self.logger.debug(
-                "{}: content mimetype is {}".format(
-                    queueid, mimetype))
-        self.logger.debug(
-            "{}: trying to create BeatufilSoup object with parser lib {}, "
-            "text length is {} bytes".format(
-                queueid, self.parser_lib, len(text)))
-        soup = BeautifulSoup(text, self.parser_lib)
-        self.logger.debug(
-            "{}: sucessfully created BeautifulSoup object".format(queueid))
-        return soup
+            self.logger.error(
+                "{}: unable to find email body".format(queueid))
+            content = "ERROR: unable to find email body"
 
-    def get_text_multipart(self, queueid, msg, preferred=_html_text):
-        "Get the mail text of a multipart email in html form."
-        soup = None
-
-        for part in msg.get_payload():
-            mimetype = part.get_content_type()
-            if mimetype in [EMailNotification._plain_text,
-                            EMailNotification._html_text]:
-                soup = self.get_text(queueid, part)
-            elif mimetype.startswith("multipart"):
-                soup = self.get_text_multipart(queueid, part, preferred)
-
-            if soup is not None and mimetype == preferred:
-                break
-        return soup
+        return content
 
     def sanitize(self, queueid, soup):
         "Sanitize mail html text."
@@ -293,27 +292,6 @@ class EMailNotification(BaseNotification):
                         del(element.attrs[attribute])
         return soup
 
-    def get_html_text_part(self, queueid, msg):
-        "Get the mail text of an email in html form."
-        soup = None
-        mimetype = msg.get_content_type()
-
-        self.logger.debug(
-            "{}: trying to find text part of email".format(queueid))
-        if mimetype in [EMailNotification._plain_text,
-                        EMailNotification._html_text]:
-            soup = self.get_text(queueid, msg)
-        elif mimetype.startswith("multipart"):
-            soup = self.get_text_multipart(queueid, msg)
-
-        if soup is None:
-            self.logger.error(
-                "{}: unable to extract text part of email".format(queueid))
-            text = "ERROR: unable to extract text from email body"
-            soup = BeautifulSoup(text, "lxml", "UTF-8")
-
-        return soup
-
     def notify(self, queueid, quarantine_id, mailfrom, recipients, headers, fp,
                subgroups=None, named_subgroups=None, synchronous=False):
         "Notify recipients via email."
@@ -330,11 +308,18 @@ class EMailNotification(BaseNotification):
             named_subgroups,
             synchronous)
 
-        # extract html text from email
-        self.logger.debug(
-            "{}: extraction email text from original email".format(queueid))
-        soup = self.get_html_text_part(
+        # extract body from email
+        content = self.get_decoded_email_body(
             queueid, email.message_from_binary_file(fp))
+
+        # create BeautifulSoup object
+        self.logger.debug(
+            "{}: trying to create BeatufilSoup object with parser lib {}, "
+            "text length is {} bytes".format(
+                queueid, self.parser_lib, len(content)))
+        soup = BeautifulSoup(content, self.parser_lib)
+        self.logger.debug(
+            "{}: sucessfully created BeautifulSoup object".format(queueid))
 
         # replace picture sources
         image_replaced = False

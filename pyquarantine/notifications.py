@@ -353,7 +353,12 @@ class EMailNotification(BaseNotification):
                 "{}: generating notification email for '{}'".format(
                     queueid, recipient))
             self.logger.debug("{}: parsing email template".format(queueid))
-
+            if "from" not in headers.keys():
+                headers["from"] = ""
+            if "to" not in headers.keys():
+                headers["to"] = ""
+            if "subject" not in headers.keys():
+                headers["subject"] = ""
             # generate dict containing all template variables
             variables = defaultdict(str,
                                     EMAIL_HTML_TEXT=sanitized_text,

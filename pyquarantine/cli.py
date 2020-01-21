@@ -120,6 +120,7 @@ def list_quarantine_emails(config, args):
         row["recipient"] = metadata["recipients"].pop(0)
         if "subject" not in emails[quarantine_id]["headers"].keys():
             emails[quarantine_id]["headers"]["subject"] = ""
+        row["subject"] = emails[quarantine_id]["headers"]["subject"][:60]
         rows.append(row)
 
         if metadata["recipients"]:

@@ -229,15 +229,12 @@ class EMailNotification(BaseNotification):
                     break
 
         if body is not None:
-            # get the character set, fallback to utf-8 if not defined in header
-            charset = body.get_content_charset()
-            if charset is None:
-                charset = "utf-8"
-
-            # decode content
-            content = body.get_payload(decode=True).decode(
-                encoding=charset, errors="replace")
-
+            charset = body.get_content_charset() or "utf-8"
+            content = body.get_payload(decode=True)
+            try:
+                content = content.decode(encoding=charset, errors="replace")
+            except LookupError:
+                content = content.decode("utf-8", errors="replace")
             content_type = body.get_content_type()
             if content_type == EMailNotification._plain_text:
                 # convert text/plain to text/html

@@ -19,6 +19,7 @@ import re
 from bs4 import BeautifulSoup
 from cgi import escape
 from collections import defaultdict
+from email.header import decode_header, make_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -351,21 +352,26 @@ class EMailNotification(BaseNotification):
                 "{}: generating notification email for '{}'".format(
                     queueid, recipient))
             self.logger.debug("{}: parsing email template".format(queueid))
-            if "from" not in headers.keys():
-                headers["from"] = ""
-            if "to" not in headers.keys():
-                headers["to"] = ""
-            if "subject" not in headers.keys():
-                headers["subject"] = ""
+            # decode some headers
+            decoded_headers = {}
+            for var in ["from", "to", "subject"]:
+                if header in headers:
+                    decoded_headers[header] = str(
+                        make_header(decode_header(headers[header])))
+                else:
+                    headers[var] = ""
+                    decoded_headers[var] = ""
+
             # generate dict containing all template variables
             variables = defaultdict(str,
                                     EMAIL_HTML_TEXT=sanitized_text,
-                                    EMAIL_FROM=escape(headers["from"]),
+                                    EMAIL_FROM=escape(decoded_headers["from"]),
                                     EMAIL_ENVELOPE_FROM=escape(mailfrom),
                                     EMAIL_ENVELOPE_FROM_URL=escape(quote(mailfrom)),
-                                    EMAIL_TO=escape(recipient),
-                                    EMAIL_TO_URL=escape(quote(recipient)),
-                                    EMAIL_SUBJECT=escape(headers["subject"]),
+                                    EMAIL_TO=escape(decoded_headers["to"]),
+                                    EMAIL_ENVELOPE_TO=escape(recipient),
+                                    EMAIL_ENVELOPE_TO_URL=escape(quote(recipient)),
+                                    EMAIL_SUBJECT=escape(decoded_headers["subject"]),
                                     EMAIL_QUARANTINE_ID=quarantine_id)
 
             if subgroups:

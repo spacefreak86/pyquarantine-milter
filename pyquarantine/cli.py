@@ -20,6 +20,8 @@ import logging.handlers
 import sys
 import time
 
+from email.header import decode_header, make_header
+
 import pyquarantine
 
 from pyquarantine.version import __version__ as version
@@ -56,7 +58,7 @@ def print_table(columns, rows):
         # get the length of the longest value
         lengths.append(
             len(str(max(rows, key=lambda x: len(str(x[key])))[key])))
-        # use the the longer one
+        # use the longer one
         length = max(lengths)
         column_lengths.append(length)
         column_formats.append("{{:<{}}}".format(length))
@@ -120,7 +122,9 @@ def list_quarantine_emails(config, args):
         row["recipient"] = metadata["recipients"].pop(0)
         if "subject" not in emails[quarantine_id]["headers"].keys():
             emails[quarantine_id]["headers"]["subject"] = ""
-        row["subject"] = emails[quarantine_id]["headers"]["subject"][:60]
+        row["subject"] = str(make_header(decode_header(
+            emails[quarantine_id]["headers"]["subject"])))[:60].replace(
+                "\r", "").replace("\n", "").strip()
         rows.append(row)
 
         if metadata["recipients"]:

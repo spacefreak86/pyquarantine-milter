@@ -354,13 +354,13 @@ class EMailNotification(BaseNotification):
             self.logger.debug("{}: parsing email template".format(queueid))
             # decode some headers
             decoded_headers = {}
-            for var in ["from", "to", "subject"]:
+            for header in ["from", "to", "subject"]:
                 if header in headers:
                     decoded_headers[header] = str(
                         make_header(decode_header(headers[header])))
                 else:
-                    headers[var] = ""
-                    decoded_headers[var] = ""
+                    headers[header] = ""
+                    decoded_headers[header] = ""
 
             # generate dict containing all template variables
             variables = defaultdict(str,

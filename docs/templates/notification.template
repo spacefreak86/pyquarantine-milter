@@ -11,6 +11,10 @@
     <td>{EMAIL_FROM}</td>
    </tr>
    <tr>
+    <td><b>Envelope-To:</b></td>
+    <td>{EMAIL_ENVELOPE_TO}</td>
+   </tr>
+   <tr>
     <td><b>To:</b></td>
     <td>{EMAIL_TO}</td>
    </tr>

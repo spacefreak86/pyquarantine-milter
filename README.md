@@ -77,11 +77,15 @@ The following configuration options are optional in each quarantine section:
 
   The following template variables are available:
   * **{EMAIL_ENVELOPE_FROM}**  
-    E-mail from-address received by the milter.
+    E-mail from address received by the milter.
+  * **{EMAIL_ENVELOPE_FROM_URL}**  
+    Like EMAIL_ENVELOPE_FROM, but URL encoded
   * **{EMAIL_FROM}**  
     Value of the from header of the original e-mail.
   * **{EMAIL_TO}**  
     E-mail recipient address of this notification.
+  * **{EMAIL_TO_URL}**  
+    Like EMAIL_TO, but URL encoded
   * **{EMAIL_SUBJECT}**  
     Configured e-mail subject.
   * **{EMAIL_QUARANTINE_ID}**  

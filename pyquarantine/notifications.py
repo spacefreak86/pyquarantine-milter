@@ -23,6 +23,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from os.path import basename
+from urllib.parse import quote
 
 from pyquarantine import mailer
 
@@ -361,7 +362,9 @@ class EMailNotification(BaseNotification):
                                     EMAIL_HTML_TEXT=sanitized_text,
                                     EMAIL_FROM=escape(headers["from"]),
                                     EMAIL_ENVELOPE_FROM=escape(mailfrom),
+                                    EMAIL_ENVELOPE_FROM_URL=escape(quote(mailfrom)),
                                     EMAIL_TO=escape(recipient),
+                                    EMAIL_TO_URL=escape(quote(recipient)),
                                     EMAIL_SUBJECT=escape(headers["subject"]),
                                     EMAIL_QUARANTINE_ID=quarantine_id)
 

@@ -166,7 +166,7 @@ class HeaderMilter(Milter.Base):
 
     @Milter.noreply
     def header(self, name, value):
-        self.headers.append((name, value.encode(errors="replace").decode()))
+        self.headers.append((name, value.encode(errors="surrogateescape").decode(errors="replace")))
         return Milter.CONTINUE
 
     def eom(self):
@@ -178,30 +178,30 @@ class HeaderMilter(Milter.Base):
                 log = rule.log_modification()
 
                 for name, value, index, occurrence in modified:
+                    mod_header = "{}: {}".format(name, value)
                     if action == "add":
                         if log:
-                            self.logger.info("{}: add: header: {}".format(self.queueid, "{}: {}".format(name, value)[0:50]))
+                            self.logger.info("{}: add: header: {}".format(self.queueid, mod_header[0:70]))
                         else:
-                            self.logger.debug("{}: add: header: {}".format(self.queueid, "{}: {}".format(name, value)[0:50]))
+                            self.logger.debug("{}: add: header: {}".format(self.queueid, mod_header))
 
                         self.headers.insert(0, (name, value))
                         self.addheader(name, value, 1)
                     else:
                         if action == "mod":
-                            old_line = "{}: {}".format(name, self.headers[index][1])
-                            new_line = "{}: {}".format(name, value)
+                            old_header = "{}: {}".format(name, self.headers[index][1])
                             if log:
                                 self.logger.info("{}: modify: header: {}: {}".format(
-                                    self.queueid, old_line[0:40], new_line[0:40]))
+                                    self.queueid, old_header[0:70], mod_header[0:70]))
                             else:
-                                self.logger.debug("{}: modify: header (occ. {}): {}: {}: {}".format(
-                                    self.queueid, occurrence, name, old_line, new_line))
+                                self.logger.debug("{}: modify: header (occ. {}): {}: {}".format(
+                                    self.queueid, occurrence, old_header, mod_header))
                             self.headers[index] = (name, value)
                         elif action == "del":
                             if log:
-                                self.logger.info("{}: delete: header: {}".format(self.queueid, "{}: {}".format(name, self.headers[index][1]))[0:50])
+                                self.logger.info("{}: delete: header: {}".format(self.queueid, mod_header[0:70]))
                             else:
-                                self.logger.debug("{}: delete: header (occ. {}): {}".format(self.queueid, occurrence, "{}: {}".format(name, self.headers[index][1]))[0:50])
+                                self.logger.debug("{}: delete: header (occ. {}): {}".format(self.queueid, occurrence, mod_header))
                             del self.headers[index]
                         self.chgheader(name, occurrence, value)
             return Milter.ACCEPT

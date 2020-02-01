@@ -95,7 +95,8 @@ class QuarantineMilter(Milter.Base):
     def set_configfiles(config_files):
         QuarantineMilter._config_files = config_files
 
-    def connect(self, IPname, family, hostaddr):
+    def connect(self, hostname, family, hostaddr):
+        self.hostaddr = hostaddr
         self.logger.debug(
             "accepted milter connection from {} port {}".format(
                 *hostaddr))
@@ -134,15 +135,33 @@ class QuarantineMilter(Milter.Base):
             "{}: received queue-id from MTA".format(self.queueid))
         self.recipients = list(self.recipients)
         self.headers = []
+        self.logger.debug(
+            "{}: initializing memory buffer to save email data".format(
+                self.queueid))
+        # initialize memory buffer to save email data
+        self.fp = BytesIO()
         return Milter.CONTINUE
 
     @Milter.noreply
     def header(self, name, value):
-        self.headers.append((name, value))
+        try:
+            # write email header to memory buffer
+            self.fp.write("{}: {}\r\n".format(name, value).encode(
+                encoding="ascii", errors="surrogateescape"))
+            # keep copy of header without surrogates for later use
+            self.headers.append((
+                name.encode(errors="surrogateescape").decode(errors="replace"),
+                value.encode(errors="surrogateescape").decode(errors="replace")))
+        except Exception as e:
+            self.logger.exception(
+                "an exception occured in header function: {}".format(e))
+            return Milter.TEMPFAIL
+
         return Milter.CONTINUE
 
     def eoh(self):
         try:
+            self.fp.write("\r\n".encode(encoding="ascii"))
             self.whitelist_cache = whitelists.WhitelistCache()
 
             # initialize dicts to set quaranines per recipient and keep matches
@@ -238,38 +257,24 @@ class QuarantineMilter(Milter.Base):
                         self.queueid))
                 return Milter.ACCEPT
 
-            # check if the email body is needed
-            keep_body = False
+            # check if the mail body is needed
             for recipient, quarantine in self.recipients_quarantines.items():
                 if quarantine["quarantine_obj"] or quarantine["notification_obj"]:
-                    keep_body = True
-                    break
+                    # mail body is needed, continue processing
+                    return Milter.CONTINUE
 
-            if keep_body:
-                self.logger.debug(
-                    "{}: initializing memory buffer to save email data".format(
-                        self.queueid))
-                # initialize memory buffer to save email data
-                self.fp = BytesIO()
-                # write email headers to memory buffer
-                for name, value in self.headers:
-                    self.fp.write("{}: {}\n".format(name, value).encode())
-                self.fp.write("\n".encode())
-            else:
-                # quarantine and notification are disabled on all matching
-                # quarantines, return configured action
-                quarantine = self._get_preferred_quarantine()
-                self.logger.info(
-                    "{}: {} matching quarantine is '{}', performing milter action {}".format(
-                        self.queueid,
-                        self.global_config["preferred_quarantine_action"],
-                        quarantine["name"],
-                        quarantine["action"].upper()))
-                if quarantine["action"] == "reject":
-                    self.setreply("554", "5.7.0", quarantine["reject_reason"])
-                return quarantine["milter_action"]
-
-            return Milter.CONTINUE
+            # quarantine and notification are disabled on all matching
+            # quarantines, just return configured action
+            quarantine = self._get_preferred_quarantine()
+            self.logger.info(
+                "{}: {} matching quarantine is '{}', performing milter action {}".format(
+                    self.queueid,
+                    self.global_config["preferred_quarantine_action"],
+                    quarantine["name"],
+                    quarantine["action"].upper()))
+            if quarantine["action"] == "reject":
+                self.setreply("554", "5.7.0", quarantine["reject_reason"])
+            return quarantine["milter_action"]
 
         except Exception as e:
             self.logger.exception(
@@ -371,6 +376,11 @@ class QuarantineMilter(Milter.Base):
             self.logger.exception(
                 "an exception occured in eom function: {}".format(e))
             return Milter.TEMPFAIL
+
+    def close(self):
+        self.logger.debug(
+            "disconnect from {} port {}".format(
+                *self.hostaddr))
 
 
 def generate_milter_config(configtest=False, config_files=[]):

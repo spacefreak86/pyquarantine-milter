@@ -189,9 +189,9 @@ class Quarantine(object):
                 self.host_whitelist.append(net)
         if self.host_whitelist:
             self.logger.debug(
-                "{}: ignore hosts: {}".format(
+                "{}: host whitelist: {}".format(
                     self.name,
-                    ", ".join(ignored)))
+                    ", ".join([str(ip) for ip in host_whitelist])))
 
     def notify(self, storage_id, recipient=None, synchronous=True):
         "Notify recipient about email in storage."
@@ -324,12 +324,12 @@ class QuarantineMilter(Milter.Base):
         for quarantine in self.quarantines.copy():
             if quarantine.host_in_whitelist(hostaddr):
                 self.logger.debug(
-                    "host {} is ignored by quarantine {}".format(
+                    "host {} is in whitelist of quarantine {}".format(
                         hostaddr[0], quarantine["name"]))
                 self.quarantines.remove(quarantine)
                 if not self.quarantines:
                     self.logger.debug(
-                        "host {} is ignored by all quarantines, "
+                        "host {} is in whitelist of all quarantines, "
                         "skip further processing",
                         hostaddr[0])
                     return Milter.ACCEPT

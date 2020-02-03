@@ -31,14 +31,13 @@ from pyquarantine import mailer
 
 class BaseNotification(object):
     "Notification base class"
+    notification_type = "base"
 
-    def __init__(self, global_config, config, configtest=False):
-        self.quarantine_name = config["name"]
-        self.global_config = global_config
-        self.config = config
+    def __init__(self, name, global_cfg, cfg, test=False):
+        self.name = name
         self.logger = logging.getLogger(__name__)
 
-    def notify(self, queueid, quarantine_id, mailfrom, recipients, headers,
+    def notify(self, queueid, storage_id, mailfrom, recipients, headers,
                fp, subgroups=None, named_subgroups=None, synchronous=False):
         fp.seek(0)
         pass
@@ -46,6 +45,7 @@ class BaseNotification(object):
 
 class EMailNotification(BaseNotification):
     "Notification class to send notifications via mail."
+    notification_type = "email"
     _html_text = "text/html"
     _plain_text = "text/plain"
     _bad_tags = [
@@ -111,44 +111,40 @@ class EMailNotification(BaseNotification):
         "width"
     ]
 
-    def __init__(self, global_config, config, configtest=False):
+    def __init__(self, name, global_cfg, cfg, test=False):
         super(EMailNotification, self).__init__(
-            global_config, config, configtest)
+            name, global_cfg, cfg, test)
 
-        # check if mandatory options are present in config
-        for option in [
+        defaults = {
+            "notification_email_replacement_img": "",
+            "notification_email_strip_images": "false",
+            "notification_email_parser_lib": "lxml"
+        }
+        # check config
+        for opt in [
             "notification_email_smtp_host",
             "notification_email_smtp_port",
             "notification_email_envelope_from",
             "notification_email_from",
             "notification_email_subject",
             "notification_email_template",
-                "notification_email_embedded_imgs"]:
-            if option not in self.config.keys() and option in self.global_config.keys():
-                self.config[option] = self.global_config[option]
-            if option not in self.config.keys():
+                "notification_email_embedded_imgs"] + list(defaults.keys()):
+            if opt in cfg:
+                continue
+            if opt in global_cfg:
+                cfg[opt] = global_cfg[opt]
+            elif opt in defaults:
+                cfg[opt] = defaults[opt]
+            else:
                 raise RuntimeError(
                     "mandatory option '{}' not present in config section '{}' or 'global'".format(
-                        option, self.quarantine_name))
+                        opt, self.name))
 
-        # check if optional config options are present in config
-        defaults = {
-            "notification_email_replacement_img": "",
-            "notification_email_strip_images": "false",
-            "notification_email_parser_lib": "lxml"
-        }
-        for option in defaults.keys():
-            if option not in config.keys() and \
-                    option in global_config.keys():
-                config[option] = global_config[option]
-            if option not in config.keys():
-                config[option] = defaults[option]
-
-        self.smtp_host = self.config["notification_email_smtp_host"]
-        self.smtp_port = self.config["notification_email_smtp_port"]
-        self.mailfrom = self.config["notification_email_envelope_from"]
-        self.from_header = self.config["notification_email_from"]
-        self.subject = self.config["notification_email_subject"]
+        self.smtp_host = cfg["notification_email_smtp_host"]
+        self.smtp_port = cfg["notification_email_smtp_port"]
+        self.mailfrom = cfg["notification_email_envelope_from"]
+        self.from_header = cfg["notification_email_from"]
+        self.subject = cfg["notification_email_subject"]
 
         testvars = defaultdict(str, test="TEST")
 
@@ -169,14 +165,14 @@ class EMailNotification(BaseNotification):
         # read and parse email notification template
         try:
             self.template = open(
-                self.config["notification_email_template"], "r").read()
+                cfg["notification_email_template"], "r").read()
             self.template.format_map(testvars)
         except IOError as e:
             raise RuntimeError("error reading template: {}".format(e))
         except ValueError as e:
             raise RuntimeError("error parsing template: {}".format(e))
 
-        strip_images = self.config["notification_email_strip_images"].strip().upper()
+        strip_images = cfg["notification_email_strip_images"].strip().upper()
         if strip_images in ["TRUE", "ON", "YES"]:
             self.strip_images = True
         elif strip_images in ["FALSE", "OFF", "NO"]:
@@ -184,12 +180,12 @@ class EMailNotification(BaseNotification):
         else:
             raise RuntimeError("error parsing notification_email_strip_images: unknown value")
 
-        self.parser_lib = self.config["notification_email_parser_lib"].strip()
+        self.parser_lib = cfg["notification_email_parser_lib"].strip()
         if self.parser_lib not in ["lxml", "html.parser"]:
             raise RuntimeError("error parsing notification_email_parser_lib: unknown value")
 
         # read email replacement image if specified
-        replacement_img = self.config["notification_email_replacement_img"].strip()
+        replacement_img = cfg["notification_email_replacement_img"].strip()
         if not self.strip_images and replacement_img:
             try:
                 self.replacement_img = MIMEImage(
@@ -205,7 +201,7 @@ class EMailNotification(BaseNotification):
 
         # read images to embed if specified
         embedded_img_paths = [
-            p.strip() for p in self.config["notification_email_embedded_imgs"].split(",") if p]
+            p.strip() for p in cfg["notification_email_embedded_imgs"].split(",") if p]
         self.embedded_imgs = []
         for img_path in embedded_img_paths:
             # read image
@@ -291,14 +287,14 @@ class EMailNotification(BaseNotification):
                         del(element.attrs[attribute])
         return soup
 
-    def notify(self, queueid, quarantine_id, mailfrom, recipients, headers, fp,
+    def notify(self, queueid, storage_id, mailfrom, recipients, headers, fp,
                subgroups=None, named_subgroups=None, synchronous=False):
         "Notify recipients via email."
         super(
             EMailNotification,
             self).notify(
             queueid,
-            quarantine_id,
+            storage_id,
             mailfrom,
             recipients,
             headers,
@@ -372,7 +368,7 @@ class EMailNotification(BaseNotification):
                                     EMAIL_ENVELOPE_TO=escape(recipient),
                                     EMAIL_ENVELOPE_TO_URL=escape(quote(recipient)),
                                     EMAIL_SUBJECT=escape(decoded_headers["subject"]),
-                                    EMAIL_QUARANTINE_ID=quarantine_id)
+                                    EMAIL_QUARANTINE_ID=storage_id)
 
             if subgroups:
                 number = 0

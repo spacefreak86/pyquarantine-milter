@@ -36,8 +36,8 @@ The following configuration options are mandatory in the global section:
 The following configuration options are mandatory in each quarantine section:
 * **regex**  
   Case insensitive regular expression to filter e-mail headers.
-* **quarantine_type**  
-  One of the quarantine-types described below.
+* **storage_type**  
+  One of the storage types described below.
 * **action**  
   One of the actions described below.
 * **notification_type**  
@@ -50,13 +50,13 @@ The following configuration options are mandatory in each quarantine section:
   SMTP port
 
 The following configuration options are optional in each quarantine section:
-* **ignore_hosts**  
+* **host_whitelist**  
   Comma-separated list of host and network addresses to be ignored by this quarantine.
 * **reject_reason**  
   Reason to return to the client if action is set to reject.
 
 
-### Quarantine types
+### Storage types
 * **NONE**  
   Original e-mails scrapped, sent to nirvana, black-holed or however you want to call it.
 
@@ -64,7 +64,7 @@ The following configuration options are optional in each quarantine section:
   Original e-mails are stored on the filesystem with a unique filename. The filename is available as a
   template variable used in notifiaction templates.  
   The following configuration options are mandatory for this quarantine type:
-  * **quarantine_directory**  
+  * **storage_directory**  
     The directory in which quarantined e-mails are stored.
 
 

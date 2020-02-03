@@ -30,12 +30,12 @@ preferred_quarantine_action = last
 
 
 [spam]
-# Option: ignore_hosts
+# Option: host_whitelist
 # Notes:  Set a list of host and network addresses to be ignored by this quarantine.
 #         All the common host/network notations are supported, including IPv6.
 # Value:  [ HOST ]
 #
-ignore_hosts = 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+host_whitelist = 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
 
 # Option: regex
 # Notes:  Set the case insensitive regular expression to match against email headers.
@@ -57,18 +57,18 @@ smtp_host = 127.0.0.1
 #
 smtp_port = 25
 
-# Option: quarantine_type
-# Notes:  Set the quarantine type.
+# Option: storage_type
+# Notes:  Set the storage type.
 # Values: [ file | none ]
 #
-quarantine_type = file
+storage_type = file
 
-# Option: quarantine_directory
+# Option: storage_directory
 # Notes:  Set the directory to store quarantined emails.
 #         This option is needed by quarantine type 'file'.
 # Values: [ DIRECTORY ]
 #
-quarantine_directory = /var/lib/pyquarantine/spam
+storage_directory = /var/lib/pyquarantine/spam
 
 # Option: action
 # Notes:  Set the milter action to perform if email is processed by this quarantine.

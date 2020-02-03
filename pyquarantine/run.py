@@ -35,11 +35,11 @@ def main():
         "-c", "--config",
         help="List of config files to read.",
         nargs="+",
-        default=pyquarantine.QuarantineMilter.get_configfiles())
+        default=pyquarantine.QuarantineMilter.get_cfg_files())
     parser.add_argument(
         "-s", "--socket",
         help="Socket used to communicate with the MTA.",
-        required=True)
+        default="inet:8899@127.0.0.1")
     parser.add_argument(
         "-d", "--debug",
         help="Log debugging messages.",
@@ -65,7 +65,7 @@ def main():
         syslog_name = "{}: [%(name)s] %(levelname)s".format(syslog_name)
 
     # set config files for milter class
-    pyquarantine.QuarantineMilter.set_configfiles(args.config)
+    pyquarantine.QuarantineMilter.set_cfg_files(args.config)
     root_logger = logging.getLogger()
     root_logger.setLevel(loglevel)
 
@@ -78,7 +78,7 @@ def main():
     logger = logging.getLogger(__name__)
     if args.test:
         try:
-            pyquarantine.generate_milter_config(args.test)
+            pyquarantine.setup_milter(test=args.test)
             print("Configuration ok")
         except RuntimeError as e:
             logger.error(e)
@@ -101,18 +101,14 @@ def main():
     logger.info("PyQuarantine-Milter starting")
     try:
         # generate milter config
-        global_config, config = pyquarantine.generate_milter_config()
+        pyquarantine.setup_milter()
     except RuntimeError as e:
         logger.error(e)
         sys.exit(255)
 
-    pyquarantine.QuarantineMilter.global_config = global_config
-    pyquarantine.QuarantineMilter.config = config
-
     # register to have the Milter factory create instances of your class:
     Milter.factory = pyquarantine.QuarantineMilter
     Milter.set_exception_policy(Milter.TEMPFAIL)
-    # Milter.set_flags(0)       # tell sendmail which features we use
 
     # run milter
     rc = 0
@@ -122,6 +118,7 @@ def main():
     except Milter.milter.error as e:
         logger.error(e)
         rc = 255
+
     pyquarantine.mailer.queue.put(None)
     logger.info("PyQuarantine-Milter terminated")
     sys.exit(rc)

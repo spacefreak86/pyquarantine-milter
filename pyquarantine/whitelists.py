@@ -24,11 +24,11 @@ from playhouse.db_url import connect
 class WhitelistBase(object):
     "Whitelist base class"
 
-    def __init__(self, global_config, config, configtest=False):
-        self.global_config = global_config
-        self.config = config
-        self.configtest = configtest
-        self.name = config["name"]
+    whitelist_type = "base"
+
+    def __init__(self, name, global_cfg, cfg, test=False):
+        self.name = name
+        self.test = test
         self.logger = logging.getLogger(__name__)
         self.valid_entry_regex = re.compile(
             r"^[a-zA-Z0-9_.+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
@@ -73,28 +73,35 @@ class Meta(object):
 
 class DatabaseWhitelist(WhitelistBase):
     "Whitelist class to store whitelist in a database"
+    whitelist_type = "db"
     _db_connections = {}
     _db_tables = {}
 
-    def __init__(self, global_config, config, configtest=False):
+    def __init__(self, name, global_cfg, cfg, test=False):
         super(
             DatabaseWhitelist,
             self).__init__(
-            global_config,
-            config,
-            configtest)
+            global_cfg,
+            cfg,
+            test)
 
-        # check if mandatory options are present in config
-        for option in ["whitelist_db_connection", "whitelist_db_table"]:
-            if option not in self.config.keys() and option in self.global_config.keys():
-                self.config[option] = self.global_config[option]
-            if option not in self.config.keys():
+        defaults = {}
+
+        # check config
+        for opt in ["whitelist_db_connection", "whitelist_db_table"] + list(defaults.keys()):
+            if opt in cfg:
+                continue
+            if opt in global_cfg:
+                cfg[opt] = global_cfg[opt]
+            elif opt in defaults:
+                cfg[opt] = defaults[opt]
+            else:
                 raise RuntimeError(
                     "mandatory option '{}' not present in config section '{}' or 'global'".format(
-                        option, self.name))
+                        opt, self.name))
 
-        tablename = self.config["whitelist_db_table"]
-        connection_string = self.config["whitelist_db_connection"]
+        tablename = cfg["whitelist_db_table"]
+        connection_string = cfg["whitelist_db_connection"]
 
         if connection_string in DatabaseWhitelist._db_connections.keys():
             db = DatabaseWhitelist._db_connections[connection_string]
@@ -127,7 +134,7 @@ class DatabaseWhitelist(WhitelistBase):
 
         if tablename not in DatabaseWhitelist._db_tables[connection_string]:
             DatabaseWhitelist._db_tables[connection_string].append(tablename)
-            if not self.configtest:
+            if not self.test:
                 try:
                     db.create_tables([self.model])
                 except Exception as e:

@@ -26,23 +26,36 @@ import pyquarantine
 
 from pyquarantine.version import __version__ as version
 
-def _get_quarantine_obj(config, quarantine):
+def _get_quarantine(quarantines, name):
     try:
-        quarantine_obj = next((q["quarantine_obj"]
-                               for q in config if q["name"] == quarantine))
+        quarantine = next((q for q in quarantines if q.name == name))
     except StopIteration:
-        raise RuntimeError("invalid quarantine '{}'".format(quarantine))
-    return quarantine_obj
+        raise RuntimeError("invalid quarantine '{}'".format(name))
+    return quarantine
 
+def _get_storage(quarantines, name):
+    quarantine = _get_quarantine(quarantines, name)
+    storage = quarantine.get_storage()
+    if not storage:
+        raise RuntimeError(
+                "storage type is set to NONE")
+    return storage
 
-def _get_whitelist_obj(config, quarantine):
-    try:
-        whitelist_obj = next((q["whitelist_obj"]
-                              for q in config if q["name"] == quarantine))
-    except StopIteration:
-        raise RuntimeError("invalid quarantine '{}'".format(quarantine))
-    return whitelist_obj
+def _get_notification(quarantines, name):
+    quarantine = _get_quarantine(quarantines, name)
+    notification = quarantine.get_notification()
+    if not notification:
+        raise RuntimeError(
+                "notification type is set to NONE")
+    return notification
 
+def _get_whitelist(quarantines, name):
+    quarantine = _get_quarantine(quarantines, name)
+    whitelist = quarantine.get_whitelist()
+    if not whitelist:
+        raise RuntimeError(
+                "whitelist type is set to NONE")
+    return whitelist
 
 def print_table(columns, rows):
     if not rows:
@@ -85,51 +98,72 @@ def print_table(columns, rows):
         print(row_format.format(*row))
 
 
-def list_quarantines(config, args):
+def list_quarantines(quarantines, args):
     if args.batch:
-        print("\n".join([quarantine["name"] for quarantine in config]))
+        print("\n".join([q.name for q in quarantines]))
     else:
+        qlist = []
+        for q in quarantines:
+            storage = q.get_storage()
+            if storage:
+                storage_type = q.get_storage().storage_type
+            else:
+                storage_type = "NONE"
+
+            notification = q.get_notification()
+            if notification:
+                notification_type = q.get_notification().notification_type
+            else:
+                notification_type = "NONE"
+
+            whitelist = q.get_whitelist()
+            if whitelist:
+                whitelist_type = q.get_whitelist().whitelist_type
+            else:
+                whitelist_type = "NONE"
+
+            qlist.append({
+                "name": q.name,
+                "storage": storage_type,
+                "notification": notification_type,
+                "whitelist": whitelist_type,
+                "action": q.action})
         print_table(
-            [("Name", "name"), ("Quarantine", "quarantine_type"),
-             ("Notification", "notification_type"), ("Action", "action")],
-            config
+            [("Name", "name"),
+             ("Storage", "storage"),
+             ("Notification", "notification"),
+             ("Whitelist", "whitelist"),
+             ("Action", "action")],
+            qlist
         )
 
 
-def list_quarantine_emails(config, args):
+def list_quarantine_emails(quarantines, args):
     logger = logging.getLogger(__name__)
-
-    # get quarantine object
-    quarantine = _get_quarantine_obj(config, args.quarantine)
-    if quarantine is None:
-        raise RuntimeError(
-            "quarantine type is set to None, unable to list emails")
-
+    storage = _get_storage(quarantines, args.quarantine)
     # find emails and transform some metadata values to strings
     rows = []
-    emails = quarantine.find(
-        mailfrom=args.mailfrom,
-        recipients=args.recipients,
-        older_than=args.older_than)
-    for quarantine_id, metadata in emails.items():
-        row = emails[quarantine_id]
-        row["quarantine_id"] = quarantine_id
+    emails = storage.find(
+        args.mailfrom, args.recipients, args.older_than)
+    for storage_id, metadata in emails.items():
+        row = emails[storage_id]
+        row["storage_id"] = storage_id
         row["date"] = time.strftime(
             '%Y-%m-%d %H:%M:%S',
             time.localtime(
                 metadata["date"]))
         row["mailfrom"] = metadata["mailfrom"]
         row["recipient"] = metadata["recipients"].pop(0)
-        if "subject" not in emails[quarantine_id]["headers"].keys():
-            emails[quarantine_id]["headers"]["subject"] = ""
+        if "subject" not in emails[storage_id]["headers"].keys():
+            emails[storage_id]["headers"]["subject"] = ""
         row["subject"] = str(make_header(decode_header(
-            emails[quarantine_id]["headers"]["subject"])))[:60].replace(
+            emails[storage_id]["headers"]["subject"])))[:60].replace(
                 "\r", "").replace("\n", "").strip()
         rows.append(row)
 
         if metadata["recipients"]:
             row = {
-                "quarantine_id": "",
+                "storage_id": "",
                 "date": "",
                 "mailfrom": "",
                 "recipient": metadata["recipients"].pop(0),
@@ -145,21 +179,16 @@ def list_quarantine_emails(config, args):
     if not emails:
         logger.info("quarantine '{}' is empty".format(args.quarantine))
     print_table(
-        [("Quarantine-ID", "quarantine_id"), ("Date", "date"),
+        [("Quarantine-ID", "storage_id"), ("Date", "date"),
          ("From", "mailfrom"), ("Recipient(s)", "recipient"),
          ("Subject", "subject")],
         rows
     )
 
 
-def list_whitelist(config, args):
+def list_whitelist(quarantines, args):
     logger = logging.getLogger(__name__)
-
-    # get whitelist object
-    whitelist = _get_whitelist_obj(config, args.quarantine)
-    if whitelist is None:
-        raise RuntimeError(
-            "whitelist type is set to None, unable to list entries")
+    whitelist = _get_whitelist(quarantines, args.quarantine)
 
     # find whitelist entries
     entries = whitelist.find(
@@ -190,14 +219,9 @@ def list_whitelist(config, args):
     )
 
 
-def add_whitelist_entry(config, args):
+def add_whitelist_entry(quarantines, args):
     logger = logging.getLogger(__name__)
-
-    # get whitelist object
-    whitelist = _get_whitelist_obj(config, args.quarantine)
-    if whitelist is None:
-        raise RuntimeError(
-            "whitelist type is set to None, unable to add entries")
+    whitelist = _get_whitelist(quarantines, args.quarantine)
 
     # check existing entries
     entries = whitelist.check(args.mailfrom, args.recipient)
@@ -235,50 +259,31 @@ def add_whitelist_entry(config, args):
     logger.info("whitelist entry added successfully")
 
 
-def delete_whitelist_entry(config, args):
+def delete_whitelist_entry(quarantines, args):
     logger = logging.getLogger(__name__)
-
-    whitelist = _get_whitelist_obj(config, args.quarantine)
-    if whitelist is None:
-        raise RuntimeError(
-            "whitelist type is set to None, unable to delete entries")
-
+    whitelist = _get_whitelist(quarantines, args.quarantine)
     whitelist.delete(args.whitelist_id)
     logger.info("whitelist entry deleted successfully")
 
 
-def notify_email(config, args):
+def notify(quarantines, args):
     logger = logging.getLogger(__name__)
-
-    quarantine = _get_quarantine_obj(config, args.quarantine)
-    if quarantine is None:
-        raise RuntimeError(
-            "quarantine type is set to None, unable to send notification")
+    quarantine = _get_quarantine(quarantines, args.quarantine)
     quarantine.notify(args.quarantine_id, args.recipient)
-    logger.info("sent notification successfully")
+    logger.info("notification sent successfully")
 
 
-def release_email(config, args):
+def release(quarantines, args):
     logger = logging.getLogger(__name__)
-
-    quarantine = _get_quarantine_obj(config, args.quarantine)
-    if quarantine is None:
-        raise RuntimeError(
-            "quarantine type is set to None, unable to release email")
-
+    quarantine = _get_quarantine(quarantines, args.quarantine)
     quarantine.release(args.quarantine_id, args.recipient)
     logger.info("quarantined email released successfully")
 
 
-def delete_email(config, args):
+def delete(quarantines, args):
     logger = logging.getLogger(__name__)
-
-    quarantine = _get_quarantine_obj(config, args.quarantine)
-    if quarantine is None:
-        raise RuntimeError(
-            "quarantine type is set to None, unable to delete email")
-
-    quarantine.delete(args.quarantine_id, args.recipient)
+    storage = _get_storage(quarantines, args.quarantine)
+    storage.delete(args.quarantine_id, args.recipient)
     logger.info("quarantined email deleted successfully")
 
 
@@ -304,7 +309,7 @@ def main():
         "-c", "--config",
         help="Config files to read.",
         nargs="+", metavar="CFG",
-        default=pyquarantine.QuarantineMilter.get_configfiles())
+        default=pyquarantine.QuarantineMilter.get_cfg_files())
     parser.add_argument(
         "-d", "--debug",
         help="Log debugging messages.",
@@ -394,7 +399,7 @@ def main():
         "-a", "--all",
         help="Release email for all recipients.",
         action="store_true")
-    quarantine_notify_parser.set_defaults(func=notify_email)
+    quarantine_notify_parser.set_defaults(func=notify)
     # quarantine release command
     quarantine_release_parser = quarantine_subparsers.add_parser(
         "release",
@@ -421,7 +426,7 @@ def main():
         "-a", "--all",
         help="Release email for all recipients.",
         action="store_true")
-    quarantine_release_parser.set_defaults(func=release_email)
+    quarantine_release_parser.set_defaults(func=release)
     # quarantine delete command
     quarantine_delete_parser = quarantine_subparsers.add_parser(
         "delete",
@@ -447,7 +452,7 @@ def main():
         "-a", "--all",
         help="Delete email for all recipients.",
         action="store_true")
-    quarantine_delete_parser.set_defaults(func=delete_email)
+    quarantine_delete_parser.set_defaults(func=delete)
 
     # whitelist command group
     whitelist_parser = subparsers.add_parser(
@@ -558,8 +563,8 @@ def main():
 
     # try to generate milter configs
     try:
-        global_config, config = pyquarantine.generate_milter_config(
-            config_files=args.config, configtest=True)
+        pyquarantine.setup_milter(
+            cfg_files=args.config, test=True)
     except RuntimeError as e:
         logger.error(e)
         sys.exit(255)
@@ -580,7 +585,7 @@ def main():
 
     # call the commands function
     try:
-        args.func(config, args)
+        args.func(pyquarantine.QuarantineMilter.quarantines, args)
     except RuntimeError as e:
         logger.error(e)
         sys.exit(1)

@@ -31,7 +31,7 @@ class WhitelistBase(object):
         self.test = test
         self.logger = logging.getLogger(__name__)
         self.valid_entry_regex = re.compile(
-            r"^[a-zA-Z0-9_.+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
+            r"^[a-zA-Z0-9_.=+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
 
     def check(self, mailfrom, recipient):
         "Check if mailfrom/recipient combination is whitelisted."

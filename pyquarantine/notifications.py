@@ -216,7 +216,12 @@ class EMailNotification(BaseNotification):
         "Extract and decode email body and return it as BeautifulSoup object."
         # try to find the body part
         self.logger.debug("{}: trying to find email body".format(queueid))
-        body = msg.get_body(preferencelist=("html", "plain"))
+        try:
+            body = msg.get_body(preferencelist=("html", "plain"))
+        except Exception as e:
+            self.logger.error("{}: an error occured in email.message.EmailMessage.get_body: {}".format(
+                queueid, e))
+            body = None
 
         if body:
             charset = body.get_content_charset() or "utf-8"

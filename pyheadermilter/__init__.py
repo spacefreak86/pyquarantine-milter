@@ -31,7 +31,7 @@ from netaddr import IPAddress, IPNetwork, AddrFormatError
 class HeaderRule:
     """HeaderRule to implement a rule to apply on e-mail headers."""
 
-    def __init__(self, name, action, header, search="", value="", ignore_hosts=[], ignore_envfrom="", only_hosts=[], log=True):
+    def __init__(self, name, action, header, search="", value="", ignore_hosts=[], ignore_envfrom=None, only_hosts=[], log=True):
         self.logger = logging.getLogger(__name__)
         self.name = name
         self._action = action
@@ -67,10 +67,11 @@ class HeaderRule:
         except AddrFormatError as e:
             raise RuntimeError("unable to parse option 'ignore_hosts' of rule '{}': {}".format(name, e))
 
-        try:
-            self.ignore_envfrom = re.compile(ignore_envfrom, re.IGNORECASE)
-        except re.error as e:
-            raise RuntimeError("unable to parse option 'ignore_envfrom' of rule '{}': {}".format(name, e))
+        if self.ignore_envfrom:
+            try:
+                self.ignore_envfrom = re.compile(ignore_envfrom, re.IGNORECASE)
+            except re.error as e:
+                raise RuntimeError("unable to parse option 'ignore_envfrom' of rule '{}': {}".format(name, e))
 
         try:
             for index, only in enumerate(only_hosts):
@@ -330,7 +331,7 @@ def main():
             # check if optional config options are present in config
             defaults = {
                 "ignore_hosts": [],
-                "ignore_envfrom": "",
+                "ignore_envfrom": None,
                 "only_hosts": [],
                 "log": "true"
             }

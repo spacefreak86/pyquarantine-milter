@@ -31,7 +31,7 @@ from netaddr import IPAddress, IPNetwork, AddrFormatError
 class HeaderRule:
     """HeaderRule to implement a rule to apply on e-mail headers."""
 
-    def __init__(self, name, action, header, search="", value="", ignore_hosts=[], only_hosts=[], log=True):
+    def __init__(self, name, action, header, search="", value="", ignore_hosts=[], ignore_envfrom="", only_hosts=[], log=True):
         self.logger = logging.getLogger(__name__)
         self.name = name
         self._action = action
@@ -39,6 +39,7 @@ class HeaderRule:
         self.search = search
         self.value = value
         self.ignore_hosts = ignore_hosts
+        self.ignore_envfrom = ignore_envfrom
         self.only_hosts = only_hosts
         self.log = log
 
@@ -65,6 +66,11 @@ class HeaderRule:
                 self.ignore_hosts[index] = IPNetwork(ignore)
         except AddrFormatError as e:
             raise RuntimeError("unable to parse option 'ignore_hosts' of rule '{}': {}".format(name, e))
+
+        try:
+            self.ignore_envfrom = re.compile(ignore_envfrom, re.IGNORECASE)
+        except re.error as e:
+            raise RuntimeError("unable to parse option 'ignore_envfrom' of rule '{}': {}".format(name, e))
 
         try:
             for index, only in enumerate(only_hosts):
@@ -98,6 +104,15 @@ class HeaderRule:
 
         if ignore:
             self.logger.debug("host {} is ignored by rule {}".format(host, self.name))
+        return ignore
+
+    def ignore_from(self, envfrom):
+        ignore = False
+
+        if self.ignore_envfrom:
+            if self.ignore_envfrom.search(envfrom):
+                ignore = True
+                self.logger.debug("envelope-from {} is ignored by rule {}".format(envfrom, self.name))
         return ignore
 
     def execute(self, headers):
@@ -154,6 +169,17 @@ class HeaderMilter(Milter.Base):
 
         if not self.rules:
             self.logger.debug("host {} is ignored by all rules, skip further processing".format(hostaddr[0]))
+            return Milter.ACCEPT
+        return Milter.CONTINUE 
+
+    def envfrom(self, mailfrom, *str):
+        mailfrom = "@".join(parse_addr(mailfrom)).lower()
+        for rule in self.rules.copy():
+            if rule.ignore_from(mailfrom):
+                self.rules.remove(rule)
+
+        if not self.rules:
+            self.logger.debug("mail from {} is ignored by all rules, skip further processing".format(mailfrom))
             return Milter.ACCEPT
         return Milter.CONTINUE 
 
@@ -304,6 +330,7 @@ def main():
             # check if optional config options are present in config
             defaults = {
                 "ignore_hosts": [],
+                "ignore_envfrom": "",
                 "only_hosts": [],
                 "log": "true"
             }

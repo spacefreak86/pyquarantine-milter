@@ -137,10 +137,11 @@ class HeaderRule:
             if self.header.search("{}: {}".format(name, value)):
                 if self._action == "del":
                     # set an empty value to delete the header
-                    value = ""
+                    new_value = ""
                 else:
-                    value = self.search.sub(self.value, value)
-                modified.append((name, value, index, occurrences[name]))
+                    new_value = self.search.sub(self.value, value)
+                if value != new_value:
+                    modified.append((name, new_value, index, occurrences[name]))
             index += 1
         return modified
 

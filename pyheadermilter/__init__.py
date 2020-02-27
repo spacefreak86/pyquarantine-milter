@@ -26,6 +26,7 @@ import sys
 
 from Milter.utils import parse_addr
 from email.message import EmailMessage
+from email.parser import HeaderParser
 from email.policy import default as default_policy
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 
@@ -136,11 +137,10 @@ class HeaderRule:
                     # set an empty value to delete the header
                     new_value = ""
                 else:
-                    str(hdr).split(": ", 1)[1].strip()
                     new_value = self.search.sub(self.value, value)
                 if value != new_value:
                     hdr = EmailMessage(policy=default_policy)
-                    hdr[name] = new_value
+                    hdr.add_header(name, new_value)
                     modified.append((name, hdr, index, occurrences[name]))
             index += 1
         return modified
@@ -196,8 +196,9 @@ class HeaderMilter(Milter.Base):
     def header(self, name, value):
         # remove surrogates from value
         value = value.encode(errors="surrogateescape").decode(errors="replace")
-        hdr = EmailMessage(policy=default_policy)
-        hdr[name] = value
+        self.logger.debug(f"{self.queueid}: received header: {name}: {value}")
+        hdr = HeaderParser(policy=default_policy).parsestr(f"{name}: {value}")
+        self.logger.debug(f"{self.queueid}: decoded header: {name}: {hdr[name]}")
         self.headers.append((name, hdr))
         return Milter.CONTINUE
 
@@ -209,7 +210,7 @@ class HeaderMilter(Milter.Base):
 
                 for name, hdr, index, occurrence in modified:
                     value = hdr[name]
-                    encoded_value = bytes(header).decode().split(": ")[1].rstrip()
+                    encoded_value = hdr.as_string().split(": ")[1].rstrip()
                     mod_header = "{}: {}".format(name, value)
                     if rule.action == "add":
                         if rule.log:

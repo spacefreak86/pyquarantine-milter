@@ -25,6 +25,8 @@ import re
 import sys
 
 from Milter.utils import parse_addr
+from email.message import EmailMessage
+from email.policy import default as default_policy
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 
 
@@ -34,7 +36,7 @@ class HeaderRule:
     def __init__(self, name, action, header, search="", value="", ignore_hosts=[], ignore_envfrom=None, only_hosts=[], log=True):
         self.logger = logging.getLogger(__name__)
         self.name = name
-        self._action = action
+        self.action = action
         self.header = header
         self.search = search
         self.value = value
@@ -79,12 +81,6 @@ class HeaderRule:
         except AddrFormatError as e:
             raise RuntimeError("unable to parse option 'only_hosts' of rule '{}': {}".format(name, e))
 
-    def get_action(self):
-        return self._action
-
-    def log_modification(self):
-        return self.log
-
     def ignore_host(self, host):
         ip = IPAddress(host)
         ignore = False
@@ -118,7 +114,7 @@ class HeaderRule:
 
     def execute(self, headers):
         """Execute rule on given headers and return list with modified headers."""
-        if self._action == "add":
+        if self.action == "add":
             return [(self.header, self.value, 0, 1)]
 
         modified = []
@@ -126,7 +122,7 @@ class HeaderRule:
         occurrences = {}
 
         # iterate headers
-        for name, value in headers:
+        for name, hdr in headers:
             # keep track of the occurrence of each header, needed by Milter.Base.chgheader
             if name not in occurrences.keys():
                 occurrences[name] = 1
@@ -134,14 +130,18 @@ class HeaderRule:
                 occurrences[name] += 1
 
             # check if header line matches regex
+            value = hdr[name]
             if self.header.search("{}: {}".format(name, value)):
-                if self._action == "del":
+                if self.action == "del":
                     # set an empty value to delete the header
                     new_value = ""
                 else:
+                    str(hdr).split(": ", 1)[1].strip()
                     new_value = self.search.sub(self.value, value)
                 if value != new_value:
-                    modified.append((name, new_value, index, occurrences[name]))
+                    hdr = EmailMessage(policy=default_policy)
+                    hdr[name] = new_value
+                    modified.append((name, hdr, index, occurrences[name]))
             index += 1
         return modified
 
@@ -194,7 +194,11 @@ class HeaderMilter(Milter.Base):
 
     @Milter.noreply
     def header(self, name, value):
-        self.headers.append((name, value.encode(errors="surrogateescape").decode(errors="replace")))
+        # remove surrogates from value
+        value = value.encode(errors="surrogateescape").decode(errors="replace")
+        hdr = EmailMessage(policy=default_policy)
+        hdr[name] = value
+        self.headers.append((name, hdr))
         return Milter.CONTINUE
 
     def eom(self):
@@ -202,36 +206,37 @@ class HeaderMilter(Milter.Base):
             for rule in self.rules:
                 self.logger.debug("{}: executing rule '{}'".format(self.queueid, rule.name))
                 modified = rule.execute(self.headers)
-                action = rule.get_action()
-                log = rule.log_modification()
 
-                for name, value, index, occurrence in modified:
+                for name, hdr, index, occurrence in modified:
+                    value = hdr[name]
+                    encoded_value = bytes(header).decode().split(": ")[1].rstrip()
                     mod_header = "{}: {}".format(name, value)
-                    if action == "add":
-                        if log:
+                    if rule.action == "add":
+                        if rule.log:
                             self.logger.info("{}: add: header: {}".format(self.queueid, mod_header[0:70]))
                         else:
                             self.logger.debug("{}: add: header: {}".format(self.queueid, mod_header))
-
-                        self.headers.insert(0, (name, value))
-                        self.addheader(name, value, 1)
+                        self.headers.insert(0, (name, hdr))
+                        self.addheader(name, encoded_value, 1)
                     else:
-                        if action == "mod":
-                            old_header = "{}: {}".format(name, self.headers[index][1])
-                            if log:
+                        if rule.action == "mod":
+                            old_value = self.headers[index][1][name]
+                            old_header = "{}: {}".format(name, old_value)
+                            if rule.log:
                                 self.logger.info("{}: modify: header: {}: {}".format(
                                     self.queueid, old_header[0:70], mod_header[0:70]))
                             else:
                                 self.logger.debug("{}: modify: header (occ. {}): {}: {}".format(
                                     self.queueid, occurrence, old_header, mod_header))
-                            self.headers[index] = (name, value)
-                        elif action == "del":
-                            if log:
+                            self.headers[index] = (name, hdr)
+                        elif rule.action == "del":
+                            if rule.log:
                                 self.logger.info("{}: delete: header: {}".format(self.queueid, mod_header[0:70]))
                             else:
                                 self.logger.debug("{}: delete: header (occ. {}): {}".format(self.queueid, occurrence, mod_header))
                             del self.headers[index]
-                        self.chgheader(name, occurrence, value)
+
+                        self.chgheader(name, occurrence, encoded_value)
             return Milter.ACCEPT
         except Exception as e:
             self.logger.exception("an exception occured in eom function: {}".format(e))

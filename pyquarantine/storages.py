@@ -31,7 +31,7 @@ class BaseMailStorage(object):
         self.name = name
         self.logger = logging.getLogger(__name__)
 
-    def add(self, queueid, mailfrom, recipients, headers,
+    def add(self, qid, mailfrom, recipients, headers,
             fp, subgroups=None, named_subgroups=None):
         "Add email to storage."
         fp.seek(0)
@@ -73,16 +73,14 @@ class FileMailStorage(BaseMailStorage):
                 cfg[opt] = defaults[opt]
             else:
                 raise RuntimeError(
-                    "mandatory option '{}' not present in config section '{}' or 'global'".format(
-                        opt, self.name))
+                    f"mandatory option '{opt}' not present in config section '{self.name}' or 'global'")
         self.directory = cfg["storage_directory"]
 
         # check if quarantine directory exists and is writable
         if not os.path.isdir(self.directory) or not os.access(
                 self.directory, os.W_OK):
             raise RuntimeError(
-                "file quarantine directory '{}' does not exist or is not writable".format(
-                    self.directory))
+                f"file quarantine directory '{self.directory}' does not exist or is not writable")
         self._metadata_suffix = ".metadata"
 
     def _save_datafile(self, storage_id, fp):
@@ -91,47 +89,46 @@ class FileMailStorage(BaseMailStorage):
             with open(datafile, "wb") as f:
                 copyfileobj(fp, f)
         except IOError as e:
-            raise RuntimeError("unable save data file: {}".format(e))
+            raise RuntimeError(f"unable save data file: {e}")
 
     def _save_metafile(self, storage_id, metadata):
         metafile = os.path.join(
-            self.directory, "{}{}".format(
-                storage_id, self._metadata_suffix))
+            self.directory, f"{storage_id}{self._metadata_suffix}")
         try:
             with open(metafile, "w") as f:
                 json.dump(metadata, f, indent=2)
         except IOError as e:
-            raise RuntimeError("unable to save metadata file: {}".format(e))
+            raise RuntimeError(f"unable to save metadata file: {e}")
 
     def _remove(self, storage_id):
         datafile = os.path.join(self.directory, storage_id)
-        metafile = "{}{}".format(datafile, self._metadata_suffix)
+        metafile = f"{datafile}{self._metadata_suffix}"
 
         try:
             os.remove(metafile)
         except IOError as e:
-            raise RuntimeError("unable to remove metadata file: {}".format(e))
+            raise RuntimeError(f"unable to remove metadata file: {e}")
 
         try:
             os.remove(datafile)
         except IOError as e:
-            raise RuntimeError("unable to remove data file: {}".format(e))
+            raise RuntimeError(f"unable to remove data file: {e}")
 
-    def add(self, queueid, mailfrom, recipients, headers,
+    def add(self, qid, mailfrom, recipients, headers,
             fp, subgroups=None, named_subgroups=None):
         "Add email to file storage and return storage id."
         super(
             FileMailStorage,
             self).add(
-            queueid,
+            qid,
             mailfrom,
             recipients,
             headers,
             fp,
             subgroups,
             named_subgroups)
-        storage_id = "{}_{}".format(
-            datetime.now().strftime("%Y%m%d%H%M%S"), queueid)
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        storage_id = f"{timestamp}_{qid}"
 
         # save mail
         self._save_datafile(storage_id, fp)
@@ -142,7 +139,7 @@ class FileMailStorage(BaseMailStorage):
             "recipients": recipients,
             "headers": headers,
             "date": timegm(gmtime()),
-            "queue_id": queueid,
+            "queue_id": qid,
             "subgroups": subgroups,
             "named_subgroups": named_subgroups
         }
@@ -160,21 +157,19 @@ class FileMailStorage(BaseMailStorage):
         super(FileMailStorage, self).get_metadata(storage_id)
 
         metafile = os.path.join(
-            self.directory, "{}{}".format(
-                storage_id, self._metadata_suffix))
+            self.directory, f"{storage_id}{self._metadata_suffix}")
         if not os.path.isfile(metafile):
             raise RuntimeError(
-                "invalid storage id '{}'".format(storage_id))
+                f"invalid storage id '{storage_id}'")
 
         try:
             with open(metafile, "r") as f:
                 metadata = json.load(f)
         except IOError as e:
-            raise RuntimeError("unable to read metadata file: {}".format(e))
+            raise RuntimeError(f"unable to read metadata file: {e}")
         except json.JSONDecodeError as e:
             raise RuntimeError(
-                "invalid meta file '{}': {}".format(
-                    metafile, e))
+                f"invalid metafile '{metafile}': {e}")
 
         return metadata
 
@@ -188,7 +183,7 @@ class FileMailStorage(BaseMailStorage):
 
         emails = {}
         metafiles = glob(os.path.join(
-            self.directory, "*{}".format(self._metadata_suffix)))
+            self.directory, f"*{self._metadata_suffix}"))
         for metafile in metafiles:
             if not os.path.isfile(metafile):
                 continue
@@ -222,7 +217,7 @@ class FileMailStorage(BaseMailStorage):
         try:
             metadata = self.get_metadata(storage_id)
         except RuntimeError as e:
-            raise RuntimeError("unable to delete email: {}".format(e))
+            raise RuntimeError(f"unable to delete email: {e}")
 
         if not recipients:
             self._remove(storage_id)
@@ -231,7 +226,7 @@ class FileMailStorage(BaseMailStorage):
                 recipients = [recipients]
             for recipient in recipients:
                 if recipient not in metadata["recipients"]:
-                    raise RuntimeError("invalid recipient '{}'".format(recipient))
+                    raise RuntimeError(f"invalid recipient '{recipient}'")
                 metadata["recipients"].remove(recipient)
                 if not metadata["recipients"]:
                     self._remove(storage_id)
@@ -246,7 +241,7 @@ class FileMailStorage(BaseMailStorage):
         try:
             fp = open(datafile, "rb")
         except IOError as e:
-            raise RuntimeError("unable to open email data file: {}".format(e))
+            raise RuntimeError(f"unable to open email data file: {e}")
         return (fp, metadata)
 
 

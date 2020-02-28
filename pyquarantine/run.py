@@ -52,7 +52,7 @@ def main():
         "-v", "--version",
         help="Print version.",
         action="version",
-        version="%(prog)s ({})".format(version))
+        version=f"%(prog)s ({version})")
     args = parser.parse_args()
 
     # setup logging
@@ -61,8 +61,8 @@ def main():
     syslog_name = logname
     if args.debug:
         loglevel = logging.DEBUG
-        logname = "{}[%(name)s]".format(logname)
-        syslog_name = "{}: [%(name)s] %(levelname)s".format(syslog_name)
+        logname = f"{logname}[%(name)s]"
+        syslog_name = f"{syslog_name}: [%(name)s] %(levelname)s"
 
     # set config files for milter class
     pyquarantine.QuarantineMilter.set_cfg_files(args.config)
@@ -72,7 +72,7 @@ def main():
     # setup console log
     stdouthandler = logging.StreamHandler(sys.stdout)
     stdouthandler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(message)s".format(logname))
+    formatter = logging.Formatter("%(message)s")
     stdouthandler.setFormatter(formatter)
     root_logger.addHandler(stdouthandler)
     logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ def main():
         else:
             sys.exit(0)
     formatter = logging.Formatter(
-        "%(asctime)s {}: [%(levelname)s] %(message)s".format(logname),
+        f"%(asctime)s {logname}: [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S")
     stdouthandler.setFormatter(formatter)
 
@@ -94,7 +94,7 @@ def main():
     sysloghandler = logging.handlers.SysLogHandler(
         address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
     sysloghandler.setLevel(loglevel)
-    formatter = logging.Formatter("{}: %(message)s".format(syslog_name))
+    formatter = logging.Formatter(f"{syslog_name}: %(message)s")
     sysloghandler.setFormatter(formatter)
     root_logger.addHandler(sysloghandler)
 

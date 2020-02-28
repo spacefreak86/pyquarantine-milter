@@ -45,23 +45,21 @@ def mailprocess():
             if not m:
                 break
 
-            smtp_host, smtp_port, queueid, mailfrom, recipient, mail, emailtype = m
+            smtp_host, smtp_port, qid, mailfrom, recipient, mail, emailtype = m
             try:
                 smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail)
             except Exception as e:
                 logger.error(
-                    "{}: error while sending {} to '{}': {}".format(
-                        queueid, emailtype, recipient, e))
+                    f"{qid}: error while sending {emailtype} to '{recipient}': {e}")
             else:
                 logger.info(
-                    "{}: successfully sent {} to: {}".format(
-                        queueid, emailtype, recipient))
+                    f"{qid}: successfully sent {emailtype} to: {recipient}")
     except KeyboardInterrupt:
         pass
     logger.debug("mailer process terminated")
 
 
-def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail,
+def sendmail(smtp_host, smtp_port, qid, mailfrom, recipients, mail,
              emailtype="email"):
     "Send an email."
     global logger
@@ -81,7 +79,7 @@ def sendmail(smtp_host, smtp_port, queueid, mailfrom, recipients, mail,
     for recipient in recipients:
         try:
             queue.put(
-                (smtp_host, smtp_port, queueid, mailfrom, recipient, mail,
+                (smtp_host, smtp_port, qid, mailfrom, recipient, mail,
                  emailtype),
                 timeout=30)
         except Queue.Full as e:

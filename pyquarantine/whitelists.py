@@ -97,8 +97,7 @@ class DatabaseWhitelist(WhitelistBase):
                 cfg[opt] = defaults[opt]
             else:
                 raise RuntimeError(
-                    "mandatory option '{}' not present in config section '{}' or 'global'".format(
-                        opt, self.name))
+                    f"mandatory option '{opt}' not present in config section '{self.name}' or 'global'")
 
         tablename = cfg["whitelist_db_table"]
         connection_string = cfg["whitelist_db_connection"]
@@ -108,16 +107,16 @@ class DatabaseWhitelist(WhitelistBase):
         else:
             try:
                 # connect to database
+                conn = re.sub(
+                    r"(.*?://.*?):.*?(@.*)",
+                    r"\1:<PASSWORD>\2",
+                    connection_string)
                 self.logger.debug(
-                    "connecting to database '{}'".format(
-                        re.sub(
-                            r"(.*?://.*?):.*?(@.*)",
-                            r"\1:<PASSWORD>\2",
-                            connection_string)))
+                    f"connecting to database '{conn}'")
                 db = connect(connection_string)
             except Exception as e:
                 raise RuntimeError(
-                    "unable to connect to database: {}".format(e))
+                    f"unable to connect to database: {e}")
 
             DatabaseWhitelist._db_connections[connection_string] = db
 
@@ -125,7 +124,7 @@ class DatabaseWhitelist(WhitelistBase):
         self.meta = Meta
         self.meta.database = db
         self.meta.table_name = tablename
-        self.model = type("WhitelistModel_{}".format(self.name), (WhitelistModel,), {
+        self.model = type(f"WhitelistModel_{self.name}", (WhitelistModel,), {
             "Meta": self.meta
         })
 
@@ -139,8 +138,7 @@ class DatabaseWhitelist(WhitelistBase):
                     db.create_tables([self.model])
                 except Exception as e:
                     raise RuntimeError(
-                        "unable to initialize table '{}': {}".format(
-                            tablename, e))
+                        f"unable to initialize table '{tablename}': {e}")
 
     def _entry_to_dict(self, entry):
         result = {}
@@ -170,17 +168,18 @@ class DatabaseWhitelist(WhitelistBase):
 
         # generate list of possible mailfroms
         self.logger.debug(
-            "query database for whitelist entries from <{}> to <{}>".format(
-                mailfrom, recipient))
+            f"query database for whitelist entries from <{mailfrom}> to <{recipient}>")
         mailfroms = [""]
         if "@" in mailfrom and not mailfrom.startswith("@"):
-            mailfroms.append("@{}".format(mailfrom.split("@")[1]))
+            domain = mailfrom.split("@")[1]
+            mailfroms.append(f"@{domain}")
         mailfroms.append(mailfrom)
 
         # generate list of possible recipients
         recipients = [""]
         if "@" in recipient and not recipient.startswith("@"):
-            recipients.append("@{}".format(recipient.split("@")[1]))
+            domain = recipient.split("@")[1]
+            recipients.append(f"@{domain}")
         recipients.append(recipient)
 
         # query the database
@@ -190,7 +189,7 @@ class DatabaseWhitelist(WhitelistBase):
                     self.model.mailfrom.in_(mailfroms),
                     self.model.recipient.in_(recipients)))
         except Exception as e:
-            raise RuntimeError("unable to query database: {}".format(e))
+            raise RuntimeError(f"unable to query database: {e}")
 
         if not entries:
             # no whitelist entry found
@@ -235,7 +234,7 @@ class DatabaseWhitelist(WhitelistBase):
 
                 entries.update(self._entry_to_dict(entry))
         except Exception as e:
-            raise RuntimeError("unable to query database: {}".format(e))
+            raise RuntimeError(f"unable to query database: {e}")
 
         return entries
 
@@ -256,7 +255,7 @@ class DatabaseWhitelist(WhitelistBase):
                 comment=comment,
                 permanent=permanent)
         except Exception as e:
-            raise RuntimeError("unable to add entry to database: {}".format(e))
+            raise RuntimeError(f"unable to add entry to database: {e}")
 
     def delete(self, whitelist_id):
         "Delete entry from whitelist."
@@ -267,7 +266,7 @@ class DatabaseWhitelist(WhitelistBase):
             deleted = query.execute()
         except Exception as e:
             raise RuntimeError(
-                "unable to delete entry from database: {}".format(e))
+                f"unable to delete entry from database: {e}")
 
         if deleted == 0:
             raise RuntimeError("invalid whitelist id")

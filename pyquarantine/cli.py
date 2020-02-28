@@ -20,17 +20,16 @@ import logging.handlers
 import sys
 import time
 
-from email.header import decode_header, make_header
+from email.header import decode_header
 
-import pyquarantine
-
+from pyquarantine import QuarantineMilter, setup_milter
 from pyquarantine.version import __version__ as version
 
 def _get_quarantine(quarantines, name):
     try:
         quarantine = next((q for q in quarantines if q.name == name))
     except StopIteration:
-        raise RuntimeError("invalid quarantine '{}'".format(name))
+        raise RuntimeError(f"invalid quarantine 'name'")
     return quarantine
 
 def _get_storage(quarantines, name):
@@ -74,7 +73,7 @@ def print_table(columns, rows):
         # use the longer one
         length = max(lengths)
         column_lengths.append(length)
-        column_formats.append("{{:<{}}}".format(length))
+        column_formats.append(f"{{:<{length}}}")
 
     # define row format
     row_format = " | ".join(column_formats)
@@ -156,9 +155,7 @@ def list_quarantine_emails(quarantines, args):
         row["recipient"] = metadata["recipients"].pop(0)
         if "subject" not in emails[storage_id]["headers"].keys():
             emails[storage_id]["headers"]["subject"] = ""
-        row["subject"] = str(make_header(decode_header(
-            emails[storage_id]["headers"]["subject"])))[:60].replace(
-                "\r", "").replace("\n", "").strip()
+        row["subject"] = emails[storage_id]["headers"]["subject"][:60].strip()
         rows.append(row)
 
         if metadata["recipients"]:
@@ -177,7 +174,7 @@ def list_quarantine_emails(quarantines, args):
         return
 
     if not emails:
-        logger.info("quarantine '{}' is empty".format(args.quarantine))
+        logger.info(f"quarantine '{args.quarantine}' is empty")
     print_table(
         [("Quarantine-ID", "storage_id"), ("Date", "date"),
          ("From", "mailfrom"), ("Recipient(s)", "recipient"),
@@ -197,8 +194,7 @@ def list_whitelist(quarantines, args):
         older_than=args.older_than)
     if not entries:
         logger.info(
-            "whitelist of quarantine '{}' is empty".format(
-                args.quarantine))
+            f"whitelist of quarantine '{args.quarantine}' is empty")
         return
 
     # transform some values to strings
@@ -309,7 +305,7 @@ def main():
         "-c", "--config",
         help="Config files to read.",
         nargs="+", metavar="CFG",
-        default=pyquarantine.QuarantineMilter.get_cfg_files())
+        default=QuarantineMilter.get_cfg_files())
     parser.add_argument(
         "-d", "--debug",
         help="Log debugging messages.",
@@ -318,7 +314,7 @@ def main():
         "-v", "--version",
         help="Print version.",
         action="version",
-        version="%(prog)s ({})".format(version))
+        version=f"%(prog)s ({version})")
     parser.set_defaults(syslog=False)
     subparsers = parser.add_subparsers(
         dest="command",
@@ -563,7 +559,7 @@ def main():
 
     # try to generate milter configs
     try:
-        pyquarantine.setup_milter(
+        setup_milter(
             cfg_files=args.config, test=True)
     except RuntimeError as e:
         logger.error(e)
@@ -585,7 +581,7 @@ def main():
 
     # call the commands function
     try:
-        args.func(pyquarantine.QuarantineMilter.quarantines, args)
+        args.func(QuarantineMilter.quarantines, args)
     except RuntimeError as e:
         logger.error(e)
         sys.exit(1)

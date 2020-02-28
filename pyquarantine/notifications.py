@@ -263,7 +263,7 @@ class EMailNotification(BaseNotification):
         # completly remove bad elements
         for element in soup(EMailNotification._bad_tags):
             self.logger.debug(
-                f"{qid}: removing dangerous tag '{element_name}' and its content")
+                f"{qid}: removing dangerous tag '{element.name}' and its content")
             element.extract()
 
         # remove not whitelisted elements, but keep their content

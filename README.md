@@ -8,7 +8,7 @@ Each quarantine can be configured with a quarantine type, notification type, whi
 
 Addionally, pyquarantine-milter provides a sanitized, harmless version of the text parts of e-mails, which can be embedded in e-mail notifications. This makes it easier for users to decide, if a match is a false-positive or not. If a matching quarantine provides a quarantine ID of the original e-mail, it is also available as a template variable. This is useful if you want to add links to a webservice to notification e-mails, to give your users the ability to release e-mails or whitelist the from-address for example. The webservice then releases the e-mail from the quarantine.
 
-The project is currently in alpha status, but will soon be used in a productive enterprise environment and possibly existing bugs will be fixed.
+The project is currently in beta status, but it is already used in a productive enterprise environment which processes about a million e-mails per month.
 
 ## Requirements
 * pymilter <https://pythonhosted.org/pymilter/>

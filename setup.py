@@ -32,5 +32,5 @@ setup(name = "pyheadermilter",
         ]
     },
     install_requires = ["pymilter", "netaddr"],
-    python_requires = ">=3"
+    python_requires = ">=3.6"
 )

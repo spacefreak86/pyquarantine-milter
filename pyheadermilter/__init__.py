@@ -210,7 +210,8 @@ class HeaderMilter(Milter.Base):
 
                 for name, hdr, index, occurrence in modified:
                     value = hdr[name]
-                    encoded_value = hdr.as_string().split(": ")[1].rstrip()
+                    # remove illegal characters, pymilter does not like them
+                    encoded_value = hdr.as_string().replace("\r", "").replace("\n", "").replace("\x00", "").split(":", 1)[1].strip()
                     mod_header = "{}: {}".format(name, value)
                     if rule.action == "add":
                         if rule.log:

@@ -5,7 +5,7 @@ def read_file(fname):
         return f.read()
 
 setup(name = "pyheadermilter",
-    version = "0.0.3",
+    version = "0.0.4",
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",
@@ -19,7 +19,7 @@ setup(name = "pyheadermilter",
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: OS Independent",
         "Programming Language :: Python",

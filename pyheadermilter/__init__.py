@@ -33,7 +33,8 @@ class HeaderRule:
     """HeaderRule to implement a rule to apply on e-mail headers."""
 
     def __init__(self, name, action, header, search="", value="",
-                 ignore_hosts=[], ignore_envfrom=None, only_hosts=[], log=True):
+                 ignore_hosts=[], ignore_envfrom=None, only_hosts=[],
+                 log=True):
         self.logger = logging.getLogger(__name__)
         self.name = name
         self.action = action
@@ -61,7 +62,8 @@ class HeaderRule:
                         search, re.MULTILINE + re.DOTALL + re.IGNORECASE)
                 except re.error as e:
                     raise RuntimeError(
-                        f"unable to parse option 'search' of rule '{name}': {e}")
+                        f"unable to parse option 'search' of "
+                        f"rule '{name}': {e}")
 
         if action in ["add", "mod"] and not value:
             raise RuntimeError("value of option 'value' is empty")
@@ -80,7 +82,8 @@ class HeaderRule:
                 self.ignore_envfrom = re.compile(ignore_envfrom, re.IGNORECASE)
             except re.error as e:
                 raise RuntimeError(
-                    f"unable to parse option 'ignore_envfrom' of rule '{name}': {e}")
+                    f"unable to parse option 'ignore_envfrom' of "
+                    f"rule '{name}': {e}")
 
         try:
             for index, only in enumerate(only_hosts):
@@ -122,7 +125,10 @@ class HeaderRule:
         return ignore
 
     def execute(self, headers):
-        """Execute rule on given headers and return list with modified headers."""
+        """
+        Execute rule on given headers and return list
+        with modified headers.
+        """
         if self.action == "add":
             return [(self.header, self.value, 0, 1)]
 
@@ -139,14 +145,18 @@ class HeaderRule:
             else:
                 occurrences[name] += 1
 
-            # check if header line matches regex
             value = header[name]
+            # check if header line matches regex
             if self.header.search(f"{name}: {value}"):
                 if self.action == "del":
                     # set an empty value to delete the header
                     new_value = ""
                 else:
-                    new_value = self.search.sub(self.value, value)
+                    # Remove line breaks from new_value, EmailMessage object
+                    # does not like them
+                    new_value = self.search.sub(self.value, value).replace(
+                            "\n", "").replace(
+                            "\r", "")
                 if value != new_value:
                     header = EmailMessage(policy=default_policy)
                     header.add_header(name, new_value)
@@ -171,7 +181,8 @@ class HeaderMilter(Milter.Base):
 
     def connect(self, IPname, family, hostaddr):
         self.logger.debug(
-            f"accepted milter connection from {hostaddr[0]} port {hostaddr[1]}")
+            f"accepted milter connection from {hostaddr[0]} "
+            f"port {hostaddr[1]}")
         ip = IPAddress(hostaddr[0])
 
         # remove rules which ignore this host
@@ -181,7 +192,8 @@ class HeaderMilter(Milter.Base):
 
         if not self.rules:
             self.logger.debug(
-                f"host {hostaddr[0]} is ignored by all rules, skip further processing")
+                f"host {hostaddr[0]} is ignored by all rules, "
+                f"skip further processing")
             return Milter.ACCEPT
         return Milter.CONTINUE
 
@@ -193,7 +205,8 @@ class HeaderMilter(Milter.Base):
 
         if not self.rules:
             self.logger.debug(
-                f"mail from {mailfrom} is ignored by all rules, skip further processing")
+                f"mail from {mailfrom} is ignored by all rules, "
+                f"skip further processing")
             return Milter.ACCEPT
         return Milter.CONTINUE
 
@@ -245,24 +258,31 @@ class HeaderMilter(Milter.Base):
                             old_value = self.headers[index][1][name]
                             old_header = f"{name}: {old_value}"
                             if rule.log:
-                                self.logger.info(f"{self.qid}: modify: header: {old_header[0:70]}: {mod_header[0:70]}")
+                                self.logger.info(
+                                    f"{self.qid}: modify: header: "
+                                    f"{old_header[0:70]}: {mod_header[0:70]}")
                             else:
                                 self.logger.debug(
-                                    f"{self.qid}: modify: header (occ. {occurrence}): {old_header}: {mod_header}")
+                                    f"{self.qid}: modify: header "
+                                    f"(occ. {occurrence}): {old_header}: "
+                                    f"{mod_header}")
                             self.headers[index] = (name, header)
                         elif rule.action == "del":
                             if rule.log:
                                 self.logger.info(
-                                    f"{self.qid}: delete: header: {mod_header[0:70]}")
+                                    f"{self.qid}: delete: header: "
+                                    f"{mod_header[0:70]}")
                             else:
                                 self.logger.debug(
-                                    f"{self.qid}: delete: header (occ. {occurrence}): {mod_header}")
+                                    f"{self.qid}: delete: header "
+                                    f"(occ. {occurrence}): {mod_header}")
                             del self.headers[index]
 
                         self.chgheader(name, occurrence, enc_value)
             return Milter.ACCEPT
         except Exception as e:
-            self.logger.exception(f"an exception occured in eom function: {e}")
+            self.logger.exception(
+                f"an exception occured in eom function: {e}")
             return Milter.TEMPFAIL
 
 
@@ -327,7 +347,8 @@ def main():
         for option in ["rules"]:
             if not parser.has_option("global", option):
                 raise RuntimeError(
-                    f"mandatory option '{option}' not present in config section 'global'")
+                    f"mandatory option '{option}' not present in config "
+                    f"section 'global'")
 
         # read global config section
         global_config = dict(parser.items("global"))
@@ -336,11 +357,13 @@ def main():
         active_rules = [r.strip() for r in global_config["rules"].split(",")]
         if len(active_rules) != len(set(active_rules)):
             raise RuntimeError(
-                "at least one rule is specified multiple times in 'rules' option")
+                "at least one rule is specified multiple times "
+                "in 'rules' option")
         if "global" in active_rules:
             active_rules.remove("global")
             logger.warning(
-                "removed illegal rule name 'global' from list of active rules")
+                "removed illegal rule name 'global' from list of "
+                "active rules")
         if not active_rules:
             raise RuntimeError("no rules configured")
 
@@ -361,7 +384,8 @@ def main():
                 config[option] = global_config[option]
             if option not in config.keys():
                 raise RuntimeError(
-                    f"mandatory option '{option}' not specified for rule '{rule_name}'")
+                    f"mandatory option '{option}' not specified for "
+                    f"rule '{rule_name}'")
             config["action"] = config["action"].lower()
             if config["action"] not in ["add", "del", "mod"]:
                 raise RuntimeError(
@@ -379,7 +403,8 @@ def main():
                     config[option] = global_config[option]
                 if option not in config.keys():
                     raise RuntimeError(
-                        f"mandatory option '{option}' not specified for rule '{rule_name}'")
+                        f"mandatory option '{option}' not specified for "
+                        f"rule '{rule_name}'")
 
             # check if optional config options are present in config
             defaults = {
@@ -395,11 +420,11 @@ def main():
                 if option not in config.keys():
                     config[option] = defaults[option]
             if config["ignore_hosts"]:
-                config["ignore_hosts"] = [h.strip()
-                                          for h in config["ignore_hosts"].split(",")]
+                config["ignore_hosts"] = [
+                    h.strip() for h in config["ignore_hosts"].split(",")]
             if config["only_hosts"]:
-                config["only_hosts"] = [h.strip()
-                                        for h in config["only_hosts"].split(",")]
+                config["only_hosts"] = [
+                    h.strip() for h in config["only_hosts"].split(",")]
             config["log"] = config["log"].lower()
             if config["log"] == "true":
                 config["log"] = True
@@ -407,7 +432,8 @@ def main():
                 config["log"] = False
             else:
                 raise RuntimeError(
-                    f"invalid value specified for option 'log' for rule '{rule_name}'")
+                    f"invalid value specified for option 'log' for "
+                    f"rule '{rule_name}'")
 
             # add rule
             logging.debug(f"adding rule '{rule_name}'")

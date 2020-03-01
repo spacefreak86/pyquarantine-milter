@@ -612,7 +612,7 @@ def setup_milter(test=False, cfg_files=[]):
     if "global" not in parser.sections():
         raise RuntimeError(
             "mandatory section 'global' not present in config file")
-    for option in ["quarantines", "preferred_action"]:
+    for option in ["quarantines", "preferred_quarantine_action"]:
         if not parser.has_option("global", option):
             raise RuntimeError(
                 f"mandatory option '{option}' not present in config "

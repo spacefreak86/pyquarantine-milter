@@ -200,10 +200,9 @@ class EMailNotification(BaseNotification):
             self.replacement_img = None
 
         # read images to embed if specified
-        embedded_img_paths = []
-        for p in cfg["notification_email_embedded_imgs"].split(","):
-            if p:
-                embedded_img_paths.append(p.strip())
+        embedded_img_paths = [
+            p.strip() for p in cfg["notification_email_embedded_imgs"].split(
+                ",") if p]
         self.embedded_imgs = []
         for img_path in embedded_img_paths:
             # read image

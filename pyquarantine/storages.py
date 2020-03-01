@@ -73,14 +73,16 @@ class FileMailStorage(BaseMailStorage):
                 cfg[opt] = defaults[opt]
             else:
                 raise RuntimeError(
-                    f"mandatory option '{opt}' not present in config section '{self.name}' or 'global'")
+                    f"mandatory option '{opt}' not present in config "
+                    f"section '{self.name}' or 'global'")
         self.directory = cfg["storage_directory"]
 
         # check if quarantine directory exists and is writable
         if not os.path.isdir(self.directory) or not os.access(
                 self.directory, os.W_OK):
             raise RuntimeError(
-                f"file quarantine directory '{self.directory}' does not exist or is not writable")
+                f"file quarantine directory '{self.directory}' does "
+                f"not exist or is not writable")
         self._metadata_suffix = ".metadata"
 
     def _save_datafile(self, storage_id, fp):
@@ -203,7 +205,8 @@ class FileMailStorage(BaseMailStorage):
                 if len(recipients) == 1 and \
                         recipients[0] not in metadata["recipients"]:
                     continue
-                elif len(set(recipients + metadata["recipients"])) == len(recipients + metadata["recipients"]):
+                elif len(set(recipients + metadata["recipients"])) == \
+                        len(recipients + metadata["recipients"]):
                     continue
 
             emails[storage_id] = metadata

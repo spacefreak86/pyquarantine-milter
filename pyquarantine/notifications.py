@@ -20,7 +20,6 @@ from bs4 import BeautifulSoup
 from cgi import escape
 from collections import defaultdict
 from email import policy
-from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -136,7 +135,8 @@ class EMailNotification(BaseNotification):
                 cfg[opt] = defaults[opt]
             else:
                 raise RuntimeError(
-                    f"mandatory option '{opt}' not present in config section '{self.name}' or 'global'")
+                    f"mandatory option '{opt}' not present in config "
+                    f"section '{self.name}' or 'global'")
 
         self.smtp_host = cfg["notification_email_smtp_host"]
         self.smtp_port = cfg["notification_email_smtp_port"]
@@ -176,11 +176,13 @@ class EMailNotification(BaseNotification):
         elif strip_images in ["FALSE", "OFF", "NO"]:
             self.strip_images = False
         else:
-            raise RuntimeError("error parsing notification_email_strip_images: unknown value")
+            raise RuntimeError(
+                "error parsing notification_email_strip_images: unknown value")
 
         self.parser_lib = cfg["notification_email_parser_lib"].strip()
         if self.parser_lib not in ["lxml", "html.parser"]:
-            raise RuntimeError("error parsing notification_email_parser_lib: unknown value")
+            raise RuntimeError(
+                "error parsing notification_email_parser_lib: unknown value")
 
         # read email replacement image if specified
         replacement_img = cfg["notification_email_replacement_img"].strip()
@@ -198,8 +200,10 @@ class EMailNotification(BaseNotification):
             self.replacement_img = None
 
         # read images to embed if specified
-        embedded_img_paths = [
-            p.strip() for p in cfg["notification_email_embedded_imgs"].split(",") if p]
+        embedded_img_paths = []
+        for p in cfg["notification_email_embedded_imgs"].split(","):
+            if p:
+                embedded_img_paths.append(p.strip())
         self.embedded_imgs = []
         for img_path in embedded_img_paths:
             # read image
@@ -219,7 +223,9 @@ class EMailNotification(BaseNotification):
         try:
             body = msg.get_body(preferencelist=("html", "plain"))
         except Exception as e:
-            self.logger.error(f"{qid}: an error occured in email.message.EmailMessage.get_body: {e}")
+            self.logger.error(
+                f"{qid}: an error occured in "
+                f"email.message.EmailMessage.get_body: {e}")
             body = None
 
         if body:
@@ -228,13 +234,16 @@ class EMailNotification(BaseNotification):
             try:
                 content = content.decode(encoding=charset, errors="replace")
             except LookupError:
-                self.logger.info(f"{qid}: unknown encoding '{charset}', falling back to UTF-8")
+                self.logger.info(
+                    f"{qid}: unknown encoding '{charset}', "
+                    f"falling back to UTF-8")
                 content = content.decode("utf-8", errors="replace")
             content_type = body.get_content_type()
             if content_type == "text/plain":
                 # convert text/plain to text/html
                 self.logger.debug(
-                    f"{qid}: content type is {content_type}, converting to text/html")
+                    f"{qid}: content type is {content_type}, "
+                    f"converting to text/html")
                 content = re.sub(r"^(.*)$", r"\1<br/>",
                                  escape(content), flags=re.MULTILINE)
             else:
@@ -248,7 +257,8 @@ class EMailNotification(BaseNotification):
         # create BeautifulSoup object
         length = len(content)
         self.logger.debug(
-            f"{qid}: trying to create BeatufilSoup object with parser lib {self.parser_lib}, "
+            f"{qid}: trying to create BeatufilSoup object with "
+            f"parser lib {self.parser_lib}, "
             f"text length is {length} bytes")
         soup = BeautifulSoup(content, self.parser_lib)
         self.logger.debug(
@@ -263,7 +273,8 @@ class EMailNotification(BaseNotification):
         # completly remove bad elements
         for element in soup(EMailNotification._bad_tags):
             self.logger.debug(
-                f"{qid}: removing dangerous tag '{element.name}' and its content")
+                f"{qid}: removing dangerous tag '{element.name}' "
+                f"and its content")
             element.extract()
 
         # remove not whitelisted elements, but keep their content
@@ -279,11 +290,13 @@ class EMailNotification(BaseNotification):
                 if attribute not in EMailNotification._good_attributes:
                     if element.name == "a" and attribute == "href":
                         self.logger.debug(
-                            f"{qid}: setting attribute href to '#' on tag '{element.name}'")
+                            f"{qid}: setting attribute href to '#' "
+                            f"on tag '{element.name}'")
                         element["href"] = "#"
                     else:
                         self.logger.debug(
-                            f"{qid}: removing attribute '{attribute}' from tag '{element.name}'")
+                            f"{qid}: removing attribute '{attribute}' "
+                            f"from tag '{element.name}'")
                         del(element.attrs[attribute])
         return soup
 
@@ -338,16 +351,17 @@ class EMailNotification(BaseNotification):
             self.logger.debug(f"{qid}: parsing email template")
 
             # generate dict containing all template variables
-            variables = defaultdict(str,
-                                    EMAIL_HTML_TEXT=sanitized_text,
-                                    EMAIL_FROM=escape(headers["from"]),
-                                    EMAIL_ENVELOPE_FROM=escape(mailfrom),
-                                    EMAIL_ENVELOPE_FROM_URL=escape(quote(mailfrom)),
-                                    EMAIL_TO=escape(headers["to"]),
-                                    EMAIL_ENVELOPE_TO=escape(recipient),
-                                    EMAIL_ENVELOPE_TO_URL=escape(quote(recipient)),
-                                    EMAIL_SUBJECT=escape(headers["subject"]),
-                                    EMAIL_QUARANTINE_ID=storage_id)
+            variables = defaultdict(
+                    str,
+                    EMAIL_HTML_TEXT=sanitized_text,
+                    EMAIL_FROM=escape(headers["from"]),
+                    EMAIL_ENVELOPE_FROM=escape(mailfrom),
+                    EMAIL_ENVELOPE_FROM_URL=escape(quote(mailfrom)),
+                    EMAIL_TO=escape(headers["to"]),
+                    EMAIL_ENVELOPE_TO=escape(recipient),
+                    EMAIL_ENVELOPE_TO_URL=escape(quote(recipient)),
+                    EMAIL_SUBJECT=escape(headers["subject"]),
+                    EMAIL_QUARANTINE_ID=storage_id)
 
             if subgroups:
                 number = 0

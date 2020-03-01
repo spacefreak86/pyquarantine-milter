@@ -14,7 +14,6 @@
 
 import logging
 import smtplib
-import sys
 
 from multiprocessing import Process, Queue
 
@@ -50,7 +49,8 @@ def mailprocess():
                 smtp_send(smtp_host, smtp_port, mailfrom, recipient, mail)
             except Exception as e:
                 logger.error(
-                    f"{qid}: error while sending {emailtype} to '{recipient}': {e}")
+                    f"{qid}: error while sending {emailtype} "
+                    f"to '{recipient}': {e}")
             else:
                 logger.info(
                     f"{qid}: successfully sent {emailtype} to: {recipient}")
@@ -82,5 +82,5 @@ def sendmail(smtp_host, smtp_port, qid, mailfrom, recipients, mail,
                 (smtp_host, smtp_port, qid, mailfrom, recipient, mail,
                  emailtype),
                 timeout=30)
-        except Queue.Full as e:
+        except Queue.Full:
             raise RuntimeError("email queue is full")

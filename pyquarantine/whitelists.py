@@ -15,7 +15,6 @@
 import logging
 import peewee
 import re
-import sys
 
 from datetime import datetime
 from playhouse.db_url import connect
@@ -88,7 +87,8 @@ class DatabaseWhitelist(WhitelistBase):
         defaults = {}
 
         # check config
-        for opt in ["whitelist_db_connection", "whitelist_db_table"] + list(defaults.keys()):
+        for opt in ["whitelist_db_connection",
+                    "whitelist_db_table"] + list(defaults.keys()):
             if opt in cfg:
                 continue
             if opt in global_cfg:
@@ -97,7 +97,8 @@ class DatabaseWhitelist(WhitelistBase):
                 cfg[opt] = defaults[opt]
             else:
                 raise RuntimeError(
-                    f"mandatory option '{opt}' not present in config section '{self.name}' or 'global'")
+                    f"mandatory option '{opt}' not present in config "
+                    f"section '{self.name}' or 'global'")
 
         tablename = cfg["whitelist_db_table"]
         connection_string = cfg["whitelist_db_connection"]
@@ -168,7 +169,8 @@ class DatabaseWhitelist(WhitelistBase):
 
         # generate list of possible mailfroms
         self.logger.debug(
-            f"query database for whitelist entries from <{mailfrom}> to <{recipient}>")
+            f"query database for whitelist entries from <{mailfrom}> "
+            f"to <{recipient}>")
         mailfroms = [""]
         if "@" in mailfrom and not mailfrom.startswith("@"):
             domain = mailfrom.split("@")[1]
@@ -221,7 +223,8 @@ class DatabaseWhitelist(WhitelistBase):
         try:
             for entry in list(self.model.select()):
                 if older_than is not None:
-                    if (datetime.now() - entry.last_used).total_seconds() < (older_than * 86400):
+                    delta = (datetime.now() - entry.last_used).total_seconds()
+                    if delta < (older_than * 86400):
                         continue
 
                 if mailfrom is not None:
@@ -290,10 +293,11 @@ class WhitelistCache(object):
                 mailfrom, recipient)
         return self.cache[whitelist][recipient]
 
-    def get_whitelisted_recipients(self, whitelist, mailfrom, recipients):
+    def get_recipients(self, whitelist, mailfrom, recipients):
         self.load(whitelist, mailfrom, recipients)
-        return list(
-            filter(lambda x: self.cache[whitelist][x], self.cache[whitelist].keys()))
+        return list(filter(
+            lambda x: self.cache[whitelist][x],
+            self.cache[whitelist].keys()))
 
 
 # list of whitelist types and their related whitelist classes

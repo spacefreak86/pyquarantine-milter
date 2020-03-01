@@ -24,6 +24,7 @@ import pyquarantine
 
 from pyquarantine.version import __version__ as version
 
+
 def main():
     "Run PyQuarantine-Milter."
     # parse command line

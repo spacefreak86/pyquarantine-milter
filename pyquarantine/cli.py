@@ -20,10 +20,9 @@ import logging.handlers
 import sys
 import time
 
-from email.header import decode_header
-
 from pyquarantine import QuarantineMilter, setup_milter
 from pyquarantine.version import __version__ as version
+
 
 def _get_quarantine(quarantines, name):
     try:
@@ -31,6 +30,7 @@ def _get_quarantine(quarantines, name):
     except StopIteration:
         raise RuntimeError(f"invalid quarantine 'name'")
     return quarantine
+
 
 def _get_storage(quarantines, name):
     quarantine = _get_quarantine(quarantines, name)
@@ -40,6 +40,7 @@ def _get_storage(quarantines, name):
                 "storage type is set to NONE")
     return storage
 
+
 def _get_notification(quarantines, name):
     quarantine = _get_quarantine(quarantines, name)
     notification = quarantine.get_notification()
@@ -48,6 +49,7 @@ def _get_notification(quarantines, name):
                 "notification type is set to NONE")
     return notification
 
+
 def _get_whitelist(quarantines, name):
     quarantine = _get_quarantine(quarantines, name)
     whitelist = quarantine.get_whitelist()
@@ -55,6 +57,7 @@ def _get_whitelist(quarantines, name):
         raise RuntimeError(
                 "whitelist type is set to NONE")
     return whitelist
+
 
 def print_table(columns, rows):
     if not rows:

@@ -152,14 +152,12 @@ class HeaderRule:
                     # set an empty value to delete the header
                     new_value = ""
                 else:
-                    # Remove line breaks from new_value, EmailMessage object
-                    # does not like them
-                    new_value = self.search.sub(self.value, value).replace(
-                            "\n", "").replace(
-                            "\r", "")
+                    new_value = self.search.sub(self.value, value)
                 if value != new_value:
                     header = EmailMessage(policy=default_policy)
-                    header.add_header(name, new_value)
+                    # Remove line breaks, EmailMessage object
+                    #does not like them
+                    header.add_header(name, " ".join(new_value.splitlines()))
                     modified.append((name, header, index, occurrences[name]))
             index += 1
         return modified

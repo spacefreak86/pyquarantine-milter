@@ -239,9 +239,12 @@ class HeaderMilter(Milter.Base):
     def header(self, name, value):
         try:
             # remove surrogates from value
-            value = value.encode(errors="surrogateescape").decode(errors="replace")
+            value = value.encode(
+                errors="surrogateescape").decode(errors="replace")
             self.logger.debug(f"{self.qid}: received header: {name}: {value}")
-            header = make_header(decode_header(f"{name}: {value}"), errors="replace")
+            header = make_header(
+                decode_header(
+                    f"{name}: {value}"), errors="replace")
             self.logger.debug(
                 f"{self.qid}: decoded header: {header}")
         except Exception as e:

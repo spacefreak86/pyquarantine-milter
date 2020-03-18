@@ -19,7 +19,7 @@ import re
 from bs4 import BeautifulSoup
 from cgi import escape
 from collections import defaultdict
-from email import policy
+from email.policy import default as default_policy
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -317,7 +317,7 @@ class EMailNotification(BaseNotification):
 
         # extract body from email
         soup = self.get_email_body_soup(
-            qid, email.message_from_binary_file(fp, policy=policy.default))
+            qid, email.message_from_binary_file(fp, policy=default_policy))
 
         # replace picture sources
         image_replaced = False

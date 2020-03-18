@@ -20,8 +20,8 @@ import re
 
 from Milter.utils import parse_addr
 from collections import defaultdict
-from email.policy import default as default_policy
-from email.parser import BytesHeaderParser
+from email.charset import Charset
+from email.header import Header, decode_header
 from io import BytesIO
 from itertools import groupby
 from netaddr import IPAddress, IPNetwork, AddrFormatError
@@ -44,6 +44,28 @@ __all__ = [
     "whitelists"]
 
 
+def make_header(decoded_seq, maxlinelen=None, header_name=None,
+                continuation_ws=' ', errors='strict'):
+    """Create a Header from a sequence of pairs as returned by decode_header()
+
+    decode_header() takes a header value string and returns a sequence of
+    pairs of the format (decoded_string, charset) where charset is the string
+    name of the character set.
+
+    This function takes one of those sequence of pairs and returns a Header
+    instance.  Optional maxlinelen, header_name, and continuation_ws are as in
+    the Header constructor.
+    """
+    h = Header(maxlinelen=maxlinelen, header_name=header_name,
+               continuation_ws=continuation_ws)
+    for s, charset in decoded_seq:
+        # None means us-ascii but we can simply pass it on to h.append()
+        if charset is not None and not isinstance(charset, Charset):
+            charset = Charset(charset)
+        h.append(s, charset, errors=errors)
+    return h
+
+
 class Quarantine(object):
     """Quarantine class suitable for QuarantineMilter
 
@@ -64,8 +86,9 @@ class Quarantine(object):
         self.logger = logging.getLogger(__name__)
         self.name = name
         self.index = index
+        self.regex = regex
         if regex:
-            self.regex = re.compile(
+            self.re = re.compile(
                 regex, re.MULTILINE + re.DOTALL + re.IGNORECASE)
         self.storage = storage
         self.whitelist = whitelist
@@ -102,7 +125,7 @@ class Quarantine(object):
         # pre-compile regex
         self.logger.debug(
             f"{self.name}: compiling regex '{cfg['regex']}'")
-        self.regex = re.compile(
+        self.re = re.compile(
             cfg["regex"], re.MULTILINE + re.DOTALL + re.IGNORECASE)
 
         self.smtp_host = cfg["smtp_host"]
@@ -264,7 +287,7 @@ class Quarantine(object):
         return False
 
     def match(self, header):
-        return self.regex.search(header)
+        return self.re.search(header)
 
 
 class QuarantineMilter(Milter.Base):
@@ -349,27 +372,33 @@ class QuarantineMilter(Milter.Base):
             f"{self.qid}: initializing memory buffer to save email data")
         # initialize memory buffer to save email data
         self.fp = BytesIO()
+        self.headers = []
         return Milter.CONTINUE
 
-    @Milter.noreply
     def header(self, name, value):
         try:
+            # remove surrogates from value
+            value = value.encode(
+                errors="surrogateescape").decode(errors="replace")
+            self.logger.debug(f"{self.qid}: received header: {name}: {value}")
             # write email header to memory buffer
             self.fp.write(f"{name}: {value}\r\n".encode(
                 encoding="ascii", errors="replace"))
+            header = make_header(
+                decode_header(f"{name}: {value}"), errors="replace")
+            self.logger.debug(
+                f"{self.qid}: decoded header: {header}")
+            value = str(header).split(":", 1)[1].strip()
+            self.headers.append((name, value))
+            return Milter.CONTINUE
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in header function: {e}")
             return Milter.TEMPFAIL
 
-        return Milter.CONTINUE
-
     def eoh(self):
         try:
             self.fp.write("\r\n".encode(encoding="ascii"))
-            self.fp.seek(0)
-            self.headers = BytesHeaderParser(
-                policy=default_policy).parse(self.fp).items()
             self.wl_cache = whitelists.WhitelistCache()
 
             # initialize dicts to set quaranines per recipient and keep matches
@@ -402,7 +431,7 @@ class QuarantineMilter(Milter.Base):
                     # check email header against quarantine regex
                     self.logger.debug(
                         f"{self.qid}: {quarantine.name}: checking header "
-                        f"against regex '{quarantine.regex}'")
+                        f"against regex '{str(quarantine.regex)}'")
                     match = quarantine.match(header)
                     if match:
                         self.logger.debug(

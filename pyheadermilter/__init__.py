@@ -23,10 +23,31 @@ import re
 import sys
 
 from Milter.utils import parse_addr
-from email.message import EmailMessage
-from email.parser import HeaderParser
-from email.policy import default as default_policy
+from email.charset import Charset
+from email.header import Header, decode_header
 from netaddr import IPAddress, IPNetwork, AddrFormatError
+
+
+def make_header(decoded_seq, maxlinelen=None, header_name=None,
+                continuation_ws=' ', errors='strict'):
+    """Create a Header from a sequence of pairs as returned by decode_header()
+
+    decode_header() takes a header value string and returns a sequence of
+    pairs of the format (decoded_string, charset) where charset is the string
+    name of the character set.
+
+    This function takes one of those sequence of pairs and returns a Header
+    instance.  Optional maxlinelen, header_name, and continuation_ws are as in
+    the Header constructor.
+    """
+    h = Header(maxlinelen=maxlinelen, header_name=header_name,
+               continuation_ws=continuation_ws)
+    for s, charset in decoded_seq:
+        # None means us-ascii but we can simply pass it on to h.append()
+        if charset is not None and not isinstance(charset, Charset):
+            charset = Charset(charset)
+        h.append(s, charset, errors=errors)
+    return h
 
 
 class HeaderRule:
@@ -145,19 +166,19 @@ class HeaderRule:
             else:
                 occurrences[name] += 1
 
-            value = header[name]
             # check if header line matches regex
-            if self.header.search(f"{name}: {value}"):
+            header_line = str(header)
+            if self.header.search(header_line):
+                value = header_line.split(":", 1)[1].strip()
                 if self.action == "del":
                     # set an empty value to delete the header
                     new_value = ""
                 else:
                     new_value = self.search.sub(self.value, value)
                 if value != new_value:
-                    header = EmailMessage(policy=default_policy)
-                    # Remove line breaks, EmailMessage object
-                    #does not like them
-                    header.add_header(name, " ".join(new_value.splitlines()))
+                    header = make_header(
+                        decode_header(
+                            f"{name}: {new_value}"), errors="replace")
                     modified.append((name, header, index, occurrences[name]))
             index += 1
         return modified
@@ -215,15 +236,18 @@ class HeaderMilter(Milter.Base):
         self.headers = []
         return Milter.CONTINUE
 
-    @Milter.noreply
     def header(self, name, value):
-        # remove surrogates from value
-        value = value.encode(errors="surrogateescape").decode(errors="replace")
-        self.logger.debug(f"{self.qid}: received header: {name}: {value}")
-        header = HeaderParser(
-            policy=default_policy).parsestr(f"{name}: {value}")
-        self.logger.debug(
-            f"{self.qid}: decoded header: {name}: {header[name]}")
+        try:
+            # remove surrogates from value
+            value = value.encode(errors="surrogateescape").decode(errors="replace")
+            self.logger.debug(f"{self.qid}: received header: {name}: {value}")
+            header = make_header(decode_header(f"{name}: {value}"), errors="replace")
+            self.logger.debug(
+                f"{self.qid}: decoded header: {header}")
+        except Exception as e:
+            self.logger.exception(
+                f"an exception occured in header function: {e}")
+            return Milter.TEMPFAIL
         self.headers.append((name, header))
         return Milter.CONTINUE
 
@@ -232,51 +256,45 @@ class HeaderMilter(Milter.Base):
             for rule in self.rules:
                 self.logger.debug(f"{self.qid}: executing rule '{rule.name}'")
                 modified = rule.execute(self.headers)
-
                 for name, header, index, occurrence in modified:
-                    value = header[name]
-                    # remove illegal characters, pymilter does not like them
-                    enc_value = header.as_string().replace(
-                        "\r", "").replace(
-                        "\n", "").replace(
-                        "\x00", "").split(
-                        ":", 1)[1].strip()
-                    mod_header = f"{name}: {value}"
+                    header_line = str(header)
+                    value = header.encode().split(":", 1)[1].strip()
                     if rule.action == "add":
                         if rule.log:
                             self.logger.info(
-                                f"{self.qid}: add: header: {mod_header[0:70]}")
+                                f"{self.qid}: add: header: "
+                                f"{header_line[0:70]}")
                         else:
                             self.logger.debug(
-                                f"{self.qid}: add: header: {mod_header}")
+                                f"{self.qid}: add: header: "
+                                f"{header_line}")
                         self.headers.insert(0, (name, header))
-                        self.addheader(name, enc_value, 1)
+                        self.addheader(name, value, 1)
                     else:
                         if rule.action == "mod":
-                            old_value = self.headers[index][1][name]
-                            old_header = f"{name}: {old_value}"
+                            old_header = str(self.headers[index][1])
                             if rule.log:
                                 self.logger.info(
                                     f"{self.qid}: modify: header: "
-                                    f"{old_header[0:70]}: {mod_header[0:70]}")
+                                    f"{old_header[0:70]}: {header_line[0:70]}")
                             else:
                                 self.logger.debug(
                                     f"{self.qid}: modify: header "
                                     f"(occ. {occurrence}): {old_header}: "
-                                    f"{mod_header}")
+                                    f"{header_line}")
                             self.headers[index] = (name, header)
                         elif rule.action == "del":
                             if rule.log:
                                 self.logger.info(
                                     f"{self.qid}: delete: header: "
-                                    f"{mod_header[0:70]}")
+                                    f"{header_line[0:70]}")
                             else:
                                 self.logger.debug(
                                     f"{self.qid}: delete: header "
-                                    f"(occ. {occurrence}): {mod_header}")
+                                    f"(occ. {occurrence}): {header_line}")
                             del self.headers[index]
 
-                        self.chgheader(name, occurrence, enc_value)
+                        self.chgheader(name, occurrence, value)
             return Milter.ACCEPT
         except Exception as e:
             self.logger.exception(

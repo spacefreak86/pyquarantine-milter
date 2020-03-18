@@ -158,7 +158,7 @@ class HeaderRule:
         occurrences = {}
 
         # iterate headers
-        for name, header in headers:
+        for name, value in headers:
             # keep track of the occurrence of each header, needed by
             # Milter.Base.chgheader
             if name not in occurrences.keys():
@@ -167,19 +167,15 @@ class HeaderRule:
                 occurrences[name] += 1
 
             # check if header line matches regex
-            header_line = str(header)
-            if self.header.search(header_line):
-                value = header_line.split(":", 1)[1].strip()
+            if self.header.search(f"{name}: {value}"):
                 if self.action == "del":
                     # set an empty value to delete the header
                     new_value = ""
                 else:
-                    new_value = self.search.sub(self.value, value)
+                    new_value = self.search.sub(self.value, str(value))
                 if value != new_value:
-                    header = make_header(
-                        decode_header(
-                            f"{name}: {new_value}"), errors="replace")
-                    modified.append((name, header, index, occurrences[name]))
+                    modified.append(
+                        (name, Header(s=new_value), index, occurrences[name]))
             index += 1
         return modified
 
@@ -242,62 +238,59 @@ class HeaderMilter(Milter.Base):
             value = value.encode(
                 errors="surrogateescape").decode(errors="replace")
             self.logger.debug(f"{self.qid}: received header: {name}: {value}")
-            header = make_header(
-                decode_header(
-                    f"{name}: {value}"), errors="replace")
+            value = make_header(decode_header(value), errors="replace")
             self.logger.debug(
-                f"{self.qid}: decoded header: {header}")
+                f"{self.qid}: decoded header: {name}: {value}")
+            self.headers.append((name, value))
+            return Milter.CONTINUE
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in header function: {e}")
             return Milter.TEMPFAIL
-        self.headers.append((name, header))
-        return Milter.CONTINUE
 
     def eom(self):
         try:
             for rule in self.rules:
                 self.logger.debug(f"{self.qid}: executing rule '{rule.name}'")
                 modified = rule.execute(self.headers)
-                for name, header, index, occurrence in modified:
-                    header_line = str(header)
-                    value = header.encode().split(":", 1)[1].strip()
+                for name, value, index, occurrence in modified:
+                    header = f"{name}: {value}"
                     if rule.action == "add":
                         if rule.log:
                             self.logger.info(
                                 f"{self.qid}: add: header: "
-                                f"{header_line[0:70]}")
+                                f"{header[0:70]}")
                         else:
                             self.logger.debug(
                                 f"{self.qid}: add: header: "
-                                f"{header_line}")
-                        self.headers.insert(0, (name, header))
-                        self.addheader(name, value, 1)
+                                f"{header}")
+                        self.headers.insert(0, (name, value))
+                        self.addheader(name, value.encode(), 1)
                     else:
                         if rule.action == "mod":
-                            old_header = str(self.headers[index][1])
+                            old_header = "{}: {}".format(*self.headers[index])
                             if rule.log:
                                 self.logger.info(
                                     f"{self.qid}: modify: header: "
-                                    f"{old_header[0:70]}: {header_line[0:70]}")
+                                    f"{old_header[0:70]}: {header[0:70]}")
                             else:
                                 self.logger.debug(
                                     f"{self.qid}: modify: header "
                                     f"(occ. {occurrence}): {old_header}: "
-                                    f"{header_line}")
-                            self.headers[index] = (name, header)
+                                    f"{header}")
+                            self.headers[index] = (name, value)
                         elif rule.action == "del":
                             if rule.log:
                                 self.logger.info(
                                     f"{self.qid}: delete: header: "
-                                    f"{header_line[0:70]}")
+                                    f"{header[0:70]}")
                             else:
                                 self.logger.debug(
                                     f"{self.qid}: delete: header "
-                                    f"(occ. {occurrence}): {header_line}")
+                                    f"(occ. {occurrence}): {header}")
                             del self.headers[index]
 
-                        self.chgheader(name, occurrence, value)
+                        self.chgheader(name, occurrence, value.encode())
             return Milter.ACCEPT
         except Exception as e:
             self.logger.exception(

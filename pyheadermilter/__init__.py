@@ -172,10 +172,10 @@ class HeaderRule:
                     # set an empty value to delete the header
                     new_value = ""
                 else:
-                    new_value = self.search.sub(self.value, str(value))
+                    new_value = self.search.sub(self.value, value)
                 if value != new_value:
                     modified.append(
-                        (name, Header(s=new_value), index, occurrences[name]))
+                        (name, new_value, index, occurrences[name]))
             index += 1
         return modified
 
@@ -238,7 +238,7 @@ class HeaderMilter(Milter.Base):
             value = value.encode(
                 errors="surrogateescape").decode(errors="replace")
             self.logger.debug(f"{self.qid}: received header: {name}: {value}")
-            value = make_header(decode_header(value), errors="replace")
+            value = str(make_header(decode_header(value), errors="replace"))
             self.logger.debug(
                 f"{self.qid}: decoded header: {name}: {value}")
             self.headers.append((name, value))
@@ -255,6 +255,7 @@ class HeaderMilter(Milter.Base):
                 modified = rule.execute(self.headers)
                 for name, value, index, occurrence in modified:
                     header = f"{name}: {value}"
+                    enc_value = Header(s=value).encode()
                     if rule.action == "add":
                         if rule.log:
                             self.logger.info(
@@ -265,7 +266,7 @@ class HeaderMilter(Milter.Base):
                                 f"{self.qid}: add: header: "
                                 f"{header}")
                         self.headers.insert(0, (name, value))
-                        self.addheader(name, value.encode(), 1)
+                        self.addheader(name, enc_value, 1)
                     else:
                         if rule.action == "mod":
                             old_header = "{}: {}".format(*self.headers[index])
@@ -290,7 +291,7 @@ class HeaderMilter(Milter.Base):
                                     f"(occ. {occurrence}): {header}")
                             del self.headers[index]
 
-                        self.chgheader(name, occurrence, value.encode())
+                        self.chgheader(name, occurrence, enc_value)
             return Milter.ACCEPT
         except Exception as e:
             self.logger.exception(

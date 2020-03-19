@@ -384,11 +384,9 @@ class QuarantineMilter(Milter.Base):
             # write email header to memory buffer
             self.fp.write(f"{name}: {value}\r\n".encode(
                 encoding="ascii", errors="replace"))
-            header = make_header(
-                decode_header(f"{name}: {value}"), errors="replace")
+            value = str(make_header(decode_header(value), errors="replace"))
             self.logger.debug(
-                f"{self.qid}: decoded header: {header}")
-            value = str(header).split(":", 1)[1].strip()
+                f"{self.qid}: decoded header: {name}: {value}")
             self.headers.append((name, value))
             return Milter.CONTINUE
         except Exception as e:

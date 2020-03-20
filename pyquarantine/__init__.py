@@ -31,6 +31,7 @@ from pyquarantine import storages
 from pyquarantine import whitelists
 
 __all__ = [
+    "make_header",
     "Quarantine",
     "QuarantineMilter",
     "setup_milter",
@@ -384,7 +385,8 @@ class QuarantineMilter(Milter.Base):
             # write email header to memory buffer
             self.fp.write(f"{name}: {value}\r\n".encode(
                 encoding="ascii", errors="replace"))
-            value = str(make_header(decode_header(value), errors="replace"))
+            header = make_header(decode_header(value), errors="replace")
+            value = str(header).replace("\x00", "")
             self.logger.debug(
                 f"{self.qid}: decoded header: {name}: {value}")
             self.headers.append((name, value))

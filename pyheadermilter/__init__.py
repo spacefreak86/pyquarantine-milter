@@ -12,7 +12,11 @@
 # along with PyHeader-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-__all__ = ["HeaderRule", "HeaderMilter"]
+__all__ = [
+    "make_header",
+    "replace_illegal_chars",
+    "HeaderRule",
+    "HeaderMilter"]
 
 import Milter
 import argparse
@@ -48,6 +52,13 @@ def make_header(decoded_seq, maxlinelen=None, header_name=None,
             charset = Charset(charset)
         h.append(s, charset, errors=errors)
     return h
+
+
+def replace_illegal_chars(string):
+    return string.replace(
+        "\x00", "").replace(
+        "\r", "").replace(
+        "\n", "")
 
 
 class HeaderRule:
@@ -238,7 +249,8 @@ class HeaderMilter(Milter.Base):
             value = value.encode(
                 errors="surrogateescape").decode(errors="replace")
             self.logger.debug(f"{self.qid}: received header: {name}: {value}")
-            value = str(make_header(decode_header(value), errors="replace"))
+            header = make_header(decode_header(value), errors="replace")
+            value = str(header).replace("\x00", "")
             self.logger.debug(
                 f"{self.qid}: decoded header: {name}: {value}")
             self.headers.append((name, value))
@@ -255,7 +267,8 @@ class HeaderMilter(Milter.Base):
                 modified = rule.execute(self.headers)
                 for name, value, index, occurrence in modified:
                     header = f"{name}: {value}"
-                    enc_value = Header(s=value).encode()
+                    enc_value = replace_illegal_chars(
+                        Header(s=value).encode())
                     if rule.action == "add":
                         if rule.log:
                             self.logger.info(

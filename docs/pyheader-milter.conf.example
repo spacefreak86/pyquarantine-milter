@@ -19,6 +19,12 @@
 #
 rules = add_header,del_header,mod_header
 
+# Option: ignore_envfrom
+# Notes:  Set a regular expression to match envelope-from addresses to be ignored.
+# Value:  [ REGEX ]
+#
+ignore_envfrom = ^.*@localhost$
+
 # Option: ignore_hosts
 # Notes:  Set a list of host and network addresses to be ignored.
 #         All the common host/network notations are supported, including IPv6.

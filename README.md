@@ -38,6 +38,8 @@ The following configuration options are mandatory for a mod-rule:
   New value of the header.
 
 The following configuration options are optional for each rule:
+* **ignore_envfrom**  
+  Regular expression to match envelop-from addresses. The rule will be skipped if the expression matches.
 * **ignore_hosts**  
   Comma-separated list of host and network addresses. The rule will be skipped if the sending host is included here.
 * **only_hosts**  

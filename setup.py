@@ -5,7 +5,7 @@ def read_file(fname):
         return f.read()
 
 setup(name = "pyheadermilter",
-    version = "0.0.7",
+    version = "0.0.8",
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",

@@ -1,4 +1,4 @@
-# This is an example /etc/pyheader-milter.conf file.
+# This is an example /etc/pymodmilter.conf file.
 # Copy it into place before use.
 #
 # Comments: use '#' for comment lines and ';' (following a space) for inline comments.

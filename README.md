@@ -1,4 +1,4 @@
-# pyheader-milter
+# pymodmilter
 A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.
 
 The project is currently in beta status, but it is already used in a productive enterprise environment which processes about a million e-mails per month.
@@ -8,7 +8,7 @@ The project is currently in beta status, but it is already used in a productive 
 * netaddr <https://github.com/drkjam/netaddr/>
 
 ## Configuration
-The pyheader-milter uses an INI-style configuration file. The sections are described below.
+The pymodmilter uses an INI-style configuration file. The sections are described below.
 
 ### Section "global"
 Any available configuration option can be set in the global section as default instead of in a rule section.

@@ -1,15 +1,15 @@
-# PyHeader-Milter is free software: you can redistribute it and/or modify
+# PyMod-Milter is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyHeader-Milter is distributed in the hope that it will be useful,
+# PyMod-Milter is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with PyHeader-Milter.  If not, see <http://www.gnu.org/licenses/>.
+# along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 __all__ = [
@@ -313,15 +313,15 @@ class HeaderMilter(Milter.Base):
 
 
 def main():
-    "Run PyHeader-Milter."
+    "Run PyMod-Milter."
     # parse command line
     parser = argparse.ArgumentParser(
-        description="PyHeader milter daemon",
+        description="PyMod milter daemon",
         formatter_class=lambda prog: argparse.HelpFormatter(
             prog, max_help_position=45, width=140))
     parser.add_argument(
         "-c", "--config", help="Config file to read.",
-        default="/etc/pyheader-milter.conf")
+        default="/etc/pymodmilter.conf")
     parser.add_argument(
         "-s",
         "--socket",
@@ -341,7 +341,7 @@ def main():
 
     # setup logging
     loglevel = logging.INFO
-    logname = "pyheader-milter"
+    logname = "pymodmilter"
     syslog_name = logname
     if args.debug:
         loglevel = logging.DEBUG
@@ -487,7 +487,7 @@ def main():
     sysloghandler.setFormatter(formatter)
     root_logger.addHandler(sysloghandler)
 
-    logger.info("PyHeader-Milter starting")
+    logger.info("pymodmilter starting")
     HeaderMilter.set_rules(rules)
 
     # register milter factory class
@@ -496,11 +496,11 @@ def main():
 
     rc = 0
     try:
-        Milter.runmilter("pyheader-milter", socketname=args.socket, timeout=30)
+        Milter.runmilter("pymodmilter", socketname=args.socket, timeout=30)
     except Milter.milter.error as e:
         logger.error(e)
         rc = 255
-    logger.info("PyHeader-Milter terminated")
+    logger.info("pymodmilter terminated")
     sys.exit(rc)
 
 

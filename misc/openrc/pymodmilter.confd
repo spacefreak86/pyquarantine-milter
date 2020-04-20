@@ -1,4 +1,4 @@
-# /etc/conf.d/pyheader-milter: config file for /etc/init.d/pyheader-milter
+# /etc/conf.d/pymodmilter: config file for /etc/init.d/pymodmilter
 
 # Set the socket used to communicate with the MTA.
 # Examples:
@@ -13,5 +13,5 @@ SOCKET="inet:8898@127.0.0.1"
 # USER="daemon"
 # USER="daemon:nobody"
 
-# Optional parameters for pyheader-milter
+# Optional parameters for pymodmilter
 # MILTER_OPTS=""

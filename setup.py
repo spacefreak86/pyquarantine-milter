@@ -4,15 +4,15 @@ def read_file(fname):
     with open(fname, 'r') as f:
         return f.read()
 
-setup(name = "pyheadermilter",
+setup(name = "pymodmilter",
     version = "0.0.8",
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",
     license = "GPL 3",
     keywords = "header milter",
-    url = "https://github.com/spacefreak86/pyheader-milter",
-    packages = ["pyheadermilter"],
+    url = "https://github.com/spacefreak86/pymodmilter",
+    packages = ["pymodmilter"],
     long_description = read_file("README.md"),
     long_description_content_type="text/markdown",
     classifiers = [
@@ -28,7 +28,7 @@ setup(name = "pyheadermilter",
     ],
     entry_points = {
         "console_scripts": [
-            "pyheader-milter=pyheadermilter:main"
+            "pymodmilter=pymodmilter:main"
         ]
     },
     install_requires = ["pymilter", "netaddr"],

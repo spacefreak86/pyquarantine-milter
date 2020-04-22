@@ -17,9 +17,6 @@ depend() {
 }
 
 checkconfig() {
-	if [ -z "${socket}" ]; then
-		eerror "No socket specified in config!"
-	fi
 	OUTPUT=$( ${command} ${command_args} -t 2>&1 )
 	ret=$?
 	if [ $ret -ne 0 ]; then

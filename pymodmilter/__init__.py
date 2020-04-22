@@ -235,7 +235,7 @@ class Rule:
                 mod["name"] = f"Modification #{mod_idx}"
 
             if self.name:
-                params["name"] = f"{self.name}/{mod['name']}"
+                params["name"] = f"{self.name}: {mod['name']}"
             else:
                 params["name"] = mod["name"]
 

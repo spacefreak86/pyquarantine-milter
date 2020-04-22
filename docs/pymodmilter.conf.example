@@ -48,7 +48,7 @@
             # Notes:  Name of the rule.
             # Value:  [ NAME ]
             #
-            "name": "MyRule",
+            "name": "myrule",
 
             # Section: conditions
             # Notes:   Optional conditions to process the rule.
@@ -88,7 +88,7 @@
                     # Notes:  Name of the modification.
                     # Value:  [ NAME ]
                     #
-                    "name": "AddHeader",
+                    "name": "add_test_header",
 
                     # Option: type
                     # Type:   String
@@ -111,7 +111,7 @@
                     #
                     "value": "true"
                 }, {
-                    "name": "ModifyHeader",
+                    "name": "modify_subject",
 
                     "type": "mod_header",
 
@@ -135,7 +135,7 @@
                     # Values: [ VALUE ]
                     "value": "[EXTERNAL] \\g<subject>"
                 }, {
-                    "name": "DeleteHeader",
+                    "name": "delete_received_header",
 
                     "type": "del_header",
 

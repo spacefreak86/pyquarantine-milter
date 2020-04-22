@@ -1,8 +1,8 @@
 # pymodmilter
-A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.
+A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.  
+The project is currently in beta status, but it is already used in a productive enterprise environment which processes about a million e-mails per month.  
 
-This project is currently in beta status, but it is already used in a productive enterprise environment which processes about a million e-mails per month.  
-The basic idea is to define rules with conditions and do modifications make changes when all conditions are met.
+The basic idea is to define rules with conditions and do modifications when all conditions are met.
 
 ## Requirements
 * pymilter <https://pythonhosted.org/pymilter/>

@@ -4,8 +4,11 @@ def read_file(fname):
     with open(fname, 'r') as f:
         return f.read()
 
+version = {}
+exec(read_file("pymodmilter/version.py"), version)
+
 setup(name = "pymodmilter",
-    version = "0.0.8",
+    version = version["__version__"],
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",
@@ -28,7 +31,7 @@ setup(name = "pymodmilter",
     ],
     entry_points = {
         "console_scripts": [
-            "pymodmilter=pymodmilter:main"
+            "pymodmilter=pymodmilter.run:main"
         ]
     },
     install_requires = ["pymilter", "netaddr"],

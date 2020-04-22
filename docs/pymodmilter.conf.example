@@ -1,103 +1,143 @@
 # This is an example /etc/pymodmilter.conf file.
 # Copy it into place before use.
 #
-# Comments: use '#' for comment lines and ';' (following a space) for inline comments.
+# The file is in JSON format.
 #
-#           If an option is not present in a modification section, it will be read from
-#           the global section.
+# The global option 'log' can be overriden per rule or per modification.
 #
+{
+    # Section: global
+    # Notes:   Set default options.
+    #
+    "global": {
+        # Option: local_addrs
+        # Type:   List
+        # Notes:  Set a list of local hosts and networks.
+        # Value:  [ LIST ]
+        #
+        "local_addrs": ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
 
+        # Option: log
+        # Type:   Bool
+        # Notes:  Set if processing of rules and modifications is logged.
+        # Value:  [ true | false ]
+        #
+        "log": true
+    },
 
-[global]
+    # Section: rules
+    # Notes:   Set rules and related modifications.
+    #
+    "rules": [
+        {
+            # Option: name
+            # Type:   String
+            # Notes:  Set the name of the rule.
+            # Value:  [ NAME ]
+            #
+            "name": "MyRule",
 
-# Option: rules
-# Notes:  Set active rules (comma-separated).
-#         Each rule must have a section with the same name below.
-#         The rule name 'global' is forbidden and will be ignored.
-#         Rule names must be unique.
-# Values: [ ACTIVE ]
-#
-rules = add_header,del_header,mod_header
+            # Section: conditions
+            # Notes:   Optionally set conditions to run the rule.
+            #          If multiple conditions are specified, they all
+            #          have to be true to run the rule.
+            #
+            "conditions": {
+                # Option: local
+                # Type:   Bool
+                # Notes:  Set a condition on the senders host address.
+                #         Set to true to execute the rule only for emails originating
+                #         from addresses defined in local_addrs and vice versa.
+                # Value:  [ true | false ]
+                #
+                "local": false,
 
-# Option: ignore_envfrom
-# Notes:  Set a regular expression to match envelope-from addresses to be ignored.
-# Value:  [ REGEX ]
-#
-ignore_envfrom = ^.*@localhost$
+                # Option: hosts
+                # Type:   String
+                # Notes:  Set a condition on the senders host address.
+                #         The rule will only be executed if the list contains the
+                #         senders host address.
+                # Value: [ LIST ]
+                #
+                "hosts": [ "127.0.0.1" ],
 
-# Option: ignore_hosts
-# Notes:  Set a list of host and network addresses to be ignored.
-#         All the common host/network notations are supported, including IPv6.
-# Value:  [ HOST ]
-#
-ignore_hosts = 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+                # Option: envfrom
+                # Type:   String
+                # Notes:  Set a regular expression to match against the envelope-from address.
+                # Value:  [ REGEX ]
+                #
+                "envfrom": "^(?!.+@mycompany\\.com).+$"
+            },
 
-# Option: only_hosts
-# Notes:  Set a list of host and network addresses.
-#         All the common host/network notations are supported, including IPv6.
-# Value:  [ HOST ]
-#
-only_hosts = 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+            # Section: modifications
+            # Notes:   Set modifications for the rule.
+            #
+            "modifications": [
+                {
+                    # Option: name
+                    # Type:   String
+                    # Notes:  Set the name of the modification.
+                    # Value:  [ NAME ]
+                    #
+                    "name": "AddHeader",
 
-# Option: log
-# Notes:  Set if modifications are logged.
-# Value:  [ true | false ]
-#
-log = true
+                    # Option: type
+                    # Type:   String
+                    # Notes:  Set the modification type.
+                    # Value:  [ add_header | del_header | mod_header ]
+                    #
+                    "type": "add_header",
 
+                    # Option: header
+                    # Type:   String
+                    # Notes:  Set the name of the new header.
+                    # Value:  [ NAME ]
+                    #
+                    "header": "X-Test-Header",
 
-[add_header]
+                    # Option: value
+                    # Type:   String
+                    # Notes:  Set the value of the new header.
+                    # Value:  [ VALUE ]
+                    #
+                    "value": "true"
+                }, {
+                    "name": "ModifyHeader",
 
-# Option: action
-# Notes:  Set the modification action.
-# Values: [ add ]
-action = add
+                    "type": "mod_header",
 
-# Option: header
-# Notes:  Set the name of the header.
-# Values: [ NAME ]
-#
-header = X-My-Own-Header
+                    # Option: header
+                    # Type:   String
+                    # Notes:  Set a regular expression to match against header lines (e.g. Subject: Test-Subject).
+                    # Value:  [ REGEX ]
+                    #
+                    "header": "^Subject:",
 
-# Option: value
-# Notes:  Set the value of the header.
-# Values: [ VALUE ]
-value = my own value
+                    # Option: search
+                    # Type:   String
+                    # Notes:  Set a regular expression to match against the headers value.
+                    # Values: [ VALUE ]
+                    #
+                    "search": "(?P<subject>.*)",
 
+                    # Option: value
+                    # Type:   String
+                    # Notes:  Set the value of the header.
+                    # Values: [ VALUE ]
+                    "value": "[EXTERNAL] \\g<subject>"
+                }, {
+                    "name": "DeleteHeader",
 
-[del_header]
+                    "type": "del_header",
 
-# Option: action
-# Notes:  Set the modification action.
-# Values: [ del ]
-action = del
-
-# Option: header
-# Notes:  Set a regular expression to match the header lines to delete.
-# Values: [ REGEX ]
-#
-header = ^Received:.*
-
-
-[mod_header]
-
-# Option: action
-# Notes:  Set the modification action.
-# Values: [ mod ]
-action = mod
-
-# Option: header
-# Notes:  Set a regular expression to match the header lines to modify.
-# Values: [ REGEX ]
-#
-header = ^Subject:.*
-
-# Option: search
-# Notes:  Set a regular expression to match the headers value.
-# Values: [ VALUE ]
-search = (?P<subject>.*)
-
-# Option: value
-# Notes:  Set the value of the header.
-# Values: [ VALUE ]
-value = [SPAM] \g<subject>
+                    # Option: header
+                    # Type:   String
+                    # Notes:  Set a regular expression to match against header lines (e.g. Subject: Test-Subject).
+                    # Value:  [ REGEX ]
+                    #
+                    "header": "^Received:"
+                }
+            ]
+        }
+    ]
+}

@@ -35,7 +35,7 @@ def main():
             prog, max_help_position=45, width=140))
     parser.add_argument(
         "-c", "--config", help="Config file to read.",
-        default="/etc/pymodmilter.conf")
+        default="/etc/pymodmilter/pymodmilter.conf")
     parser.add_argument(
         "-s",
         "--socket",

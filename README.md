@@ -2,7 +2,7 @@
 A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.  
 The project is currently in beta status, but it is already used in a productive enterprise environment which processes about a million e-mails per month.  
 
-The basic idea is to define rules with conditions and do modifications when all conditions are met.
+The basic idea is to define rules with conditions and modifications which are processed when all conditions are true.
 
 ## Dependencies
 Pymodmilter is depending on these python packages, but they are installed automatically if you are working with pip.
@@ -13,9 +13,9 @@ Pymodmilter is depending on these python packages, but they are installed automa
 * Install pymodmilter with pip and copy the example configuration file.
 ```sh
 pip install pymodmilter
-cp /usr/share/doc/pymodmilter/pymodmilter.conf.example /etc/pymodmilter.conf
+cp /etc/pymodmilter/pymodmilter.conf.example /etc/pymodmilter/pymodmilter.conf
 ```
-* Modify /etc/pymodmilter.conf according to your needs.
+* Modify /etc/pymodmilter/pymodmilter.conf according to your needs.
 
 ## Configuration options
 Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the [example configuration file](https://github.com/spacefreak86/pymodmilter/blob/master/docs/pymodmilter.conf.example) in the  [docs](https://github.com/spacefreak86/pymodmilter/tree/master/docs) folder to start with.  

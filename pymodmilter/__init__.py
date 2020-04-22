@@ -62,8 +62,9 @@ def replace_illegal_chars(string):
 
 
 class Modification:
-    """Modification to implement a modification to apply on e-mail headers."""
+    """Modification to implement a modification to apply on e-mails."""
 
+    # mandatory parameters for each modification type
     types = {
         "add_header": ["header", "value"],
         "del_header": ["header"],
@@ -117,7 +118,7 @@ class Modification:
 
     def execute(self, qid, headers):
         """
-        Execute rule on given headers and return list
+        Execute modification and return list
         with modified headers.
         """
         if self.mod_type == "add_header":
@@ -179,6 +180,9 @@ class Modification:
 
 
 class Rule:
+    """
+    Rule to implement multiple modifications on emails based on conditions.
+    """
     def __init__(self, name, modifications, local_addrs, log, conditions={}):
         self.logger = logging.getLogger(__name__)
         self.name = name
@@ -261,6 +265,7 @@ class Rule:
                 f"{self.name}: added modification: {mod['name']}")
 
     def ignore_host(self, host):
+        """Check if host is ignored by this rule."""
         ip = IPAddress(host)
 
         if "local" in self.conditions:
@@ -282,12 +287,14 @@ class Rule:
         return False
 
     def ignore_envfrom(self, envfrom):
+        """Check if envelope-from address is ignored by this rule."""
         if "envfrom" in self.conditions:
             if not self.conditions["envfrom"].search(envfrom):
                 return True
         return False
 
     def execute(self, qid, headers):
+        """Execute all modifications of this rule."""
         changes = []
         if self.log:
             self.logger.info(f"{qid}: executing rule '{self.name}'")

@@ -17,7 +17,7 @@ setup(name = "pymodmilter",
     url = "https://github.com/spacefreak86/pymodmilter",
     packages = ["pymodmilter"],
     long_description = read_file("README.md"),
-    long_description_content_type="text/markdown",
+    long_description_content_type = "text/markdown",
     classifiers = [
         #   3 - Alpha
         #   4 - Beta
@@ -29,11 +29,20 @@ setup(name = "pymodmilter",
         "Programming Language :: Python :: 3",
         "Topic :: Communications :: Email :: Filters"
     ],
+    include_package_data = True,
     entry_points = {
         "console_scripts": [
             "pymodmilter=pymodmilter.run:main"
         ]
     },
+    data_files = [
+        (
+            'usr/share/docs/',
+            [
+                'docs/pymodmilter.conf.example'
+            ]
+        )
+    ],
     install_requires = ["pymilter", "netaddr"],
     python_requires = ">=3.6"
 )

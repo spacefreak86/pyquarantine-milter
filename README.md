@@ -10,22 +10,21 @@ Pymodmilter is depending on these python packages, but they are installed automa
 * [netaddr](https://github.com/drkjam/netaddr/)
 
 ## Installation
-* Install pymodmilter with pip.
+* Install pymodmilter with pip and copy the example configuration file.
 ```sh
 pip install pymodmilter
-```
-* Copy the example configuration file.
-```sh
 cp /usr/share/doc/pymodmilter/pymodmilter.conf.example /etc/pymodmilter.conf
 ```
-* Modify /etc/pymodmilter.conf according to your needs and you are ready to go.
+* Modify /etc/pymodmilter.conf according to your needs.
 
 ## Configuration options
 Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the [example configuration file](https://github.com/spacefreak86/pymodmilter/blob/master/docs/pymodmilter.conf.example) in the  [docs](https://github.com/spacefreak86/pymodmilter/tree/master/docs) folder to start with.  
 Rules and modifications are processed in the given order.
 
 ### Global
-The following optional global configuration options are available:
+The following global configuration options are optional:
+* **socket**  
+  The socket used to communicate with the MTA.
 * **local_addrs**  
   A list of hosts and network addresses which are considered local. It is used to for the condition option [local](#Conditions). This option may be overriden within a rule object.
 * **log**  

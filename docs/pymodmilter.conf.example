@@ -7,97 +7,106 @@
 #
 {
     # Section: global
-    # Notes:   Set default options.
+    # Notes:   Global options.
     #
     "global": {
+        # Option: socket
+        # Type:   String
+        # Notes:  The socket used to communicate with the MTA.
+        #
+        #         Examples:
+        #         unix:/path/to/socket             a named pipe
+        #         inet:8899                        listen on ANY interface
+        #         inet:8899@localhost              listen on a specific interface
+        #         inet6:8899                       listen on ANY interface
+        #         inet6:8899@[2001:db8:1234::1]    listen on a specific interface
+        # Value:  [ SOCKET ]
+        "socket": "inet:8898@127.0.0.1",
+
         # Option: local_addrs
         # Type:   List
-        # Notes:  Set a list of local hosts and networks.
+        # Notes:  A list of local hosts and networks.
         # Value:  [ LIST ]
         #
         "local_addrs": ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
 
         # Option: log
         # Type:   Bool
-        # Notes:  Set if processing of rules and modifications is logged.
+        # Notes:  Enable or disable logging of rules and modifications.
         # Value:  [ true | false ]
         #
         "log": true
     },
 
     # Section: rules
-    # Notes:   Set rules and related modifications.
+    # Notes:   Rules and related modifications.
     #
     "rules": [
         {
             # Option: name
             # Type:   String
-            # Notes:  Set the name of the rule.
+            # Notes:  Name of the rule.
             # Value:  [ NAME ]
             #
             "name": "MyRule",
 
             # Section: conditions
-            # Notes:   Optionally set conditions to run the rule.
-            #          If multiple conditions are specified, they all
-            #          have to be true to run the rule.
+            # Notes:   Optional conditions to process the rule.
+            #          If multiple conditions are set, they all
+            #          have to be true to process the rule.
             #
             "conditions": {
                 # Option: local
                 # Type:   Bool
-                # Notes:  Set a condition on the senders host address.
-                #         Set to true to execute the rule only for emails originating
-                #         from addresses defined in local_addrs and vice versa.
+                # Notes:  Condition wheter the senders host address is listed in local_addrs.
                 # Value:  [ true | false ]
                 #
                 "local": false,
 
                 # Option: hosts
                 # Type:   String
-                # Notes:  Set a condition on the senders host address.
-                #         The rule will only be executed if the list contains the
-                #         senders host address.
+                # Notes:  Condition wheter the senders host address is listed in this list.
                 # Value: [ LIST ]
                 #
                 "hosts": [ "127.0.0.1" ],
 
                 # Option: envfrom
                 # Type:   String
-                # Notes:  Set a regular expression to match against the envelope-from address.
+                # Notes:  Condition wheter the envelop-from address matches this regular expression.
                 # Value:  [ REGEX ]
                 #
                 "envfrom": "^(?!.+@mycompany\\.com).+$"
             },
 
             # Section: modifications
-            # Notes:   Set modifications for the rule.
+            # Notes:   Modifications of the rule.
             #
             "modifications": [
                 {
                     # Option: name
                     # Type:   String
-                    # Notes:  Set the name of the modification.
+                    # Notes:  Name of the modification.
                     # Value:  [ NAME ]
                     #
                     "name": "AddHeader",
 
                     # Option: type
                     # Type:   String
-                    # Notes:  Set the modification type.
+                    # Notes:  Type of the modification.
                     # Value:  [ add_header | del_header | mod_header ]
                     #
                     "type": "add_header",
 
                     # Option: header
                     # Type:   String
-                    # Notes:  Set the name of the new header.
+                    # Notes:  Name of the header.
                     # Value:  [ NAME ]
                     #
                     "header": "X-Test-Header",
 
                     # Option: value
                     # Type:   String
-                    # Notes:  Set the value of the new header.
+                    # Notes:  Value of the header.
                     # Value:  [ VALUE ]
                     #
                     "value": "true"
@@ -108,21 +117,21 @@
 
                     # Option: header
                     # Type:   String
-                    # Notes:  Set a regular expression to match against header lines (e.g. Subject: Test-Subject).
+                    # Notes:  Regular expression to match against header lines (e.g. Subject: Test-Subject).
                     # Value:  [ REGEX ]
                     #
                     "header": "^Subject:",
 
                     # Option: search
                     # Type:   String
-                    # Notes:  Set a regular expression to match against the headers value.
+                    # Notes:  Regular expression to match against the headers value.
                     # Values: [ VALUE ]
                     #
                     "search": "(?P<subject>.*)",
 
                     # Option: value
                     # Type:   String
-                    # Notes:  Set the value of the header.
+                    # Notes:  New value of the header.
                     # Values: [ VALUE ]
                     "value": "[EXTERNAL] \\g<subject>"
                 }, {
@@ -132,7 +141,7 @@
 
                     # Option: header
                     # Type:   String
-                    # Notes:  Set a regular expression to match against header lines (e.g. Subject: Test-Subject).
+                    # Notes:  Regular expression to match against header lines (e.g. Subject: Test-Subject).
                     # Value:  [ REGEX ]
                     #
                     "header": "^Received:"

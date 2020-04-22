@@ -40,7 +40,7 @@ def main():
         "-s",
         "--socket",
         help="Socket used to communicate with the MTA.",
-        required=True)
+        default="")
     parser.add_argument(
         "-d",
         "--debug",
@@ -94,6 +94,15 @@ def main():
         # default values for global config if not set
         if "global" not in config:
             config["global"] = {}
+
+        if args.socket:
+            socket = args.socket
+        elif "socket" in config["global"]:
+            socket = config["global"]["socket"]
+        else:
+            raise RuntimeError(
+                f"listening socket is neither specified on the command line "
+                f"nor in the configuration file")
 
         if "local_addrs" not in config["global"]:
             config["global"]["local_addrs"] = [
@@ -177,7 +186,7 @@ def main():
 
     rc = 0
     try:
-        Milter.runmilter("pymodmilter", socketname=args.socket, timeout=30)
+        Milter.runmilter("pymodmilter", socketname=socket, timeout=30)
     except Milter.milter.error as e:
         logger.error(e)
         rc = 255

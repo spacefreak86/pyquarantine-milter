@@ -6,8 +6,8 @@ The basic idea is to define rules with conditions and do modifications when all 
 
 ## Dependencies
 Pymodmilter is depending on these python packages, but they are installed automatically if you are working with pip.
-* pymilter <https://pythonhosted.org/pymilter/>
-* netaddr <https://github.com/drkjam/netaddr/>
+* [pymilter](https://pythonhosted.org/pymilter/)
+* [netaddr](https://github.com/drkjam/netaddr/)
 
 ## Installation
 * Install pymodmilter with pip.
@@ -27,7 +27,7 @@ Rules and modifications are processed in the given order.
 ### Global
 The following optional global configuration options are available:
 * **local_addrs**  
-  A list of hosts and network addresses which are considered local. It is used to for the condition option 'local'. This option may be overriden within a rule object.
+  A list of hosts and network addresses which are considered local. It is used to for the condition option [local](#Conditions). This option may be overriden within a rule object.
 * **log**  
   Enable or disable logging. This option may be overriden by a rule or modification object.
 

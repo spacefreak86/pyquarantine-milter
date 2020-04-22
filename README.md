@@ -14,11 +14,11 @@ Pymodmilter is depending on these python packages, but they are installed automa
 ```sh
 pip install pymodmilter
 ```
-* Download the example config file.
+* Copy the example configuration file.
 ```sh
-curl https://raw.githubusercontent.com/spacefreak86/pymodmilter/master/docs/pymodmilter.conf.example --output /etc/pymodmilter.conf
+cp /usr/share/doc/pymodmilter/pymodmilter.conf.example /etc/pymodmilter.conf
 ```
-* Modify pymodmilter.conf according to your needs and you are ready to go.
+* Modify /etc/pymodmilter.conf according to your needs and you are ready to go.
 
 ## Configuration options
 Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the [example configuration file](https://github.com/spacefreak86/pymodmilter/blob/master/docs/pymodmilter.conf.example) in the  [docs](https://github.com/spacefreak86/pymodmilter/tree/master/docs) folder to start with.  

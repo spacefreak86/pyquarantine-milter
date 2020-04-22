@@ -37,7 +37,7 @@ setup(name = "pymodmilter",
     },
     data_files = [
         (
-            'usr/share/docs/',
+            'usr/share/doc/pymodmilter',
             [
                 'docs/pymodmilter.conf.example'
             ]

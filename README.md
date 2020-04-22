@@ -21,7 +21,7 @@ curl https://raw.githubusercontent.com/spacefreak86/pymodmilter/master/docs/pymo
 * Modify pymodmilter.conf according to your needs and you are ready to go.
 
 ## Configuration options
-Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the example configuration file in the  [docs](https://github.com/spacefreak86/pymodmilter/tree/master/docs) folder to start with.  
+Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the [example configuration file](https://github.com/spacefreak86/pymodmilter/blob/master/docs/pymodmilter.conf.example) in the  [docs](https://github.com/spacefreak86/pymodmilter/tree/master/docs) folder to start with.  
 Rules and modifications are processed in the given order.
 
 ### Global
@@ -42,9 +42,9 @@ The following configuration options are optional for each rule:
 * **conditions**  
   A list of conditions which all have to be true to process the rule.
 * **local_addrs**  
-  As described above in the global object section.
+  As described above in the [Global](#Global) section.
 * **log**  
-  As described above in the global object section.
+  As described above in the [Global](#Global) section.
 
 ### Modifications
 The following configuration options are mandatory for each modification:
@@ -54,7 +54,7 @@ The following configuration options are mandatory for each modification:
   * **del_header**
   * **mod_header**
 
-Additional parameters are mandatory based on the modification type.
+The following configuration options are mandatory based on the modification type in use.
 * **add_header**  
   * **header**  
     Name of the header.

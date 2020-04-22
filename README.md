@@ -4,41 +4,51 @@ The project is currently in beta status, but it is already used in a productive 
 
 The basic idea is to define rules with conditions and do modifications when all conditions are met.
 
-## Requirements
+## Dependencies
+Pymodmilter is depending on these python packages, but they are installed automatically if you are working with pip.
 * pymilter <https://pythonhosted.org/pymilter/>
 * netaddr <https://github.com/drkjam/netaddr/>
 
-## Configuration
-Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the example configuration file in the docs folder to start with.  
+## Installation
+* Install pymodmilter with pip.
+```sh
+pip install pymodmilter
+```
+* Download the example config file.
+```sh
+curl https://raw.githubusercontent.com/spacefreak86/pymodmilter/master/docs/pymodmilter.conf.example --output /etc/pymodmilter.conf
+```
+* Modify pymodmilter.conf according to your needs and you are ready to go.
 
-### global (Object)
+## Configuration options
+Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the example configuration file in the  [docs](https://github.com/spacefreak86/pymodmilter/tree/master/docs) folder to start with.  
+Rules and modifications are processed in the given order.
+
+### Global
 The following optional global configuration options are available:
-* **local_addrs (Array of Strings)**  
+* **local_addrs**  
   A list of hosts and network addresses which are considered local. It is used to for the condition option 'local'. This option may be overriden within a rule object.
-* **log (Bool)**  
+* **log**  
   Enable or disable logging. This option may be overriden by a rule or modification object.
 
-### rules (Array)
-A mandatory list of rule objects which are processed in the given order.
-
-### rule (Object)
+### Rules
 The following configuration options are mandatory for each rule:
-* **modifications (Array of Objects)**  
+* **modifications**  
   A list of modification objects which are processed in the given order.
 
 The following configuration options are optional for each rule:
-* **name (String)**  
+* **name**  
   Name of the rule.
-* **conditions (Object)**  
+* **conditions**  
   A list of conditions which all have to be true to process the rule.
-* **local_addrs (Array of Strings)**  
+* **local_addrs**  
   As described above in the global object section.
-* **log (Bool)**  
+* **log**  
   As described above in the global object section.
 
-### modification (Object)
+### Modifications
 The following configuration options are mandatory for each modification:
-* **type (String)**  
+* **type**  
   Set the modification type. Possible values are:
   * **add_header**
   * **del_header**
@@ -46,36 +56,36 @@ The following configuration options are mandatory for each modification:
 
 Additional parameters are mandatory based on the modification type.
 * **add_header**  
-  * **header (String)**  
+  * **header**  
     Name of the header.
-  * **value (String)**  
+  * **value**  
     Value of the header.
 
 * **del_header**  
-  * **header (String)**  
+  * **header**  
     Regular expression to match against header lines.
 
 * **mod_header**  
-  * **header (String)**  
+  * **header**  
     Regular expression to match against header lines.
-  * **search (String)**  
+  * **search**  
     Regular expression to match against the value of header lines. You may use subgroups or named subgroups (python syntax) to include parts of the original value in the new value.
-  * **value (String)**  
+  * **value**  
     New value of the header.
 
 The following configuration options are optional for each modification:
-* **name (String)**  
+* **name**  
   Name of the modification.
-* **log (Bool)**  
+* **log**  
   As described above in the global object section.
 
-### conditions (Object)
-The following configuration options are optional:
-* **local (Bool)**  
+### Conditions
+The following condition options are optional:
+* **local**  
   If set to true, the rule is only executed for emails originating from addresses defined in local_addrs and vice versa.
-* **hosts (Array of Strings)**  
+* **hosts**  
   A list of hosts and network addresses for which the rule should be executed.
-* **envfrom (String)**  
+* **envfrom**  
   A regular expression to match against the evenlope-from addresses for which the rule should be executed.
 
 ## Developer information

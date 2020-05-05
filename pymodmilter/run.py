@@ -114,6 +114,9 @@ def main():
         if "log" not in config["global"]:
             config["global"]["log"] = True
 
+        if "pretend" not in config["global"]:
+            config["global"]["pretend"] = False
+
         # check if mandatory sections are present in config
         for section in ["rules"]:
             if section not in config:
@@ -137,6 +140,11 @@ def main():
                 params["log"] = rule["log"]
             else:
                 params["log"] = config["global"]["log"]
+
+            if "pretend" in rule:
+                params["pretend"] = rule["pretend"]
+            else:
+                params["pretend"] = config["global"]["pretend"]
 
             if "local_addrs" in rule:
                 params["local_addrs"] = rule["local_addrs"]

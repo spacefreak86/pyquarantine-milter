@@ -44,6 +44,8 @@ The following configuration options are optional for each rule:
   As described above in the [Global](#Global) section.
 * **log**  
   As described above in the [Global](#Global) section.
+* **pretend**  
+  Just pretend to make the modifications, for test purposes.
 
 ### Modifications
 The following configuration options are mandatory for each modification:
@@ -52,6 +54,7 @@ The following configuration options are mandatory for each modification:
   * **add_header**
   * **del_header**
   * **mod_header**
+  * **add_disclaimer**
 
 The following configuration options are mandatory based on the modification type in use.
 * **add_header**  
@@ -72,6 +75,24 @@ The following configuration options are mandatory based on the modification type
   * **value**  
     New value of the header.
 
+* **add_disclaimer**
+  * **action**  
+    Action to perform with the disclaimer. Possible values are:
+    * append
+    * prepend
+  * **html_template**  
+    Path to a file that contains the html representation of the disclaimer.
+  * **text_template**  
+    Path to a file that contains the text representation of the disclaimer.
+  * **error_policy**  
+    Set what should be done if the disclaimer could not be added (e.g. no body text found). Possible values are:
+    * wrap  
+      The original e-mail will be attached to a new one containing the disclaimer.
+    * ignore  
+      Ignore the error and do nothing.
+    * reject  
+      Reject the e-mail.
+
 The following configuration options are optional for each modification:
 * **name**  
   Name of the modification.
@@ -81,11 +102,13 @@ The following configuration options are optional for each modification:
 ### Conditions
 The following condition options are optional:
 * **local**  
-  If set to true, the rule is only executed for emails originating from addresses defined in local_addrs and vice versa.
+  If set to true, the rule is only executed for e-mails originating from addresses defined in local_addrs and vice versa.
 * **hosts**  
   A list of hosts and network addresses for which the rule should be executed.
 * **envfrom**  
   A regular expression to match against the evenlope-from addresses for which the rule should be executed.
+* **envto**  
+  A regular expression to match against all evenlope-to addresses. All addresses must match to fulfill the condition.
 
 ## Developer information
 Everyone who wants to improve or extend this project is very welcome.

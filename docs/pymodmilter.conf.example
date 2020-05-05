@@ -75,7 +75,14 @@
                 # Notes:  Condition wheter the envelop-from address matches this regular expression.
                 # Value:  [ REGEX ]
                 #
-                "envfrom": "^(?!.+@mycompany\\.com).+$"
+                "envfrom": "^.+@mypartner\\.com$",
+
+                # Option: envto
+                # Type:   String
+                # Notes:  Condition wheter the envelop-to address matches this regular expression.
+                # Value:  [ REGEX ]
+                #
+                "envto": "^postmaster@.+$"
             },
 
             # Section: modifications
@@ -109,7 +116,7 @@
                     # Notes:  Value of the header.
                     # Value:  [ VALUE ]
                     #
-                    "value": "true"
+                    "value": "true",
                 }, {
                     "name": "modify_subject",
 
@@ -145,8 +152,47 @@
                     # Value:  [ REGEX ]
                     #
                     "header": "^Received:"
+                }, {
+                    "name": "add_disclaimer",
+
+                    "type": "add_disclaimer",
+
+                    # Option: action
+                    # Type:   String
+                    # Notes:  Action to perform with the disclaimer.
+                    # Value:  [ append | prepend ]
+                    #
+                    "action": "prepend",
+
+                    # Option: html_template
+                    # Type:   String
+                    # Notes:  Path to a file that contains the html representation of the disclaimer.
+                    # Value:  [ FILE_PATH ]
+                    #
+                    "html_template": "/etc/pymodmilter/templates/disclaimer_html.template",
+
+                    # Option: text_template
+                    # Type:   String
+                    # Notes:  Path to a file that contains the text representation of the disclaimer.
+                    # Value:  [ FILE_PATH ]
+                    #
+                    "text_template": "/etc/pymodmilter/templates/disclaimer_text.template",
+
+                    # Option: error_policy
+                    # Type:   String
+                    # Notes:  Set what should be done if the modification fails (e.g. no message body present).
+                    # Value:  [ wrap | ignore | reject ]
+                    #
+                    "error_policy": "wrap"
                 }
-            ]
+            ],
+
+            # Option: pretend
+            # Type:   Bool
+            # Notes:  Just pretend to do the modifications, for test purposes.
+            # Value:  [ true | false ]
+            #
+            "pretend": true
         }
     ]
 }

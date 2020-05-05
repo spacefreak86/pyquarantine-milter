@@ -37,9 +37,15 @@ setup(name = "pymodmilter",
     },
     data_files = [
         (
-            '/etc/pymodmilter',
+            "/etc/pymodmilter",
             [
-                'docs/pymodmilter.conf.example'
+                "docs/pymodmilter.conf.example"
+            ]
+        ), (
+            "/etc/pymodmilter/templates",
+            [
+                "docs/templates/disclaimer_html.template",
+                "docs/templates/disclaimer_txt.template"
             ]
         )
     ],

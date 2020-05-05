@@ -45,7 +45,7 @@ setup(name = "pymodmilter",
             "/etc/pymodmilter/templates",
             [
                 "docs/templates/disclaimer_html.template",
-                "docs/templates/disclaimer_txt.template"
+                "docs/templates/disclaimer_text.template"
             ]
         )
     ],

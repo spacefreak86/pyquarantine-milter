@@ -196,12 +196,7 @@ class Modification:
                 if new_value == "":
                     self.logger.warning(
                         f"{qid}: {self.name}: mod_header: resulting value is "
-                        f"empty: del_header: {hdr[0:70]}")
-                    del headers[index]
-                    params = [name, new_value, index, occurrences[name]]
-                    changes.append(("mod_header", *params))
-                    index -= 1
-                    occurrences[name] -= 1
+                        f"empty, skip modification")
                 elif value != new_value:
                     old_hdr = hdr
                     hdr = f"{name}: {new_value}"

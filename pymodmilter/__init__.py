@@ -28,6 +28,7 @@ import re
 
 from Milter.utils import parse_addr
 from bs4 import BeautifulSoup
+from copy import copy
 from email.charset import Charset
 from email.header import Header, decode_header
 from email import message_from_binary_file
@@ -347,7 +348,7 @@ class Modification:
                 soup = body
 
             if self.action == "prepend":
-                soup.insert(0, html_template)
+                soup.insert(0, copy(html_template))
             else:
                 soup.append(html_template)
 

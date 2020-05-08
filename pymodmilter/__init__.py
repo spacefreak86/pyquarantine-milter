@@ -297,14 +297,14 @@ class Modification:
             msg = MIMEPart()
             msg.add_header("MIME-Version", "1.0")
             msg.set_content(
-                "Please see the original email attached to this email.")
+                "Please see the original email attached.")
             msg.add_alternative(
-                "Please see the original email attached to this email.",
+                "Please see the original email attached.",
                 subtype="html")
             fp.seek(0)
             msg.add_attachment(
                 fp.read(), maintype="plain", subtype="text",
-                filename="original_email.eml")
+                filename=f"{qid}.eml")
             html_body = msg.get_body(preferencelist=("html"))
             text_body = msg.get_body(preferencelist=("plain"))
             # content and mime headers may have to be updated because

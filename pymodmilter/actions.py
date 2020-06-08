@@ -60,10 +60,10 @@ def add_header(field, value, milter, idx=-1, pretend=False,
 def mod_header(field, value, milter, search=None, pretend=False,
                logger=logging.getLogger(__name__)):
     """Change the value of a mail header field."""
-    if not isinstance(field, re.Pattern):
+    if isinstance(field, str):
         field = re.compile(field, re.IGNORECASE)
 
-    if search is not None and not isinstance(search, re.Pattern):
+    if isinstance(search, str):
         search = re.compile(search, re.MULTILINE + re.DOTALL + re.IGNORECASE)
 
     occ = defaultdict(int)
@@ -110,10 +110,10 @@ def mod_header(field, value, milter, search=None, pretend=False,
 def del_header(field, milter, value=None, pretend=False,
                logger=logging.getLogger(__name__)):
     """Delete a mail header field."""
-    if not isinstance(field, re.Pattern):
+    if isinstance(field, str):
         field = re.compile(field, re.IGNORECASE)
 
-    if value is not None and not isinstance(value, re.Pattern):
+    if isinstance(value, str):
         value = re.compile(value, re.MULTILINE + re.DOTALL + re.IGNORECASE)
 
     idx = -1

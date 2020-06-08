@@ -105,12 +105,12 @@ def main():
         if "global" not in config:
             config["global"] = {}
 
-        if "loglevel" not in config["global"]:
-            config["global"]["loglevel"] = "info"
 
         if args.debug:
             loglevel = logging.DEBUG
         else:
+            if "loglevel" not in config["global"]:
+                config["global"]["loglevel"] = "info"
             loglevel = loglevels[config["global"]["loglevel"]]
 
         logger.setLevel(loglevel)
@@ -249,7 +249,7 @@ def main():
 
     logger.info("pymodmilter starting")
     ModifyMilter.set_rules(rules)
-    ModifyMilter.set_loglevel(loglevels[config["global"]["loglevel"]])
+    ModifyMilter.set_loglevel(loglevel)
 
     # register milter factory class
     Milter.factory = ModifyMilter

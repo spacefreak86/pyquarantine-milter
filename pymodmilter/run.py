@@ -12,7 +12,6 @@
 # along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-
 import Milter
 import argparse
 import logging
@@ -24,76 +23,102 @@ from re import sub
 
 from pymodmilter import Rule, ModifyMilter
 from pymodmilter.version import __version__ as version
+from pymodmilter.actions import Action
 
 
 def main():
     "Run PyMod-Milter."
-    # parse command line
     parser = argparse.ArgumentParser(
         description="PyMod milter daemon",
         formatter_class=lambda prog: argparse.HelpFormatter(
             prog, max_help_position=45, width=140))
+
     parser.add_argument(
         "-c", "--config", help="Config file to read.",
         default="/etc/pymodmilter/pymodmilter.conf")
+
     parser.add_argument(
         "-s",
         "--socket",
         help="Socket used to communicate with the MTA.",
         default="")
+
     parser.add_argument(
         "-d",
         "--debug",
         help="Log debugging messages.",
         action="store_true")
+
     parser.add_argument(
         "-t",
         "--test",
         help="Check configuration.",
         action="store_true")
+
     parser.add_argument(
         "-v", "--version",
         help="Print version.",
         action="version",
         version=f"%(prog)s ({version})")
+
     args = parser.parse_args()
 
-    # setup logging
-    loglevel = logging.INFO
-    logname = "pymodmilter"
-    syslog_name = logname
-    if args.debug:
-        loglevel = logging.DEBUG
-        logname = f"{logname}[%(name)s]"
-        syslog_name = f"{syslog_name}: [%(name)s] %(levelname)s"
+    loglevels = {
+        "error": logging.ERROR,
+        "warning": logging.WARNING,
+        "info": logging.INFO,
+        "debug": logging.DEBUG
+    }
 
     root_logger = logging.getLogger()
-    root_logger.setLevel(loglevel)
+    root_logger.setLevel(logging.DEBUG)
 
     # setup console log
     stdouthandler = logging.StreamHandler(sys.stdout)
-    stdouthandler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(message)s")
-    stdouthandler.setFormatter(formatter)
+    stdouthandler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s: %(message)s"))
     root_logger.addHandler(stdouthandler)
+
+    # setup syslog
+    sysloghandler = logging.handlers.SysLogHandler(
+        address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
+    sysloghandler.setFormatter(
+        logging.Formatter("pymodmilter: %(message)s"))
+    root_logger.addHandler(sysloghandler)
+
     logger = logging.getLogger(__name__)
 
+    if not args.debug:
+        logger.setLevel(logging.INFO)
+
     try:
-        # read config file
-        logger.debug("parsing config file")
         try:
             with open(args.config, "r") as fh:
-                config = loads(
-                    sub(r"(?m)^\s*#.*\n?", "", fh.read()))
+                config = sub(r"(?m)^\s*#.*\n?", "", fh.read())
+                config = loads(config)
         except Exception as e:
+            for num, line in enumerate(config.splitlines()):
+                logger.error(f"{num+1}: {line}")
             raise RuntimeError(
                 f"unable to parse config file: {e}")
 
-        logger.debug("preparing milter configuration ...")
-
-        # default values for global config if not set
         if "global" not in config:
             config["global"] = {}
+
+        if "loglevel" not in config["global"]:
+            config["global"]["loglevel"] = "info"
+
+        if args.debug:
+            loglevel = logging.DEBUG
+        else:
+            loglevel = loglevels[config["global"]["loglevel"]]
+
+        logger.setLevel(loglevel)
+
+        logger.debug("prepar milter configuration")
+
+        if "pretend" not in config["global"]:
+            config["global"]["pretend"] = False
 
         if args.socket:
             socket = args.socket
@@ -104,64 +129,110 @@ def main():
                 f"listening socket is neither specified on the command line "
                 f"nor in the configuration file")
 
-        if "local_addrs" not in config["global"]:
-            config["global"]["local_addrs"] = [
+        if "local_addrs" in config["global"]:
+            local_addrs = config["global"]["local_addrs"]
+        else:
+            local_addrs = [
+                "::1/128",
                 "127.0.0.0/8",
                 "10.0.0.0/8",
                 "172.16.0.0/12",
                 "192.168.0.0/16"]
 
-        if "log" not in config["global"]:
-            config["global"]["log"] = True
-
-        if "pretend" not in config["global"]:
-            config["global"]["pretend"] = False
-
-        # check if mandatory sections are present in config
-        for section in ["rules"]:
-            if section not in config:
-                raise RuntimeError(
-                    f"mandatory config section '{section}' not found")
+        if "rules" not in config:
+            raise RuntimeError(
+                f"mandatory config section 'rules' not found")
 
         if not config["rules"]:
             raise RuntimeError("no rules configured")
 
-        rules = []
-        # iterate configured rules
-        for rule_idx, rule in enumerate(config["rules"]):
-            params = {}
-            # set default values if not specified in config
-            if "name" in rule:
-                params["name"] = rule["name"]
-            else:
-                params["name"] = f"Rule #{rule_idx}"
+        logger.debug("initialize rules ...")
 
-            if "log" in rule:
-                params["log"] = rule["log"]
+        rules = []
+        for rule_idx, rule in enumerate(config["rules"]):
+            if "name" in rule:
+                rule_name = rule["name"]
             else:
-                params["log"] = config["global"]["log"]
+                rule_name = f"Rule #{rule_idx}"
+
+            logger.debug(f"prepare rule {rule_name} ...")
+
+            if "actions" not in rule:
+                raise RuntimeError(
+                    f"{rule_name}: mandatory config "
+                    f"section 'actions' not found")
+
+            if not rule["actions"]:
+                raise RuntimeError("{rule_name}: no actions configured")
+
+            if args.debug:
+                rule_loglevel = logging.DEBUG
+            elif "loglevel" in rule:
+                rule_loglevel = loglevels[rule["loglevel"]]
+            else:
+                rule_loglevel = loglevels[config["global"]["loglevel"]]
 
             if "pretend" in rule:
-                params["pretend"] = rule["pretend"]
+                rule_pretend = rule["pretend"]
             else:
-                params["pretend"] = config["global"]["pretend"]
+                rule_pretend = config["global"]["pretend"]
 
-            if "local_addrs" in rule:
-                params["local_addrs"] = rule["local_addrs"]
-            else:
-                params["local_addrs"] = config["global"]["local_addrs"]
+            actions = []
+            for action_idx, action in enumerate(rule["actions"]):
+                if "name" in action:
+                    action_name = action["name"]
+                else:
+                    action_name = f"Action #{action_idx}"
 
-            if "conditions" in rule:
-                params["conditions"] = rule["conditions"]
+                if args.debug:
+                    action_loglevel = logging.DEBUG
+                elif "loglevel" in action:
+                    action_loglevel = loglevels[action["loglevel"]]
+                else:
+                    action_loglevel = rule_loglevel
 
-            if "modifications" in rule:
-                params["modifications"] = rule["modifications"]
-            else:
-                raise RuntimeError(
-                    f"{rule['name']}: mandatory config section "
-                    f"'modifications' not found")
+                if "pretend" in action:
+                    action_pretend = action["pretend"]
+                else:
+                    action_pretend = rule_pretend
 
-            rules.append(Rule(**params))
+                if "type" not in action:
+                    raise RuntimeError(
+                        f"{rule_name}: {action_name}: mandatory config "
+                        f"section 'actions' not found")
+
+                if "conditions" not in action:
+                    action["conditions"] = {}
+
+                try:
+                    actions.append(
+                        Action(
+                            name=action_name,
+                            local_addrs=local_addrs,
+                            conditions=action["conditions"],
+                            action_type=action["type"],
+                            args=action,
+                            loglevel=action_loglevel,
+                            pretend=action_pretend))
+                except RuntimeError as e:
+                    logger.error(f"{action_name}: {e}")
+                    sys.exit(253)
+
+            if "conditions" not in rule:
+                rule["conditions"] = {}
+
+            try:
+                rules.append(
+                    Rule(
+                        name=rule_name,
+                        local_addrs=local_addrs,
+                        conditions=rule["conditions"],
+                        actions=actions,
+                        loglevel=rule_loglevel,
+                        pretend=rule_pretend))
+            except RuntimeError as e:
+                logger.error(f"{rule_name}: {e}")
+                sys.exit(254)
 
     except RuntimeError as e:
         logger.error(e)
@@ -171,26 +242,21 @@ def main():
         print("Configuration ok")
         sys.exit(0)
 
-    # change log format for runtime
-    formatter = logging.Formatter(
-        f"%(asctime)s {logname}: [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S")
+    # setup console log for runtime
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s")
     stdouthandler.setFormatter(formatter)
-
-    # setup syslog
-    sysloghandler = logging.handlers.SysLogHandler(
-        address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
-    sysloghandler.setLevel(loglevel)
-    formatter = logging.Formatter(f"{syslog_name}: %(message)s")
-    sysloghandler.setFormatter(formatter)
-    root_logger.addHandler(sysloghandler)
+    stdouthandler.setLevel(logging.DEBUG)
 
     logger.info("pymodmilter starting")
     ModifyMilter.set_rules(rules)
+    ModifyMilter.set_loglevel(loglevels[config["global"]["loglevel"]])
 
     # register milter factory class
     Milter.factory = ModifyMilter
     Milter.set_exception_policy(Milter.TEMPFAIL)
+
+    if args.debug:
+        Milter.setdbg(1)
 
     rc = 0
     try:

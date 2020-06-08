@@ -30,16 +30,23 @@
         #
         "local_addrs": ["127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
 
-        # Option: log
+        # Option: loglevel
+        # Type:   String
+        # Notes:  Set loglevel for rules and actions.
+        # Value:  [ error | warning | info | debug ]
+        #
+        "loglevel": "info",
+
+        # Option: pretend
         # Type:   Bool
-        # Notes:  Enable or disable logging of rules and modifications.
+        # Notes:  Just pretend to do the actions, for test purposes.
         # Value:  [ true | false ]
         #
-        "log": true
+        "pretend": true
     },
 
     # Section: rules
-    # Notes:   Rules and related modifications.
+    # Notes:   Rules and related actions.
     #
     "rules": [
         {
@@ -85,10 +92,10 @@
                 "envto": "^postmaster@.+$"
             },
 
-            # Section: modifications
-            # Notes:   Modifications of the rule.
+            # Section: actions
+            # Notes:   Actions of the rule.
             #
-            "modifications": [
+            "actions": [
                 {
                     # Option: name
                     # Type:   String
@@ -116,7 +123,7 @@
                     # Notes:  Value of the header.
                     # Value:  [ VALUE ]
                     #
-                    "value": "true",
+                    "value": "true"
                 }, {
                     "name": "modify_subject",
 
@@ -127,7 +134,7 @@
                     # Notes:  Regular expression to match against header lines (e.g. Subject: Test-Subject).
                     # Value:  [ REGEX ]
                     #
-                    "header": "^Subject:",
+                    "header": "^Subject$",
 
                     # Option: search
                     # Type:   String
@@ -151,7 +158,7 @@
                     # Notes:  Regular expression to match against header lines (e.g. Subject: Test-Subject).
                     # Value:  [ REGEX ]
                     #
-                    "header": "^Received:"
+                    "header": "^Received$"
                 }, {
                     "name": "add_disclaimer",
 
@@ -164,19 +171,19 @@
                     #
                     "action": "prepend",
 
-                    # Option: html_template
+                    # Option: html_file
                     # Type:   String
-                    # Notes:  Path to a file that contains the html representation of the disclaimer.
+                    # Notes:  Path to a file which contains the html representation of the disclaimer.
                     # Value:  [ FILE_PATH ]
                     #
-                    "html_template": "/etc/pymodmilter/templates/disclaimer_html.template",
+                    "html_file": "/etc/pymodmilter/templates/disclaimer_html.template",
 
-                    # Option: text_template
+                    # Option: text_file
                     # Type:   String
-                    # Notes:  Path to a file that contains the text representation of the disclaimer.
+                    # Notes:  Path to a file which contains the text representation of the disclaimer.
                     # Value:  [ FILE_PATH ]
                     #
-                    "text_template": "/etc/pymodmilter/templates/disclaimer_text.template",
+                    "text_file": "/etc/pymodmilter/templates/disclaimer_text.template",
 
                     # Option: error_policy
                     # Type:   String
@@ -185,14 +192,7 @@
                     #
                     "error_policy": "wrap"
                 }
-            ],
-
-            # Option: pretend
-            # Type:   Bool
-            # Notes:  Just pretend to do the modifications, for test purposes.
-            # Value:  [ true | false ]
-            #
-            "pretend": true
+            ]
         }
     ]
 }

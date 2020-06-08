@@ -2,7 +2,7 @@
 A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.  
 The project is currently in beta status, but it is already used in a productive enterprise environment which processes about a million e-mails per month.  
 
-The basic idea is to define rules with conditions and modifications which are processed when all conditions are true.
+The basic idea is to define rules with conditions and actions which are processed when all conditions are true.
 
 ## Dependencies
 Pymodmilter is depending on these python packages, but they are installed automatically if you are working with pip.
@@ -10,7 +10,7 @@ Pymodmilter is depending on these python packages, but they are installed automa
 * [netaddr](https://github.com/drkjam/netaddr/)
 
 ## Installation
-* Install pymodmilter with pip and copy the example configuration file.
+* Install pymodmilter with pip and copy the example config file.
 ```sh
 pip install pymodmilter
 cp /etc/pymodmilter/pymodmilter.conf.example /etc/pymodmilter/pymodmilter.conf
@@ -18,96 +18,107 @@ cp /etc/pymodmilter/pymodmilter.conf.example /etc/pymodmilter/pymodmilter.conf
 * Modify /etc/pymodmilter/pymodmilter.conf according to your needs.
 
 ## Configuration options
-Pymodmilter uses a configuration file in JSON format. The options are described below. Make a copy of the [example configuration file](https://github.com/spacefreak86/pymodmilter/blob/master/docs/pymodmilter.conf.example) in the  [docs](https://github.com/spacefreak86/pymodmilter/tree/master/docs) folder to start with.  
-Rules and modifications are processed in the given order.
+Pymodmilter uses a config file in JSON format. The config file has to be JSON valid with the exception of allowed comment lines starting with **#**. The options are described below.  
+Rules and actions are processed in the given order.
 
 ### Global
-The following global configuration options are optional:
-* **socket**  
-  The socket used to communicate with the MTA.
-* **local_addrs**  
-  A list of hosts and network addresses which are considered local. It is used to for the condition option [local](#Conditions). This option may be overriden within a rule object.
-* **log**  
-  Enable or disable logging. This option may be overriden by a rule or modification object.
+Config options in **global** section:
+* **socket** (optional)  
+  The socket used to communicate with the MTA. If it is not specified in the config, it has to be set as command line option.
+* **local_addrs** (optional)  
+  A list of hosts and network addresses which are considered local. It is used to for the condition option [local](#Conditions).  
+  Default: **::1/128, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16**
+* **loglevel**  (optional)
+  Set the log level. This option may be overriden by any rule or action object. Possible values are:
+  * **error**  
+  * **warning**  
+  * **info**  
+  * **debug**  
+  Default: **info**
+* **pretend** (optional)
+  Pretend actions, for test purposes. This option may be overriden by any rule or action object.
 
 ### Rules
-The following configuration options are mandatory for each rule:
-* **modifications**  
-  A list of modification objects which are processed in the given order.
-
-The following configuration options are optional for each rule:
-* **name**  
-  Name of the rule.
-* **conditions**  
-  A list of conditions which all have to be true to process the rule.
-* **local_addrs**  
+Config options for **rule** objects:
+* **name**  (optional)  
+  Name of the rule.  
+  Default: **Rule #n**
+* **actions**  
+  A list of action objects which are processed in the given order.
+* **conditions** (optional)  
+  A list of conditions which all have to be true to process the actions.
+* **loglevel** (optional)  
   As described above in the [Global](#Global) section.
-* **log**  
+* **pretend** (optional)  
   As described above in the [Global](#Global) section.
-* **pretend**  
-  Just pretend to make the modifications, for test purposes.
 
-### Modifications
-The following configuration options are mandatory for each modification:
+### Actions
+Config options for **action** objects:
+* **name** (optional)  
+  Name of the action.
+  Default: **Action #n**
 * **type**  
-  Set the modification type. Possible values are:
+  Action type. Possible values are:
   * **add_header**
   * **del_header**
   * **mod_header**
   * **add_disclaimer**
+* **conditions** (optional)  
+  A list of conditions which all have to be true to process the action.
+* **pretend** (optional)  
+  Just pretend all actions of this rule, for test purposes.
+* **loglevel** (optional)  
+  As described above in the [Global](#Global) section.
 
-The following configuration options are mandatory based on the modification type in use.
-* **add_header**  
+Config options for **add_header** actions:
   * **header**  
     Name of the header.
   * **value**  
     Value of the header.
 
-* **del_header**  
+Config options for **del_header** actions:
   * **header**  
-    Regular expression to match against header lines.
+    Regular expression to match against header names.
+  * **value** (optional)
+    Regular expression to match against the headers value.
 
-* **mod_header**  
+Config options for **mod_header** actions:
   * **header**  
-    Regular expression to match against header lines.
-  * **search**  
-    Regular expression to match against the value of header lines. You may use subgroups or named subgroups (python syntax) to include parts of the original value in the new value.
+    Regular expression to match against header names.
+  * **search** (optional)  
+    Regular expression to match against header values. You may use subgroups or named subgroups (python syntax) to include parts of the original value in the new value.
   * **value**  
     New value of the header.
 
-* **add_disclaimer**
+Config options for **add_disclaimer** actions:
   * **action**  
     Action to perform with the disclaimer. Possible values are:
     * append
     * prepend
-  * **html_template**  
-    Path to a file that contains the html representation of the disclaimer.
-  * **text_template**  
-    Path to a file that contains the text representation of the disclaimer.
-  * **error_policy**  
-    Set what should be done if the disclaimer could not be added (e.g. no body text found). Possible values are:
+  * **html_file**  
+    Path to a file which contains the html representation of the disclaimer.
+  * **text_file**  
+    Path to a file which contains the text representation of the disclaimer.
+  * **error_policy** (optional)  
+    Set the error policy in case the disclaimer cannot be added (e.g. if no body part is present in the e-mail). Possible values are:
     * wrap  
-      The original e-mail will be attached to a new one containing the disclaimer.
+      A new e-mail body is generated with the disclaimer as body and the original e-mail attached.
     * ignore  
       Ignore the error and do nothing.
     * reject  
       Reject the e-mail.
+    Default: **wrap**
 
-The following configuration options are optional for each modification:
-* **name**  
-  Name of the modification.
-* **log**  
-  As described above in the global object section.
 
 ### Conditions
-The following condition options are optional:
-* **local**  
+Config options for **conditions** objects:
+* **local** (optional)  
   If set to true, the rule is only executed for e-mails originating from addresses defined in local_addrs and vice versa.
-* **hosts**  
+* **hosts** (optional)  
   A list of hosts and network addresses for which the rule should be executed.
-* **envfrom**  
+* **envfrom** (optional)  
   A regular expression to match against the evenlope-from addresses for which the rule should be executed.
-* **envto**  
+* **envto** (optional)  
   A regular expression to match against all evenlope-to addresses. All addresses must match to fulfill the condition.
 
 ## Developer information

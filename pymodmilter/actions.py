@@ -231,6 +231,7 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
 
     text_content = None
     html_content = None
+    update_headers = False
 
     try:
         try:
@@ -239,6 +240,9 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
             html_body, html_content = _get_body_content(msg, "html")
             if text_content is None and html_content is None:
                 raise RuntimeError()
+
+            if not msg.is_multipart():
+                update_headers = True
         except RuntimeError:
             logger.info(
                 "message does not contain any body part, "
@@ -248,6 +252,9 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
             html_body, html_content = _get_body_content(msg, "html")
             if text_content is None and html_content is None:
                 raise RuntimeError("no message body present after injecting")
+
+            update_headers = True
+
     except Exception as e:
         logger.warning(e)
         if policy == "ignore":
@@ -269,6 +276,8 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
         if text_content is None and html_content is None:
             raise Exception("no message body present after wrapping, "
                             "give up ...")
+
+        update_headers = True
 
     if text_content is not None:
         logger.info(f"{action} text disclaimer")
@@ -324,6 +333,9 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
     logger.debug("milter: replacebody")
     milter.replacebody(data[body_pos:])
     del data
+
+    if not update_headers:
+        return
 
     fields = {
         "mime-version": {

@@ -180,7 +180,7 @@ def main():
             actions = []
             for action_idx, action in enumerate(rule["actions"]):
                 if "name" in action:
-                    action_name = action["name"]
+                    action_name = f"{rule_name}: {action['name']}"
                 else:
                     action_name = f"Action #{action_idx}"
 

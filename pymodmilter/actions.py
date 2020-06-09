@@ -158,6 +158,61 @@ def _get_body_content(msg, body_type):
     return (body_part, content)
 
 
+def _patch_message_body(msg, action, text, html, logger):
+    text_body, text_content = _get_body_content(msg, "plain")
+    html_body, html_content = _get_body_content(msg, "html")
+
+    if text_content is None and html_content is None:
+        raise RuntimeError("message does not contain any body part")
+
+    if text_content is not None:
+        logger.info(f"{action} text disclaimer")
+
+        if action == "prepend":
+            content = f"{text}{text_content}"
+        else:
+            content = f"{text_content}{text}"
+
+        text_body.set_content(
+            content.encode(), maintype="text", subtype="plain")
+        text_body.set_param("charset", "UTF-8", header="Content-Type")
+
+    if html_content is not None:
+        logger.info(f"{action} html disclaimer")
+
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        body = soup.find('body')
+        if not body:
+            body = soup
+
+        if action == "prepend":
+            body.insert(0, copy(html))
+        else:
+            body.append(html)
+
+        html_body.set_content(
+            str(body).encode(), maintype="text", subtype="html")
+        html_body.set_param("charset", "UTF-8", header="Content-Type")
+
+
+def _serialize_msg(msg, logger):
+    try:
+        logger.debug("serialize message as bytes")
+        data = msg.as_bytes(policy=SMTP)
+    except Exception as e:
+        logger.waring(
+            f"unable to serialize message as bytes: {e}")
+        try:
+            logger.warning("try to serialize message as string")
+            data = msg.as_string(policy=SMTP)
+            data = data.encode("ascii", errors="replace")
+        except Exception as e:
+            raise e
+
+    return data
+
+
 def _wrap_message(milter):
     msg = MIMEPart()
     msg.add_header("MIME-Version", "1.0")
@@ -235,26 +290,16 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
 
     try:
         try:
-            logger.debug("try to find a plain and/or html body part")
-            text_body, text_content = _get_body_content(msg, "plain")
-            html_body, html_content = _get_body_content(msg, "html")
-            if text_content is None and html_content is None:
-                raise RuntimeError()
-
+            _patch_message_body(msg, action, text, html, logger)
+            data = _serialize_msg(msg, logger)
             if not msg.is_multipart():
                 update_headers = True
-        except RuntimeError:
-            logger.info(
-                "message does not contain any body part, "
-                "inject empty plain and html body parts")
+        except RuntimeError as e:
+            logger.info("inject empty plain and html body parts")
             msg = _inject_body(milter, msg)
-            text_body, text_content = _get_body_content(msg, "plain")
-            html_body, html_content = _get_body_content(msg, "html")
-            if text_content is None and html_content is None:
-                raise RuntimeError("no message body present after injecting")
-
+            _patch_message_body(msg, action, text, html, logger)
+            data = _serialize_msg(msg, logger)
             update_headers = True
-
     except Exception as e:
         logger.warning(e)
         if policy == "ignore":
@@ -270,57 +315,14 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
                 ("reject", "Message rejected due to error")]
 
         logger.info("wrap original message in a new message envelope")
-        msg = _wrap_message(milter)
-        text_body, text_content = _get_body_content(msg, "plain")
-        html_body, html_content = _get_body_content(msg, "html")
-        if text_content is None and html_content is None:
-            raise Exception("no message body present after wrapping, "
-                            "give up ...")
-
-        update_headers = True
-
-    if text_content is not None:
-        logger.info(f"{action} text disclaimer")
-
-        if action == "prepend":
-            content = f"{text}{text_content}"
-        else:
-            content = f"{text_content}{text}"
-
-        text_body.set_content(
-            content.encode(), maintype="text", subtype="plain")
-        text_body.set_param("charset", "UTF-8", header="Content-Type")
-
-    if html_content is not None:
-        logger.info(f"{action} html disclaimer")
-
-        soup = BeautifulSoup(html_content, "html.parser")
-
-        body = soup.find('body')
-        if body:
-            soup = body
-
-        if action == "prepend":
-            soup.insert(0, copy(html))
-        else:
-            soup.append(html)
-
-        html_body.set_content(
-            str(soup).encode(), maintype="text", subtype="html")
-        html_body.set_param("charset", "UTF-8", header="Content-Type")
-
-    try:
-        logger.debug("serialize message as bytes")
-        data = msg.as_bytes(policy=SMTP)
-    except Exception as e:
-        logger.waring(
-            f"unable to serialize message as bytes: {e}")
         try:
-            logger.warning("try to serialize message as string")
-            data = msg.as_string(policy=SMTP)
-            data = data.encode("ascii", errors="replace")
+            msg = _wrap_message(milter)
+            _patch_message_body(msg, action, text, html, logger)
+            data = _serialize_msg(msg, logger)
+            update_headers = True
         except Exception as e:
-            raise e
+            raise Exception("unable to wrap message in a new message envelope, "
+                            "give up ...")
 
     body_pos = data.find(b"\r\n\r\n") + 4
     milter.fp.seek(0)
@@ -448,6 +450,8 @@ class Action:
                         self._args["text"] = f.read()
                 except IOError as e:
                     raise RuntimeError(f"unable to read template: {e}")
+            else:
+                raise RuntimeError(f"unknown action type: {action_type}")
 
         except KeyError as e:
             raise RuntimeError(

@@ -295,7 +295,7 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
             if not msg.is_multipart():
                 update_headers = True
         except RuntimeError as e:
-            logger.info("inject empty plain and html body parts")
+            logger.info(f"{e}, inject empty plain and html body")
             msg = _inject_body(milter, msg)
             _patch_message_body(msg, action, text, html, logger)
             data = _serialize_msg(msg, logger)
@@ -412,9 +412,10 @@ class Action:
                     self._func = mod_header
                     self._args["value"] = args["value"]
                     regex_args.append("search")
-                elif action_type == "del_header" and "value" in args:
+                elif action_type == "del_header":
                     self._func = del_header
-                    regex_args.append("value")
+                    if "value" in args:
+                        regex_args.append("value")
 
                 for arg in regex_args:
                     try:

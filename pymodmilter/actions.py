@@ -284,8 +284,6 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
     logger.debug("parse message")
     msg = fp.close()
 
-    text_content = None
-    html_content = None
     update_headers = False
 
     try:
@@ -321,8 +319,10 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
             data = _serialize_msg(msg, logger)
             update_headers = True
         except Exception as e:
-            raise Exception("unable to wrap message in a new message envelope, "
-                            "give up ...")
+            logger.error(e)
+            raise Exception(
+                "unable to wrap message in a new message envelope, "
+                "give up ...")
 
     body_pos = data.find(b"\r\n\r\n") + 4
     milter.fp.seek(0)

@@ -105,7 +105,6 @@ def main():
         if "global" not in config:
             config["global"] = {}
 
-
         if args.debug:
             loglevel = logging.DEBUG
         else:

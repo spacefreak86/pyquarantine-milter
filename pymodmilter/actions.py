@@ -185,6 +185,8 @@ def _patch_message_body(msg, action, text, html, logger):
         body = soup.find('body')
         if not body:
             body = soup
+        elif body.text != soup.text:
+            body = soup
 
         if action == "prepend":
             body.insert(0, copy(html))
@@ -192,7 +194,7 @@ def _patch_message_body(msg, action, text, html, logger):
             body.append(html)
 
         html_body.set_content(
-            str(body).encode(), maintype="text", subtype="html")
+            str(soup).encode(), maintype="text", subtype="html")
         html_body.set_param("charset", "UTF-8", header="Content-Type")
 
 

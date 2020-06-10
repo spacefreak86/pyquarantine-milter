@@ -22,6 +22,7 @@ from email.header import Header
 from email.parser import BytesFeedParser
 from email.message import MIMEPart
 from email.policy import default as default_policy, SMTP
+from os import linesep
 
 from pymodmilter import CustomLogger, Conditions
 
@@ -158,6 +159,17 @@ def _get_body_content(msg, body_type):
     return (body_part, content)
 
 
+def _has_content_before_body_tag(soup):
+    s = copy(soup)
+    for element in s.find_all("head") + s.find_all("body"):
+        element.extract()
+
+    if len(s.text.strip()) > 0:
+        return True
+
+    return False
+
+
 def _patch_message_body(msg, action, text, html, logger):
     text_body, text_content = _get_body_content(msg, "plain")
     html_body, html_content = _get_body_content(msg, "html")
@@ -185,7 +197,7 @@ def _patch_message_body(msg, action, text, html, logger):
         body = soup.find('body')
         if not body:
             body = soup
-        elif body.text != soup.text:
+        elif _has_content_before_body_tag(soup):
             body = soup
 
         if action == "prepend":

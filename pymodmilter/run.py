@@ -263,7 +263,6 @@ def main():
     except Milter.milter.error as e:
         logger.error(e)
         rc = 255
-    logger.info("pymodmilter terminated")
     sys.exit(rc)
 
 

@@ -154,41 +154,62 @@ class ModifyMilter(Milter.Base):
         self.rules = ModifyMilter._rules.copy()
 
     def connect(self, IPname, family, hostaddr):
-        self.logger.debug(
-            f"accepted milter connection from {hostaddr[0]} "
-            f"port {hostaddr[1]}")
+        try:
+            if hostaddr is None:
+                self.logger.error("unable to proceed, host address is None")
+                return Milter.TEMPFAIL
 
-        # remove rules which ignore this host
-        for rule in self.rules.copy():
-            if rule.ignores(host=hostaddr[0]):
-                self.rules.remove(rule)
-
-        if not self.rules:
             self.logger.debug(
-                f"host {hostaddr[0]} is ignored by all rules, "
-                f"skip further processing")
-            return Milter.ACCEPT
+                f"accepted milter connection from {hostaddr[0]} "
+                f"port {hostaddr[1]}")
+
+            # remove rules which ignore this host
+            for rule in self.rules.copy():
+                if rule.ignores(host=hostaddr[0]):
+                    self.rules.remove(rule)
+
+            if not self.rules:
+                self.logger.debug(
+                    f"host {hostaddr[0]} is ignored by all rules, "
+                    f"skip further processing")
+                return Milter.ACCEPT
+        except Exception as e:
+            self.logger.exception(
+                f"an exception occured in connect function: {e}")
+            return Milter.TEMPFAIL
 
         return Milter.CONTINUE
 
     def envfrom(self, mailfrom, *str):
-        mailfrom = "@".join(parse_addr(mailfrom)).lower()
-        for rule in self.rules.copy():
-            if rule.ignores(envfrom=mailfrom):
-                self.rules.remove(rule)
+        try:
+            mailfrom = "@".join(parse_addr(mailfrom)).lower()
+            for rule in self.rules.copy():
+                if rule.ignores(envfrom=mailfrom):
+                    self.rules.remove(rule)
 
-        if not self.rules:
-            self.logger.debug(
-                f"envelope-from address {mailfrom} is ignored by all rules, "
-                f"skip further processing")
-            return Milter.ACCEPT
+            if not self.rules:
+                self.logger.debug(
+                    f"envelope-from address {mailfrom} is ignored by "
+                    f"all rules, skip further processing")
+                return Milter.ACCEPT
 
-        self.recipients = set()
+            self.recipients = set()
+        except Exception as e:
+            self.logger.exception(
+                f"an exception occured in envfrom function: {e}")
+            return Milter.TEMPFAIL
+
         return Milter.CONTINUE
 
     @Milter.noreply
     def envrcpt(self, to, *str):
-        self.recipients.add("@".join(parse_addr(to)).lower())
+        try:
+            self.recipients.add("@".join(parse_addr(to)).lower())
+        except Exception as e:
+            self.logger.exception(
+                f"an exception occured in envrcpt function: {e}")
+            return Milter.TEMPFAIL
+
         return Milter.CONTINUE
 
     def data(self):

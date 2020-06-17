@@ -13,16 +13,17 @@
 #
 
 import logging
+import os
 import re
 
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from copy import copy
+from datetime import datetime
 from email.header import Header
 from email.parser import BytesFeedParser
 from email.message import MIMEPart
 from email.policy import default as default_policy, SMTP
-from os import linesep
 
 from pymodmilter import CustomLogger, Conditions
 
@@ -384,13 +385,36 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
                        milter=milter, pretend=pretend, logger=logger)
 
 
+def store(directory, milter, pretend=False,
+          logger=logging.getLogger(__name__)):
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    store_id = f"{timestamp}_{milter.qid}"
+    datafile = os.path.join(directory, store_id)
+    milter.fp.seek(0)
+    logger.info("store message in file {datafile}")
+    try:
+        with open(datafile, "wb") as fp:
+            for field, value in milter.fields:
+                encoded_value = _replace_illegal_chars(
+                    Header(s=value).encode())
+                fp.write(field.encode("ascii", errors="replace"))
+                fp.write(b": ")
+                fp.write(encoded_value.encode("ascii", errors="replace"))
+                fp.write(b"\r\n")
+            fp.write(b"\r\n")
+            fp.write(milter.fp.read())
+    except IOError as e:
+        raise RuntimeError(f"unable to store message: {e}")
+
+
 class Action:
     """Action to implement a pre-configured action to perform on e-mails."""
     _types = {
         "add_header": ["fields"],
         "del_header": ["fields"],
         "mod_header": ["fields"],
-        "add_disclaimer": ["fields", "body"]}
+        "add_disclaimer": ["fields", "body"],
+        "store": ["fields", "body"]}
 
     def __init__(self, name, local_addrs, conditions, action_type, args,
                  loglevel=logging.INFO, pretend=False):
@@ -406,7 +430,7 @@ class Action:
         self._args = {}
 
         if action_type not in self._types:
-            raise RuntimeError(f"invalid action_type '{action_type}'")
+            raise RuntimeError(f"invalid action type '{action_type}'")
         self._needs = self._types[action_type]
 
         try:
@@ -465,8 +489,16 @@ class Action:
                         self._args["text"] = f.read()
                 except IOError as e:
                     raise RuntimeError(f"unable to read template: {e}")
+            elif action_type == "store":
+                self._func = store
+                if args["storage_type"] not in ["file"]:
+                    raise RuntimeError(
+                        f"invalid storage_type 'args['storage_type']'")
+
+                if args["storage_type"] == "file":
+                    self._args["directory"] = args["directory"]
             else:
-                raise RuntimeError(f"unknown action type: {action_type}")
+                raise RuntimeError(f"invalid action type: {action_type}")
 
         except KeyError as e:
             raise RuntimeError(

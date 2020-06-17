@@ -227,17 +227,22 @@ class ModifyMilter(Milter.Base):
             self.qid = self.getsymval('i')
             self.logger = CustomLogger(self.logger, {"qid": self.qid})
             self.logger.debug("received queue-id from MTA")
+
             self.fields = None
-            self.fp = None
+            self.fields_data = None
+            self.body_data = None
+            needs = []
             for rule in self.rules:
-                if "fields" in rule.needs() and self.fields is None:
-                    self.fields = []
+                needs += rule.needs()
 
-                if "body" in rule.needs() and self.fp is None:
-                    self.fp = BytesIO()
+            if "fields" in needs:
+                self.fields = []
 
-                if None not in [self.fields, self.fp]:
-                    break
+            if "original_fields" in needs:
+                self.fields_data = BytesIO()
+
+            if "body" in needs:
+                self.body_data = BytesIO()
 
         except Exception as e:
             self.logger.exception(
@@ -248,6 +253,14 @@ class ModifyMilter(Milter.Base):
 
     def header(self, name, value):
         try:
+            if self.fields_data != None:
+                self.fields_data.write(
+                    name.encode("ascii", errors="surrogateescape"))
+                self.fields_data.write(b": ")
+                self.fields_data.write(
+                    value.encode("ascii", errors="surrogateescape"))
+                self.fields_data.write(b"\r\n")
+
             if self.fields is not None:
                 # remove surrogates from value
                 value = value.encode(
@@ -266,8 +279,8 @@ class ModifyMilter(Milter.Base):
 
     def body(self, chunk):
         try:
-            if self.fp is not None:
-                self.fp.write(chunk)
+            if self.body_data is not None:
+                self.body_data.write(chunk)
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in body function: {e}")

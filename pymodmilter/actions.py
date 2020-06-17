@@ -24,6 +24,7 @@ from email.header import Header
 from email.parser import BytesFeedParser
 from email.message import MIMEPart
 from email.policy import default as default_policy, SMTP
+from shutil import copyfileobj
 
 from pymodmilter import CustomLogger, Conditions
 
@@ -247,8 +248,8 @@ def _wrap_message(milter):
         data += encoded_value.encode("ascii", errors="replace")
         data += b"\r\n"
 
-    milter.fp.seek(0)
-    data += b"\r\n" + milter.fp.read()
+    milter.body_data.seek(0)
+    data += b"\r\n" + milter.body_data.read()
 
     msg.add_attachment(
         data, maintype="plain", subtype="text",
@@ -275,7 +276,7 @@ def _inject_body(milter, msg):
 def add_disclaimer(text, html, action, policy, milter, pretend=False,
                    logger=logging.getLogger(__name__)):
     """Append or prepend a disclaimer to the mail body."""
-    milter.fp.seek(0)
+    milter.body_data.seek(0)
     fp = BytesFeedParser(policy=default_policy)
 
     for field, value in milter.fields:
@@ -294,7 +295,7 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
 
     fp.feed(b"\r\n")
     logger.debug(f"feed body to message object: {field}: {value}")
-    fp.feed(milter.fp.read())
+    fp.feed(milter.body_data.read())
 
     logger.debug("parse message")
     msg = fp.close()
@@ -340,9 +341,9 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
                 "give up ...")
 
     body_pos = data.find(b"\r\n\r\n") + 4
-    milter.fp.seek(0)
-    milter.fp.write(data[body_pos:])
-    milter.fp.truncate()
+    milter.body_data.seek(0)
+    milter.body_data.write(data[body_pos:])
+    milter.body_data.truncate()
 
     if pretend:
         return
@@ -390,19 +391,14 @@ def store(directory, milter, pretend=False,
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     store_id = f"{timestamp}_{milter.qid}"
     datafile = os.path.join(directory, store_id)
-    milter.fp.seek(0)
-    logger.info("store message in file {datafile}")
+    milter.fields_data.seek(0)
+    milter.body_data.seek(0)
+    logger.info(f"store message in file {datafile}")
     try:
         with open(datafile, "wb") as fp:
-            for field, value in milter.fields:
-                encoded_value = _replace_illegal_chars(
-                    Header(s=value).encode())
-                fp.write(field.encode("ascii", errors="replace"))
-                fp.write(b": ")
-                fp.write(encoded_value.encode("ascii", errors="replace"))
-                fp.write(b"\r\n")
+            copyfileobj(milter.fields_data, fp)
             fp.write(b"\r\n")
-            fp.write(milter.fp.read())
+            copyfileobj(milter.body_data, fp)
     except IOError as e:
         raise RuntimeError(f"unable to store message: {e}")
 
@@ -414,7 +410,7 @@ class Action:
         "del_header": ["fields"],
         "mod_header": ["fields"],
         "add_disclaimer": ["fields", "body"],
-        "store": ["fields", "body"]}
+        "store": ["original_fields", "body"]}
 
     def __init__(self, name, local_addrs, conditions, action_type, args,
                  loglevel=logging.INFO, pretend=False):

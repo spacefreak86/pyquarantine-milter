@@ -191,6 +191,22 @@
                     # Value:  [ wrap | ignore | reject ]
                     #
                     "error_policy": "wrap"
+                }, {
+                    "name": "store_message",
+
+                    "type": "store",
+
+                    # Option: storage_type
+                    # Type:   String
+                    # Notes:  The storage type used to store e-mails.
+                    # Value: [ file ]
+                    "storage_type": "file",
+
+                    # Option: directory
+                    # Type:   String
+                    # Notes:  Directory used to store e-mails.
+                    # Value: [ file ]
+                    "directory": "/mnt/messages"
                 }
             ]
         }

@@ -63,6 +63,7 @@ Config options for **action** objects:
   * **del_header**
   * **mod_header**
   * **add_disclaimer**
+  * **store**
 * **conditions** (optional)  
   A list of conditions which all have to be true to process the action.
 * **pretend** (optional)  
@@ -101,14 +102,22 @@ Config options for **add_disclaimer** actions:
     Path to a file which contains the text representation of the disclaimer.
   * **error_policy** (optional)  
     Set the error policy in case the disclaimer cannot be added (e.g. if no body part is present in the e-mail). Possible values are:
-    * wrap  
+    * **wrap**  
       A new e-mail body is generated with the disclaimer as body and the original e-mail attached.
-    * ignore  
+    * **ignore**  
       Ignore the error and do nothing.
-    * reject  
+    * **reject**  
       Reject the e-mail.
     Default: **wrap**
 
+Config options for **store** actions:
+  * **storage_type**  
+    Storage type. Possible values are:
+    * **file**
+
+Config options for **file** storage:
+  * **directory**  
+  Directory used to store e-mails.
 
 ### Conditions
 Config options for **conditions** objects:

@@ -280,17 +280,19 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
     fp = BytesFeedParser(policy=default_policy)
 
     for field, value in milter.fields_bytes:
-        field_lower = field.encode("ascii").lower()
+        decoded_field = field.decode("ascii")
+        decoded_value = value.decode("ascii")
+        field_lower = decoded_field.lower()
         if not field_lower.startswith("content-") and \
                 field_lower != "mime-version":
             continue
         logger.debug(
             f"feed content header to message object: "
-            f"{field.encode()}: {value.encode()}")
+            f"{decoded_field}: {decoded_value}")
         fp.feed(field + b": " + value + b"\r\n")
 
     fp.feed(b"\r\n")
-    logger.debug(f"feed body to message object: {field}: {value}")
+    logger.debug(f"feed body to message object")
     fp.feed(milter.body_data.read())
 
     logger.debug("parse message")

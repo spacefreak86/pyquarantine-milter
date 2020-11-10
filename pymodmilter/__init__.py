@@ -253,7 +253,7 @@ class ModifyMilter(Milter.Base):
 
     def header(self, name, value):
         try:
-            if self.fields_data is not None:
+            if self.fields_bytes is not None:
                 self.fields_bytes.append(
                     (name.encode("ascii", errors="surrogateescape"),
                      value.encode("ascii", errors="surrogateescape")))

@@ -125,8 +125,8 @@ def main():
             socket = config["global"]["socket"]
         else:
             raise RuntimeError(
-                f"listening socket is neither specified on the command line "
-                f"nor in the configuration file")
+                "listening socket is neither specified on the command line "
+                "nor in the configuration file")
 
         if "local_addrs" in config["global"]:
             local_addrs = config["global"]["local_addrs"]
@@ -140,7 +140,7 @@ def main():
 
         if "rules" not in config:
             raise RuntimeError(
-                f"mandatory config section 'rules' not found")
+                "mandatory config section 'rules' not found")
 
         if not config["rules"]:
             raise RuntimeError("no rules configured")

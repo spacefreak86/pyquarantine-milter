@@ -220,8 +220,8 @@ class ModifyMilter(Milter.Base):
 
             if not self.rules:
                 self.logger.debug(
-                    f"envelope-to addresses are ignored by all rules, "
-                    f"skip further processing")
+                    "envelope-to addresses are ignored by all rules, "
+                    "skip further processing")
                 return Milter.ACCEPT
 
             self.qid = self.getsymval('i')
@@ -229,7 +229,7 @@ class ModifyMilter(Milter.Base):
             self.logger.debug("received queue-id from MTA")
 
             self.fields = None
-            self.fields_data = None
+            self.fields_bytes = None
             self.body_data = None
             needs = []
             for rule in self.rules:
@@ -238,8 +238,8 @@ class ModifyMilter(Milter.Base):
             if "fields" in needs:
                 self.fields = []
 
-            if "original_fields" in needs:
-                self.fields_data = BytesIO()
+            if "fields_bytes" in needs:
+                self.fields_bytes = []
 
             if "body" in needs:
                 self.body_data = BytesIO()
@@ -253,13 +253,10 @@ class ModifyMilter(Milter.Base):
 
     def header(self, name, value):
         try:
-            if self.fields_data != None:
-                self.fields_data.write(
-                    name.encode("ascii", errors="surrogateescape"))
-                self.fields_data.write(b": ")
-                self.fields_data.write(
-                    value.encode("ascii", errors="surrogateescape"))
-                self.fields_data.write(b"\r\n")
+            if self.fields_data is not None:
+                self.fields_bytes.append(
+                    (name.encode("ascii", errors="surrogateescape"),
+                     value.encode("ascii", errors="surrogateescape")))
 
             if self.fields is not None:
                 # remove surrogates from value

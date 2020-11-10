@@ -87,8 +87,8 @@ def mod_header(field, value, milter, search=None, pretend=False,
 
         if not new_v:
             logger.warning(
-                f"mod_header: resulting value is empty, "
-                f"skip modification")
+                "mod_header: resulting value is empty, "
+                "skip modification")
             continue
 
         header = f"{f}: {v}"
@@ -279,19 +279,15 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
     milter.body_data.seek(0)
     fp = BytesFeedParser(policy=default_policy)
 
-    for field, value in milter.fields:
-        field_lower = field.lower()
+    for field, value in milter.fields_bytes:
+        field_lower = field.encode("ascii").lower()
         if not field_lower.startswith("content-") and \
                 field_lower != "mime-version":
             continue
         logger.debug(
-            f"feed content header to message object: {field}: {value}")
-        encoded_value = _replace_illegal_chars(
-            Header(s=value).encode())
-        fp.feed(field.encode("ascii", errors="replace"))
-        fp.feed(b": ")
-        fp.feed(encoded_value.encode("ascii", errors="replace"))
-        fp.feed(b"\r\n")
+            f"feed content header to message object: "
+            f"{field.encode()}: {value.encode()}")
+        fp.feed(field + b": " + value + b"\r\n")
 
     fp.feed(b"\r\n")
     logger.debug(f"feed body to message object: {field}: {value}")
@@ -318,13 +314,13 @@ def add_disclaimer(text, html, action, policy, milter, pretend=False,
         logger.warning(e)
         if policy == "ignore":
             logger.info(
-                f"unable to add disclaimer to message body, "
-                f"ignore error according to policy")
+                "unable to add disclaimer to message body, "
+                "ignore error according to policy")
             return
         elif policy == "reject":
             logger.info(
-                f"unable to add disclaimer to message body, "
-                f"reject message according to policy")
+                "unable to add disclaimer to message body, "
+                "reject message according to policy")
             return [
                 ("reject", "Message rejected due to error")]
 
@@ -391,13 +387,13 @@ def store(directory, milter, pretend=False,
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     store_id = f"{timestamp}_{milter.qid}"
     datafile = os.path.join(directory, store_id)
-    milter.fields_data.seek(0)
     milter.body_data.seek(0)
     logger.info(f"store message in file {datafile}")
     try:
         with open(datafile, "wb") as fp:
-            copyfileobj(milter.fields_data, fp)
-            fp.write(b"\r\n")
+            for field, value in milter.fields_bytes:
+                fp.write(field + b": " + value + b"\r\n")
+
             copyfileobj(milter.body_data, fp)
     except IOError as e:
         raise RuntimeError(f"unable to store message: {e}")
@@ -410,7 +406,7 @@ class Action:
         "del_header": ["fields"],
         "mod_header": ["fields"],
         "add_disclaimer": ["fields", "body"],
-        "store": ["original_fields", "body"]}
+        "store": ["fields_bytes", "body"]}
 
     def __init__(self, name, local_addrs, conditions, action_type, args,
                  loglevel=logging.INFO, pretend=False):
@@ -489,7 +485,7 @@ class Action:
                 self._func = store
                 if args["storage_type"] not in ["file"]:
                     raise RuntimeError(
-                        f"invalid storage_type 'args['storage_type']'")
+                        "invalid storage_type 'args['storage_type']'")
 
                 if args["storage_type"] == "file":
                     self._args["directory"] = args["directory"]

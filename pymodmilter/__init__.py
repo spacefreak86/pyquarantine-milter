@@ -26,33 +26,11 @@ import Milter
 import logging
 
 from Milter.utils import parse_addr
-from email.charset import Charset
-from email.header import Header, decode_header
-from io import BytesIO
+from email.message import Message
+from email.parser import BytesFeedParser
+from email.policy import default as default_policy
 
 from pymodmilter.conditions import Conditions
-
-
-def make_header(decoded_seq, maxlinelen=None, header_name=None,
-                continuation_ws=' ', errors='strict'):
-    """Create a Header from a sequence of pairs as returned by decode_header()
-
-    decode_header() takes a header value string and returns a sequence of
-    pairs of the format (decoded_string, charset) where charset is the string
-    name of the character set.
-
-    This function takes one of those sequence of pairs and returns a Header
-    instance.  Optional maxlinelen, header_name, and continuation_ws are as in
-    the Header constructor.
-    """
-    h = Header(maxlinelen=maxlinelen, header_name=header_name,
-               continuation_ws=continuation_ws)
-    for s, charset in decoded_seq:
-        # None means us-ascii but we can simply pass it on to h.append()
-        if charset is not None and not isinstance(charset, Charset):
-            charset = Charset(charset)
-        h.append(s, charset, errors=errors)
-    return h
 
 
 class CustomLogger(logging.LoggerAdapter):
@@ -91,17 +69,15 @@ class Rule:
         self.actions = actions
         self.pretend = pretend
 
-        self._needs = []
+        self._need_body = False
         for action in actions:
-            for need in action.needs():
-                if need not in self._needs:
-                    self._needs.append(need)
+            if action.need_body():
+                self._need_body = True
+                break
 
-        self.logger.debug("needs: {}".format(", ".join(self._needs)))
-
-    def needs(self):
-        """Return the needs of this rule."""
-        return self._needs
+    def need_body(self):
+        """Return the if this rule needs the message body."""
+        return self._need_body
 
     def ignores(self, host=None, envfrom=None, envto=None):
         args = {}
@@ -122,15 +98,51 @@ class Rule:
 
         return True
 
-    def execute(self, milter, pretend=None):
+    def execute(self, milter, msg, pretend=None):
         """Execute all actions of this rule."""
         if pretend is None:
             pretend = self.pretend
 
         for action in self.actions:
-            milter_action = action.execute(milter)
+            milter_action = action.execute(milter, msg, pretend=pretend)
             if milter_action is not None:
                 return milter_action
+
+
+class MilterMessage(Message):
+    def replace_header(self, _name, _value, occ=None):
+        _name = _name.lower()
+        counter = 0
+        for i, (k, v) in zip(range(len(self._headers)), self._headers):
+            if k.lower() == _name:
+                counter += 1
+                if not occ or counter == occ:
+                    self._headers[i] = self.policy.header_store_parse(
+                        k, _value)
+                    break
+
+        else:
+            raise KeyError(_name)
+
+    def remove_header(self, name, occ=None):
+        name = name.lower()
+        newheaders = []
+        counter = 0
+        for k, v in self._headers:
+            if k.lower() == name:
+                counter += 1
+                if counter != occ:
+                    newheaders.append((k, v))
+            else:
+                newheaders.append((k, v))
+
+        self._headers = newheaders
+
+
+def remove_surrogates(string):
+    return string.encode(
+        "ascii", errors="surrogateescape").decode(
+            "ascii", errors="replace")
 
 
 class ModifyMilter(Milter.Base):
@@ -175,7 +187,7 @@ class ModifyMilter(Milter.Base):
                 return Milter.ACCEPT
         except Exception as e:
             self.logger.exception(
-                f"an exception occured in connect function: {e}")
+                f"an exception occured in connect method: {e}")
             return Milter.TEMPFAIL
 
         return Milter.CONTINUE
@@ -196,7 +208,7 @@ class ModifyMilter(Milter.Base):
             self.recipients = set()
         except Exception as e:
             self.logger.exception(
-                f"an exception occured in envfrom function: {e}")
+                f"an exception occured in envfrom method: {e}")
             return Milter.TEMPFAIL
 
         return Milter.CONTINUE
@@ -207,7 +219,7 @@ class ModifyMilter(Milter.Base):
             self.recipients.add("@".join(parse_addr(to)).lower())
         except Exception as e:
             self.logger.exception(
-                f"an exception occured in envrcpt function: {e}")
+                f"an exception occured in envrcpt method: {e}")
             return Milter.TEMPFAIL
 
         return Milter.CONTINUE
@@ -231,64 +243,64 @@ class ModifyMilter(Milter.Base):
             self.fields = None
             self.fields_bytes = None
             self.body_data = None
-            needs = []
+
+            self._fp = BytesFeedParser(
+                _factory=MilterMessage, policy=default_policy)
+            self._keep_body = False
             for rule in self.rules:
-                needs += rule.needs()
-
-            if "fields" in needs:
-                self.fields = []
-
-            if "fields_bytes" in needs:
-                self.fields_bytes = []
-
-            if "body" in needs:
-                self.body_data = BytesIO()
+                if rule.need_body():
+                    self._keep_body = True
+                    break
 
         except Exception as e:
             self.logger.exception(
-                f"an exception occured in data function: {e}")
+                f"an exception occured in data method: {e}")
             return Milter.TEMPFAIL
 
         return Milter.CONTINUE
 
-    def header(self, name, value):
+    def header(self, field, value):
         try:
-            if self.fields_bytes is not None:
-                self.fields_bytes.append(
-                    (name.encode("ascii", errors="surrogateescape"),
-                     value.encode("ascii", errors="surrogateescape")))
+            # feed header line to BytesParser
+            self._fp.feed(field + b": " + value + b"\r\n")
 
-            if self.fields is not None:
-                # remove surrogates from value
-                value = value.encode(
-                    errors="surrogateescape").decode(errors="replace")
-                self.logger.debug(f"received header: {name}: {value}")
-                header = make_header(decode_header(value), errors="replace")
-                value = str(header).replace("\x00", "")
-                self.logger.debug(f"decoded header: {name}: {value}")
-                self.fields.append((name, value))
+            # remove surrogates from field and value
+            field = remove_surrogates(field)
+            value = remove_surrogates(value)
         except Exception as e:
             self.logger.exception(
-                f"an exception occured in header function: {e}")
+                f"an exception occured in header method: {e}")
+            return Milter.TEMPFAIL
+
+        return Milter.CONTINUE
+
+    def eoh(self):
+        try:
+            self._fp.feed(b"\r\n")
+        except Exception as e:
+            self.logger.exception(
+                f"an exception occured in eoh method: {e}")
             return Milter.TEMPFAIL
 
         return Milter.CONTINUE
 
     def body(self, chunk):
         try:
-            if self.body_data is not None:
-                self.body_data.write(chunk)
+            if self._keep_body:
+                self._fp.feed(chunk)
         except Exception as e:
             self.logger.exception(
-                f"an exception occured in body function: {e}")
+                f"an exception occured in body method: {e}")
             return Milter.TEMPFAIL
 
         return Milter.CONTINUE
 
     def eom(self):
         try:
+            msg = self._fp.close()
+
             for rule in self.rules:
-                milter_action = rule.execute(self)
+                milter_action = rule.execute(self, msg)
 
                 if milter_action is not None:
                     if milter_action["action"] == "reject":
@@ -303,7 +315,7 @@ class ModifyMilter(Milter.Base):
 
         except Exception as e:
             self.logger.exception(
-                f"an exception occured in eom function: {e}")
+                f"an exception occured in eom method: {e}")
             return Milter.TEMPFAIL
 
         return Milter.ACCEPT

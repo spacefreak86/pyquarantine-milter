@@ -343,7 +343,7 @@ class QuarantineMilter(Milter.Base):
             if quarantine.host_in_whitelist(hostaddr):
                 self.logger.debug(
                     f"host {hostaddr[0]} is in whitelist of "
-                    f"quarantine {quarantine['name']}")
+                    f"quarantine {quarantine.name}")
                 self.quarantines.remove(quarantine)
                 if not self.quarantines:
                     self.logger.debug(

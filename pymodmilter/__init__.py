@@ -24,6 +24,7 @@ __version__ = "1.1.1"
 
 import Milter
 import logging
+import encodings
 
 from Milter.utils import parse_addr
 from email.message import MIMEPart
@@ -106,7 +107,16 @@ def get_name_addr(value):
 setattr(email._header_value_parser, "DisplayName", DisplayName)
 setattr(email._header_value_parser, "get_name_addr", get_name_addr)
 
-########################################################
+################################################
+#  add charset alias for windows-874 encoding  #
+################################################
+
+for alias in ["windows-874", "windows_874"]:
+    if alias not in encodings.aliases.aliases:
+        encodings.aliases.aliases[alias] = "cp874"
+
+################################################
+
 
 class CustomLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):

@@ -13,7 +13,6 @@
 #
 
 __all__ = [
-    "make_header",
     "actions",
     "conditions",
     "run",
@@ -26,7 +25,7 @@ import Milter
 import logging
 
 from Milter.utils import parse_addr
-from email.message import Message
+from email.message import MIMEPart
 from email.parser import BytesFeedParser
 from email.policy import default as default_policy
 
@@ -98,18 +97,18 @@ class Rule:
 
         return True
 
-    def execute(self, milter, msg, pretend=None):
+    def execute(self, milter, pretend=None):
         """Execute all actions of this rule."""
         if pretend is None:
             pretend = self.pretend
 
         for action in self.actions:
-            milter_action = action.execute(milter, msg, pretend=pretend)
+            milter_action = action.execute(milter, pretend=pretend)
             if milter_action is not None:
                 return milter_action
 
 
-class MilterMessage(Message):
+class MilterMessage(MIMEPart):
     def replace_header(self, _name, _value, occ=None):
         _name = _name.lower()
         counter = 0
@@ -137,12 +136,6 @@ class MilterMessage(Message):
                 newheaders.append((k, v))
 
         self._headers = newheaders
-
-
-def remove_surrogates(string):
-    return string.encode(
-        "ascii", errors="surrogateescape").decode(
-            "ascii", errors="replace")
 
 
 class ModifyMilter(Milter.Base):
@@ -261,12 +254,11 @@ class ModifyMilter(Milter.Base):
 
     def header(self, field, value):
         try:
-            # feed header line to BytesParser
-            self._fp.feed(field + b": " + value + b"\r\n")
+            # remove surrogates
+            field = field.encode("ascii", errors="surrogateescape")
+            value = value.encode("ascii", errors="surrogateescape")
 
-            # remove surrogates from field and value
-            field = remove_surrogates(field)
-            value = remove_surrogates(value)
+            self._fp.feed(field + b": " + value + b"\r\n")
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in header method: {e}")
@@ -297,10 +289,9 @@ class ModifyMilter(Milter.Base):
 
     def eom(self):
         try:
-            msg = self._fp.close()
-
+            self.msg = self._fp.close()
             for rule in self.rules:
-                milter_action = rule.execute(self, msg)
+                milter_action = rule.execute(self)
 
                 if milter_action is not None:
                     if milter_action["action"] == "reject":

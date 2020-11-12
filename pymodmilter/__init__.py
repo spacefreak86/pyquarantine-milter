@@ -32,6 +32,81 @@ from email.policy import default as default_policy
 
 from pymodmilter.conditions import Conditions
 
+########################################################
+#  monkey-patch pythons email library bug 27257,30988  #
+########################################################
+#
+# https://bugs.python.org/issue27257
+# https://bugs.python.org/issue30988
+#
+# fix: https://github.com/python/cpython/pull/15600
+
+import email._header_value_parser
+from email._header_value_parser import TokenList, NameAddr
+from email._header_value_parser import get_display_name, get_angle_addr
+from email._header_value_parser import get_cfws, errors
+from email._header_value_parser import CFWS_LEADER, PHRASE_ENDS
+
+
+class DisplayName(email._header_value_parser.DisplayName):
+    @property
+    def display_name(self):
+        res = TokenList(self)
+        if len(res) == 0:
+            return res.value
+        if res[0].token_type == 'cfws':
+            res.pop(0)
+        else:
+            if isinstance(res[0], TokenList) and \
+                    res[0][0].token_type == 'cfws':
+                res[0] = TokenList(res[0][1:])
+        if res[-1].token_type == 'cfws':
+            res.pop()
+        else:
+            if isinstance(res[-1], TokenList) and \
+                    res[-1][-1].token_type == 'cfws':
+                res[-1] = TokenList(res[-1][:-1])
+        return res.value
+
+
+def get_name_addr(value):
+    """ name-addr = [display-name] angle-addr
+
+    """
+    name_addr = NameAddr()
+    # Both the optional display name and the angle-addr can start with cfws.
+    leader = None
+    if value[0] in CFWS_LEADER:
+        leader, value = get_cfws(value)
+        if not value:
+            raise errors.HeaderParseError(
+                "expected name-addr but found '{}'".format(leader))
+    if value[0] != '<':
+        if value[0] in PHRASE_ENDS:
+            raise errors.HeaderParseError(
+                "expected name-addr but found '{}'".format(value))
+        token, value = get_display_name(value)
+        if not value:
+            raise errors.HeaderParseError(
+                "expected name-addr but found '{}'".format(token))
+        if leader is not None:
+            if isinstance(token[0], TokenList):
+                token[0][:0] = [leader]
+            else:
+                token[:0] = [leader]
+            leader = None
+        name_addr.append(token)
+    token, value = get_angle_addr(value)
+    if leader is not None:
+        token[:0] = [leader]
+    name_addr.append(token)
+    return name_addr, value
+
+
+setattr(email._header_value_parser, "DisplayName", DisplayName)
+setattr(email._header_value_parser, "get_name_addr", get_name_addr)
+
+########################################################
 
 class CustomLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):

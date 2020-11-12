@@ -45,7 +45,7 @@ def add_header(milter, field, value, pretend=False, update_msg=True,
         else:
             logger.info(f"add_header: {header[0:70]}")
 
-        milter.msg.add_header(field, value)
+        milter.msg.add_header(field, _replace_illegal_chars(value))
 
     if pretend:
         return
@@ -74,10 +74,9 @@ def mod_header(milter, field, value, search=None, pretend=False,
         if not field.match(f):
             continue
 
+        new_v = v
         if search is not None:
             new_v = search.sub(value, v).strip()
-        else:
-            new_v = value.strip()
 
         if new_v == v:
             continue
@@ -97,7 +96,8 @@ def mod_header(milter, field, value, search=None, pretend=False,
             else:
                 logger.info(f"mod_header: {header[0:70]}: {new_header[0:70]}")
 
-            milter.msg.replace_header(f, new_v, occ=occ[f_lower])
+            milter.msg.replace_header(
+                f, _replace_illegal_chars(new_v), occ=occ[f_lower])
 
         if pretend:
             continue

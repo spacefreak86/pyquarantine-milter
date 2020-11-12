@@ -43,7 +43,7 @@ __all__ = [
     "run",
     "whitelists"]
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 
 def make_header(decoded_seq, maxlinelen=None, header_name=None,

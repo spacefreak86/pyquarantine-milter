@@ -21,7 +21,7 @@ import sys
 import time
 
 from pyquarantine import QuarantineMilter, setup_milter
-from pyquarantine.version import __version__ as version
+from pyquarantine import __version__ as version
 
 
 def _get_quarantine(quarantines, name):

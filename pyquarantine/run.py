@@ -22,7 +22,7 @@ import sys
 
 import pyquarantine
 
-from pyquarantine.version import __version__ as version
+from pyquarantine import __version__ as version
 
 
 def main():

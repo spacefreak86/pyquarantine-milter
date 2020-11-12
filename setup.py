@@ -4,11 +4,8 @@ def read_file(fname):
     with open(fname, 'r') as f:
         return f.read()
 
-version = {}
-exec(read_file("pyquarantine/version.py"), version)
 
 setup(name = "pyquarantine",
-    version = version["__version__"],
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",

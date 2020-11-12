@@ -41,8 +41,9 @@ __all__ = [
     "notifications",
     "storages",
     "run",
-    "version",
     "whitelists"]
+
+__version__ = "1.0.6"
 
 
 def make_header(decoded_seq, maxlinelen=None, header_name=None,

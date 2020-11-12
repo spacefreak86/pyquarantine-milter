@@ -16,10 +16,11 @@ __all__ = [
     "actions",
     "conditions",
     "run",
-    "version",
     "CustomLogger",
     "Rule",
     "ModifyMilter"]
+
+__version__ = "1.1.0"
 
 import Milter
 import logging

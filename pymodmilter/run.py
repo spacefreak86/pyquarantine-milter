@@ -22,7 +22,7 @@ from json import loads
 from re import sub
 
 from pymodmilter import Rule, ModifyMilter
-from pymodmilter.version import __version__ as version
+from pymodmilter import __version__ as version
 from pymodmilter.actions import Action
 
 

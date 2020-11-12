@@ -28,7 +28,7 @@ def _get_quarantine(quarantines, name):
     try:
         quarantine = next((q for q in quarantines if q.name == name))
     except StopIteration:
-        raise RuntimeError(f"invalid quarantine 'name'")
+        raise RuntimeError("invalid quarantine 'name'")
     return quarantine
 
 

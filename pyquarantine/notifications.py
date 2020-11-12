@@ -212,7 +212,7 @@ class EMailNotification(BaseNotification):
                 raise RuntimeError(f"error reading image: {e}")
             else:
                 filename = basename(img_path)
-                img.add_header(f"Content-ID", f"<{filename}>")
+                img.add_header("Content-ID", f"<{filename}>")
                 self.embedded_imgs.append(img)
 
     def get_email_body_soup(self, qid, msg):

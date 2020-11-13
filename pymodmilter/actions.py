@@ -35,29 +35,40 @@ def _replace_illegal_chars(string):
         "\n", "")
 
 
-def add_header(milter, field, value, pretend=False, update_msg=True,
+def _add_header(milter, field, value, idx=-1):
+    value = _replace_illegal_chars(
+        Header(s=value).encode())
+    milter.logger.debug(f"milter: addheader: {field}: {value}")
+    milter.addheader(field, value, idx)
+
+
+def add_header(milter, field, value, pretend=False,
                logger=logging.getLogger(__name__)):
     """Add a mail header field."""
-    if update_msg:
-        header = f"{field}: {value}"
-        if logger.getEffectiveLevel() == logging.DEBUG:
-            logger.debug(f"add_header: {header}")
-        else:
-            logger.info(f"add_header: {header[0:70]}")
+    header = f"{field}: {value}"
+    if logger.getEffectiveLevel() == logging.DEBUG:
+        logger.debug(f"add_header: {header}")
+    else:
+        logger.info(f"add_header: {header[0:70]}")
 
-        milter.msg.add_header(field, _replace_illegal_chars(value))
+    milter.msg.add_header(field, _replace_illegal_chars(value))
 
     if pretend:
         return
 
-    encoded_value = _replace_illegal_chars(
+    _add_header(milter, field, value)
+
+
+def _mod_header(milter, field, value, occ=1):
+    value = _replace_illegal_chars(
         Header(s=value).encode())
-    milter.logger.debug(f"milter: addheader: {field}: {encoded_value}")
-    milter.addheader(field, encoded_value, -1)
+    milter.logger.debug(
+        f"milter: chgheader: {field}[{occ}]: {value}")
+    milter.chgheader(field, occ, value)
 
 
 def mod_header(milter, field, value, search=None, pretend=False,
-               update_msg=True, logger=logging.getLogger(__name__)):
+               logger=logging.getLogger(__name__)):
     """Change the value of a mail header field."""
     if isinstance(field, str):
         field = re.compile(field, re.IGNORECASE)
@@ -74,42 +85,45 @@ def mod_header(milter, field, value, search=None, pretend=False,
         if not field.match(f):
             continue
 
-        new_v = v
+        new_value = v
         if search is not None:
-            new_v = search.sub(value, v).strip()
+            new_value = search.sub(value, v).strip()
+        else:
+            new_value = value
 
-        if new_v == v:
-            continue
-
-        if not new_v:
+        if not new_value:
             logger.warning(
                 "mod_header: resulting value is empty, "
                 "skip modification")
             continue
 
-        if update_msg:
-            header = f"{f}: {v}"
-            new_header = f"{f}: {new_v}"
+        if new_value == v:
+            continue
 
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                logger.debug(f"mod_header: {header}: {new_header}")
-            else:
-                logger.info(f"mod_header: {header[0:70]}: {new_header[0:70]}")
+        header = f"{f}: {v}"
+        new_header = f"{f}: {new_value}"
 
-            milter.msg.replace_header(
-                f, _replace_illegal_chars(new_v), occ=occ[f_lower])
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            logger.debug(f"mod_header: {header}: {new_header}")
+        else:
+            logger.info(f"mod_header: {header[0:70]}: {new_header[0:70]}")
+
+        milter.msg.replace_header(
+            f, _replace_illegal_chars(new_value), occ=occ[f_lower])
 
         if pretend:
             continue
 
-        encoded_value = _replace_illegal_chars(
-            Header(s=new_v).encode())
-        milter.logger.debug(
-            f"milter: chgheader: {f}[{occ[f_lower]}]: {encoded_value}")
-        milter.chgheader(f, occ[f_lower], encoded_value)
+        _mod_header(milter, f, new_value, occ=occ[f_lower])
 
 
-def del_header(milter, field, value=None, pretend=False, update_msg=True,
+def _del_header(milter, field, occ=1):
+    milter.logger.debug(
+        f"milter: delheader: {field}[{occ}]")
+    milter.chgheader(field, occ, "")
+
+
+def del_header(milter, field, value=None, pretend=False,
                logger=logging.getLogger(__name__)):
     """Delete a mail header field."""
     if isinstance(field, str):
@@ -130,24 +144,21 @@ def del_header(milter, field, value=None, pretend=False, update_msg=True,
         if value is not None and not value.search(v):
             continue
 
-        if update_msg:
-            header = f"{f}: {v}"
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                logger.debug(f"del_header: {header}")
-            else:
-                logger.info(f"del_header: {header[0:70]}")
-                milter.msg.remove_header(f, occ=occ[f_lower])
+        header = f"{f}: {v}"
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            logger.debug(f"del_header: {header}")
+        else:
+            logger.info(f"del_header: {header[0:70]}")
+        milter.msg.remove_header(f, occ=occ[f_lower])
+
+        if not pretend:
+            _del_header(milter, f, occ=occ[f_lower])
 
         occ[f_lower] -= 1
 
-        if not pretend:
-            milter.logger.debug(
-                f"milter: chgheader: {f}[{occ[f_lower]}]:")
-            milter.chgheader(f, occ[f_lower], "")
-
 
 def _serialize_msg(msg, logger):
-    if not msg["MIME-Version"]:
+    if msg.is_multipart() and not msg["MIME-Version"]:
         msg.add_header("MIME-Version", "1.0")
 
     try:
@@ -242,21 +253,26 @@ def _update_body(milter, logger):
 
 
 def _update_headers(milter, original_headers, logger):
-    # serialize the message object so it updates its headers internally
+    if milter.msg.is_multipart() and not milter.msg["MIME-Version"]:
+        milter.msg.add_header("MIME-Version", "1.0")
+
+    # serialize the message object so it updates its internal strucure
     milter.msg.as_bytes()
-    for field, value in original_headers:
-        if field not in milter.msg:
-            del_header(milter, field=f"^{field}$", update_msg=False,
-                       logger=logger)
+
+    original_headers = [(f, f.lower(), v) for f, v in original_headers]
+    headers = [(f, f.lower(), v) for f, v in milter.msg.items()]
+
+    occ = defaultdict(int)
+    for field, field_lower, value in original_headers:
+        occ[field_lower] += 1
+        if (field, field_lower, value) not in headers:
+            _del_header(milter, field, occ=occ[field_lower])
+            occ[field] -= 1
 
     for field, value in milter.msg.items():
         field_lower = field.lower()
-        if not [f for f in original_headers if f[0].lower() == field_lower]:
-            add_header(milter, field=field, value=value, update_msg=False,
-                       logger=logger)
-        else:
-            mod_header(milter, field=f"^{field}$", value=value,
-                       update_msg=False, logger=logger)
+        if (field, field_lower, value) not in original_headers:
+            _add_header(milter, field, value)
 
 
 def _wrap_message(milter, logger):

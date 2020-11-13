@@ -17,6 +17,7 @@ import configparser
 import logging
 import os
 import re
+import encodings
 
 from Milter.utils import parse_addr
 from collections import defaultdict
@@ -44,6 +45,17 @@ __all__ = [
     "whitelists"]
 
 __version__ = "1.0.7"
+
+
+################################################
+#  add charset alias for windows-874 encoding  #
+################################################
+
+for alias in ["windows-874", "windows_874"]:
+    if alias not in encodings.aliases.aliases:
+        encodings.aliases.aliases[alias] = "cp874"
+
+################################################
 
 
 def make_header(decoded_seq, maxlinelen=None, header_name=None,

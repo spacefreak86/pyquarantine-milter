@@ -51,9 +51,13 @@ __version__ = "1.0.7"
 #  add charset alias for windows-874 encoding  #
 ################################################
 
+aliases = encodings.aliases.aliases
+
 for alias in ["windows-874", "windows_874"]:
-    if alias not in encodings.aliases.aliases:
-        encodings.aliases.aliases[alias] = "cp874"
+    if alias not in aliases:
+        aliases[alias] = "cp874"
+
+setattr(encodings.aliases, "aliases", aliases)
 
 ################################################
 

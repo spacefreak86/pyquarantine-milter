@@ -20,7 +20,7 @@ __all__ = [
     "Rule",
     "ModifyMilter"]
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 import Milter
 import logging

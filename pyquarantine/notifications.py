@@ -17,12 +17,12 @@ import logging
 import re
 
 from bs4 import BeautifulSoup
-from cgi import escape
 from collections import defaultdict
 from email.policy import default as default_policy
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from html import escape
 from os.path import basename
 from urllib.parse import quote
 
@@ -244,7 +244,8 @@ class EMailNotification(BaseNotification):
                     f"{qid}: content type is {content_type}, "
                     f"converting to text/html")
                 content = re.sub(r"^(.*)$", r"\1<br/>",
-                                 escape(content), flags=re.MULTILINE)
+                                 escape(content, quote=False),
+                                 flags=re.MULTILINE)
             else:
                 self.logger.debug(
                     f"{qid}: content type is {content_type}")
@@ -353,22 +354,24 @@ class EMailNotification(BaseNotification):
             variables = defaultdict(
                     str,
                     EMAIL_HTML_TEXT=sanitized_text,
-                    EMAIL_FROM=escape(headers["from"]),
-                    EMAIL_ENVELOPE_FROM=escape(mailfrom),
-                    EMAIL_ENVELOPE_FROM_URL=escape(quote(mailfrom)),
-                    EMAIL_TO=escape(headers["to"]),
-                    EMAIL_ENVELOPE_TO=escape(recipient),
+                    EMAIL_FROM=escape(headers["from"], quote=False),
+                    EMAIL_ENVELOPE_FROM=escape(mailfrom, quote=False),
+                    EMAIL_ENVELOPE_FROM_URL=escape(quote(mailfrom),
+                                                   quote=False),
+                    EMAIL_TO=escape(headers["to"], quote=False),
+                    EMAIL_ENVELOPE_TO=escape(recipient, quote=False),
                     EMAIL_ENVELOPE_TO_URL=escape(quote(recipient)),
-                    EMAIL_SUBJECT=escape(headers["subject"]),
+                    EMAIL_SUBJECT=escape(headers["subject"], quote=False),
                     EMAIL_QUARANTINE_ID=storage_id)
 
             if subgroups:
                 number = 0
                 for subgroup in subgroups:
-                    variables[f"SUBGROUP_{number}"] = escape(subgroup)
+                    variables[f"SUBGROUP_{number}"] = escape(subgroup,
+                                                             quote=False)
             if named_subgroups:
                 for key, value in named_subgroups.items():
-                    named_subgroups[key] = escape(value)
+                    named_subgroups[key] = escape(value, quote=False)
                 variables.update(named_subgroups)
 
             # parse template

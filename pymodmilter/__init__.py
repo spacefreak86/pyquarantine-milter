@@ -29,9 +29,12 @@ import logging
 
 from Milter.utils import parse_addr
 
+from collections import defaultdict
+
+from email.header import Header
 from email.message import MIMEPart
 from email.parser import BytesFeedParser
-from email.policy import default as default_policy
+from email.policy import default as default_policy, SMTP
 
 from pymodmilter.conditions import Conditions
 
@@ -79,7 +82,7 @@ class Rule:
                 break
 
     def need_body(self):
-        """Return the if this rule needs the message body."""
+        """Return True if this rule needs the message body."""
         return self._need_body
 
     def ignores(self, host=None, envfrom=None, envto=None):
@@ -142,6 +145,14 @@ class MilterMessage(MIMEPart):
         self._headers = newheaders
 
 
+def replace_illegal_chars(string):
+    """Replace illegal characters in header values."""
+    return string.replace(
+        "\x00", "").replace(
+        "\r", "").replace(
+        "\n", "")
+
+
 class ModifyMilter(Milter.Base):
     """ModifyMilter based on Milter.Base to implement milter communication"""
 
@@ -161,6 +172,50 @@ class ModifyMilter(Milter.Base):
 
         # save rules, it must not change during runtime
         self.rules = ModifyMilter._rules.copy()
+
+        self.msg = None
+
+    def addheader(self, field, value, idx=-1):
+        value = replace_illegal_chars(Header(s=value).encode())
+        self.logger.debug(f"milter: addheader: {field}: {value}")
+        super().addheader(field, value, idx)
+
+    def chgheaer(self, field, value, idx=1):
+        value = replace_illegal_chars(Header(s=value).encode())
+        if value:
+            self.logger.debug(f"milter: chgheader: {field}[{idx}]: {value}")
+        else:
+            self.logger.debug(f"milter: delheader: {field}[{idx}]")
+        super().chgheader(field, idx, value)
+
+    def update_headers(self, old_headers):
+        if self.msg.is_multipart() and not self.msg["MIME-Version"]:
+            self.msg.add_header("MIME-Version", "1.0")
+
+        # serialize the message object so it updates its internal strucure
+        self.msg.as_bytes()
+
+        old_headers = [(f, f.lower(), v) for f, v in old_headers]
+        headers = [(f, f.lower(), v) for f, v in self.msg.items()]
+
+        idx = defaultdict(int)
+        for field, field_lower, value in old_headers:
+            idx[field_lower] += 1
+            if (field, field_lower, value) not in headers:
+                self.chgheader(field, "", idx=idx[field_lower])
+                idx[field] -= 1
+
+        for field, value in self.msg.items():
+            field_lower = field.lower()
+            if (field, field_lower, value) not in old_headers:
+                self.addheader(field, value)
+
+    def replacebody(self):
+        data = self.msg.as_bytes(policy=SMTP)
+        body_pos = data.find(b"\r\n\r\n") + 4
+        self.logger.debug("milter: replacebody")
+        super().replacebody(data[body_pos:])
+        del data
 
     def connect(self, IPname, family, hostaddr):
         try:
@@ -210,7 +265,6 @@ class ModifyMilter(Milter.Base):
 
         return Milter.CONTINUE
 
-    @Milter.noreply
     def envrcpt(self, to, *str):
         try:
             self.recipients.add("@".join(parse_addr(to)).lower())

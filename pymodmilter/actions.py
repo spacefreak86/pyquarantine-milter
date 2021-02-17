@@ -277,7 +277,7 @@ def replace_links(milter, repl, pretend=False,
     if text_content is not None:
         logger.info("replace links in text body")
 
-        content = text_content
+        content = "test content"
 
         text_body.set_content(
             content.encode(), maintype="text", subtype="plain")

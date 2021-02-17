@@ -22,7 +22,7 @@ __all__ = [
 
 __version__ = "1.1.4"
 
-import _runtime_patches
+from pymodmilter import _runtime_patches
 
 import Milter
 import logging
@@ -116,13 +116,13 @@ class Rule:
 
 
 class MilterMessage(MIMEPart):
-    def replace_header(self, _name, _value, occ=None):
+    def replace_header(self, _name, _value, idx=None):
         _name = _name.lower()
         counter = 0
         for i, (k, v) in zip(range(len(self._headers)), self._headers):
             if k.lower() == _name:
                 counter += 1
-                if not occ or counter == occ:
+                if not idx or counter == idx:
                     self._headers[i] = self.policy.header_store_parse(
                         k, _value)
                     break
@@ -130,14 +130,14 @@ class MilterMessage(MIMEPart):
         else:
             raise KeyError(_name)
 
-    def remove_header(self, name, occ=None):
+    def remove_header(self, name, idx=None):
         name = name.lower()
         newheaders = []
         counter = 0
         for k, v in self._headers:
             if k.lower() == name:
                 counter += 1
-                if counter != occ:
+                if counter != idx:
                     newheaders.append((k, v))
             else:
                 newheaders.append((k, v))
@@ -163,6 +163,7 @@ class ModifyMilter(Milter.Base):
     def set_rules(rules):
         ModifyMilter._rules = rules
 
+    @staticmethod
     def set_loglevel(level):
         ModifyMilter._loglevel = level
 
@@ -174,13 +175,14 @@ class ModifyMilter(Milter.Base):
         self.rules = ModifyMilter._rules.copy()
 
         self.msg = None
+        self._replace_body = False
 
     def addheader(self, field, value, idx=-1):
         value = replace_illegal_chars(Header(s=value).encode())
         self.logger.debug(f"milter: addheader: {field}: {value}")
         super().addheader(field, value, idx)
 
-    def chgheaer(self, field, value, idx=1):
+    def chgheader(self, field, value, idx=1):
         value = replace_illegal_chars(Header(s=value).encode())
         if value:
             self.logger.debug(f"milter: chgheader: {field}[{idx}]: {value}")
@@ -211,11 +213,7 @@ class ModifyMilter(Milter.Base):
                 self.addheader(field, value)
 
     def replacebody(self):
-        data = self.msg.as_bytes(policy=SMTP)
-        body_pos = data.find(b"\r\n\r\n") + 4
-        self.logger.debug("milter: replacebody")
-        super().replacebody(data[body_pos:])
-        del data
+        self._replace_body = True
 
     def connect(self, IPname, family, hostaddr):
         try:
@@ -348,19 +346,30 @@ class ModifyMilter(Milter.Base):
     def eom(self):
         try:
             self.msg = self._fp.close()
+            milter_action = None
             for rule in self.rules:
                 milter_action = rule.execute(self)
 
                 if milter_action is not None:
-                    if milter_action["action"] == "reject":
-                        self.setreply("554", "5.7.0", milter_action["reason"])
-                        return Milter.REJECT
+                    break
 
-                    if milter_action["action"] == "accept":
-                        return Milter.ACCEPT
+            if self._replace_body:
+                data = self.msg.as_bytes(policy=SMTP)
+                body_pos = data.find(b"\r\n\r\n") + 4
+                self.logger.debug("milter: replacebody")
+                super().replacebody(data[body_pos:])
+                del data
 
-                    if milter_action["action"] == "discard":
-                        return Milter.DISCARD
+            if milter_action is not None:
+                if milter_action["action"] == "reject":
+                    self.setreply("554", "5.7.0", milter_action["reason"])
+                    return Milter.REJECT
+
+                if milter_action["action"] == "accept":
+                    return Milter.ACCEPT
+
+                if milter_action["action"] == "discard":
+                    return Milter.DISCARD
 
         except Exception as e:
             self.logger.exception(

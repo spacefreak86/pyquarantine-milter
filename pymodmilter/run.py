@@ -260,9 +260,11 @@ def main():
     rc = 0
     try:
         Milter.runmilter("pymodmilter", socketname=socket, timeout=30)
+        logger.info("pymodmilter stopped")
     except Milter.milter.error as e:
         logger.error(e)
         rc = 255
+
     sys.exit(rc)
 
 

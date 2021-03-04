@@ -16,6 +16,7 @@ import logging
 import os
 import re
 
+from base64 import b64encode
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from copy import copy
@@ -267,38 +268,38 @@ def add_disclaimer(milter, text, html, action, policy, pretend=False,
         milter.replacebody()
 
 
-def replace_links(milter, repl, pretend=False,
-                  logger=logging.getLogger(__name__)):
-    """Replace links in the mail body."""
+def rewrite_links(milter, repl, pretend=False,
+                         logger=logging.getLogger(__name__)):
+    """Rewrite link targets in the mail html body."""
 
-    text_body, text_content = _get_body_content(milter.msg, "plain")
     html_body, html_content = _get_body_content(milter.msg, "html")
-
-    if text_content is not None:
-        logger.info("replace links in text body")
-
-        content = "test content"
-
-        text_body.set_content(
-            content.encode(), maintype="text", subtype="plain")
-        text_body.set_param("charset", "UTF-8", header="Content-Type")
-        del text_body["MIME-Version"]
-
     if html_content is not None:
-        logger.info("replace links in html body")
-
         soup = BeautifulSoup(html_content, "html.parser")
 
+        rewritten = 0
         for link in soup.find_all("a", href=True):
-            link["href"] = repl
+            if not link["href"]:
+                continue
 
-        html_body.set_content(
-            str(soup).encode(), maintype="text", subtype="html")
-        html_body.set_param("charset", "UTF-8", header="Content-Type")
-        del html_body["MIME-Version"]
+            if "{URL_B64}" in repl:
+                url_b64 = b64encode(link["href"].encode()).decode()
+                target = repl.replace("{URL_B64}", url_b64)
+            else:
+                target = repl
 
-    if not pretend:
-        milter.replacebody()
+            link["href"] = target
+            rewritten += 1
+
+        if rewritten:
+            logger.info(f"rewrote {rewritten} link(s) in html body")
+
+            html_body.set_content(
+                str(soup).encode(), maintype="text", subtype="html")
+            html_body.set_param("charset", "UTF-8", header="Content-Type")
+            del html_body["MIME-Version"]
+
+            if not pretend:
+                milter.replacebody()
 
 
 def store(milter, directory, pretend=False,
@@ -322,7 +323,7 @@ class Action:
         "del_header": False,
         "mod_header": False,
         "add_disclaimer": True,
-        "replace_links": True,
+        "rewrite_links": True,
         "store": True}
 
     def __init__(self, name, local_addrs, conditions, action_type, args,
@@ -399,8 +400,8 @@ class Action:
                 except IOError as e:
                     raise RuntimeError(f"unable to read template: {e}")
 
-            elif action_type == "replace_links":
-                self._func = replace_links
+            elif action_type == "rewrite_links":
+                self._func = rewrite_links
                 self._args["repl"] = args["repl"]
 
             elif action_type == "store":

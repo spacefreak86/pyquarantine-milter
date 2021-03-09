@@ -16,16 +16,17 @@ __all__ = [
     "RuleConfig",
     "Rule"]
 
-import logging
-
-from pymodmilter import CustomLogger, BaseConfig
+from pymodmilter import BaseConfig
 from pymodmilter.actions import ActionConfig, Action
 from pymodmilter.conditions import ConditionsConfig, Conditions
 
 
 class RuleConfig(BaseConfig):
     def __init__(self, idx, milter_cfg, cfg, debug=False):
-        if "name" not in cfg:
+        if "name" in cfg:
+            assert isinstance(cfg["name"], str), \
+                f"Rule #{idx}: name: invalid value, should be string"
+        else:
             cfg["name"] = f"Rule #{idx}"
 
         if "loglevel" not in cfg:
@@ -70,9 +71,6 @@ class Rule:
 
     def __init__(self, milter_cfg, cfg):
         self.logger = cfg.logger
-        #logger = logging.getLogger(cfg["name"])
-        #self.logger = CustomLogger(logger, {"name": cfg["name"]})
-        #self.logger.setLevel(cfg["loglevel"])
 
         if cfg["conditions"] is None:
             self.conditions = None

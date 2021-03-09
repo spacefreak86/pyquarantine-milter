@@ -16,11 +16,10 @@ __all__ = [
     "ConditionsConfig",
     "Conditions"]
 
-import logging
 import re
 
 from netaddr import IPAddress, IPNetwork, AddrFormatError
-from pymodmilter import CustomLogger, BaseConfig
+from pymodmilter import BaseConfig
 
 
 class ConditionsConfig(BaseConfig):
@@ -69,9 +68,6 @@ class Conditions:
 
     def __init__(self, milter_cfg, cfg):
         self.logger = cfg.logger
-        #logger = logging.getLogger(cfg["name"])
-        #self.logger = CustomLogger(logger, {"name": cfg["name"]})
-        #self.logger.setLevel(cfg["loglevel"])
 
         self._local_addrs = milter_cfg["local_addrs"]
         self._args = cfg["args"]

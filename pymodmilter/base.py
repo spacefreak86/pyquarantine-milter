@@ -26,10 +26,10 @@ from email.message import MIMEPart
 class CustomLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         if "name" in self.extra:
-            msg = "{}: {}".format(self.extra["name"], msg)
+            msg = f"{self.extra['name']}: {msg}"
 
         if "qid" in self.extra:
-            msg = "{}: {}".format(self.extra["qid"], msg)
+            msg = f"{self.extra['qid']}: {msg}"
 
         if self.logger.getEffectiveLevel() != logging.DEBUG:
             msg = msg.replace("\n", "").replace("\r", "")
@@ -64,7 +64,7 @@ class BaseConfig:
             logger = logging.getLogger(self["name"])
             logger.setLevel(self["loglevel"])
 
-        self.logger = CustomLogger(logger, {"name": self["name"]})
+        self.logger = logger
 
         # the keys/values of args are used as parameters
         # to functions

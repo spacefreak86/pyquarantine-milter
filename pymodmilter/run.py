@@ -67,16 +67,9 @@ def main():
 
     # setup console log
     stdouthandler = logging.StreamHandler(sys.stdout)
-    stdouthandler.setFormatter(
-        logging.Formatter("%(asctime)s - %(levelname)s: %(message)s"))
+    formatter = logging.Formatter("%(levelname)s: %(message)s")
+    stdouthandler.setFormatter(formatter)
     root_logger.addHandler(stdouthandler)
-
-    # setup syslog
-    sysloghandler = logging.handlers.SysLogHandler(
-        address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
-    sysloghandler.setFormatter(
-        logging.Formatter("pymodmilter: %(message)s"))
-    root_logger.addHandler(sysloghandler)
 
     logger = logging.getLogger(__name__)
 
@@ -120,6 +113,13 @@ def main():
     stdouthandler.setFormatter(formatter)
     stdouthandler.setLevel(logging.DEBUG)
 
+    # setup syslog
+    sysloghandler = logging.handlers.SysLogHandler(
+        address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
+    sysloghandler.setFormatter(
+        logging.Formatter("pymodmilter: %(message)s"))
+    root_logger.addHandler(sysloghandler)
+
     logger.info("pymodmilter starting")
     ModifyMilter.set_config(cfg)
 
@@ -132,7 +132,7 @@ def main():
 
     rc = 0
     try:
-        Milter.runmilter("pymodmilter", socketname=socket, timeout=30)
+        Milter.runmilter("pymodmilter", socketname=socket, timeout=300)
         logger.info("pymodmilter stopped")
     except Milter.milter.error as e:
         logger.error(e)

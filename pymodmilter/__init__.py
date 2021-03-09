@@ -35,6 +35,7 @@ from collections import defaultdict
 from email.header import Header
 from email.parser import BytesFeedParser
 from email.policy import default as default_policy, SMTP
+from netaddr import IPNetwork, AddrFormatError
 
 from pymodmilter.base import CustomLogger, BaseConfig, MilterMessage
 from pymodmilter.base import replace_illegal_chars
@@ -56,8 +57,7 @@ class ModifyMilterConfig(BaseConfig):
         except json.JSONDecodeError as e:
             cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
             msg = "\n".join(cfg_text)
-            e.msg = f"{msg}\n{e.msg}"
-            raise e
+            raise RuntimeError(f"{e}\n{msg}")
 
         if "global" in cfg:
             assert isinstance(cfg["global"], dict), \
@@ -90,14 +90,20 @@ class ModifyMilterConfig(BaseConfig):
                     [isinstance(addr, str) for addr in local_addrs]), \
                     "global: local_addrs: invalid value, " \
                     "should be list of strings"
-                self["local_addrs"] = local_addrs
             else:
-                self["local_addrs"] = [
+                local_addrs = [
                     "::1/128",
                     "127.0.0.0/8",
                     "10.0.0.0/8",
                     "172.16.0.0/12",
                     "192.168.0.0/16"]
+
+            self["local_addrs"] = []
+            try:
+                for addr in local_addrs:
+                    self["local_addrs"].append(IPNetwork(addr))
+            except AddrFormatError as e:
+                raise ValueError(f"{self['name']}: local_addrs: {e}")
 
             self.logger.debug(f"socket={self['socket']}, "
                               f"local_addrs={self['local_addrs']}, "

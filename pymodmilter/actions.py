@@ -160,7 +160,7 @@ def _has_content_before_body_tag(soup):
     return False
 
 
-def _patch_message_body(milter, action, text, html, logger):
+def _patch_message_body(milter, action, text_template, html_template, logger):
     text_body, text_content = _get_body_content(milter.msg, "plain")
     html_body, html_content = _get_body_content(milter.msg, "html")
 
@@ -171,9 +171,9 @@ def _patch_message_body(milter, action, text, html, logger):
         logger.info(f"{action} text disclaimer")
 
         if action == "prepend":
-            content = f"{text}{text_content}"
+            content = f"{text_template}{text_content}"
         else:
-            content = f"{text_content}{text}"
+            content = f"{text_content}{text_template}"
 
         text_body.set_content(
             content.encode(), maintype="text", subtype="plain")
@@ -192,9 +192,9 @@ def _patch_message_body(milter, action, text, html, logger):
             body = soup
 
         if action == "prepend":
-            body.insert(0, copy(html))
+            body.insert(0, copy(html_template))
         else:
-            body.append(html)
+            body.append(html_template)
 
         html_body.set_content(
             str(soup).encode(), maintype="text", subtype="html")
@@ -239,26 +239,28 @@ def _inject_body(milter):
         milter.msg.attach(attachment)
 
 
-def add_disclaimer(milter, text, html, action, policy, pretend=False,
-                   logger=logging.getLogger(__name__)):
+def add_disclaimer(milter, text_template, html_template, action, error_policy,
+                   pretend=False, logger=logging.getLogger(__name__)):
     """Append or prepend a disclaimer to the mail body."""
     old_headers = milter.msg.items()
 
     try:
         try:
-            _patch_message_body(milter, action, text, html, logger)
+            _patch_message_body(
+                milter, action, text_template, html_template, logger)
         except RuntimeError as e:
             logger.info(f"{e}, inject empty plain and html body")
             _inject_body(milter)
-            _patch_message_body(milter, action, text, html, logger)
+            _patch_message_body(
+                milter, action, text_template, html_template, logger)
     except Exception as e:
         logger.warning(e)
-        if policy == "ignore":
+        if error_policy == "ignore":
             logger.info(
                 "unable to add disclaimer to message body, "
                 "ignore error according to policy")
             return
-        elif policy == "reject":
+        elif error_policy == "reject":
             logger.info(
                 "unable to add disclaimer to message body, "
                 "reject message according to policy")
@@ -268,7 +270,8 @@ def add_disclaimer(milter, text, html, action, policy, pretend=False,
         logger.info("wrap original message in a new message envelope")
         try:
             _wrap_message(milter, logger)
-            _patch_message_body(milter, action, text, html, logger)
+            _patch_message_body(
+                milter, action, text_template, html_template, logger)
         except Exception as e:
             logger.error(e)
             raise Exception(
@@ -331,6 +334,9 @@ def store(milter, directory, pretend=False,
 class ActionConfig(BaseConfig):
     def __init__(self, idx, rule_cfg, cfg, debug):
         if "name" in cfg:
+            assert isinstance(cfg["name"], str), \
+                f"{rule_cfg['name']}: Action #{idx}: name: invalid value, " \
+                f"should be string"
             cfg["name"] = f"{rule_cfg['name']}: {cfg['name']}"
         else:
             cfg["name"] = f"{rule_cfg['name']}: Action #{idx}"
@@ -353,7 +359,7 @@ class ActionConfig(BaseConfig):
         assert "type" in cfg, \
             f"{self['name']}: mandatory parameter 'type' not found"
         assert isinstance(cfg["type"], str), \
-            f"{self['name']}: invalid value, should be string"
+            f"{self['name']}: type: invalid value, should be string"
         self["type"] = cfg["type"]
 
         if self["type"] == "add_header":
@@ -437,13 +443,19 @@ class ActionConfig(BaseConfig):
         elif self["type"] == "store":
             self["func"] = store
             self["need_body"] = True
-            self.add_string_arg(cfg, "storage_type")
-            assert self["args"]["storage_type"] in ("file"), \
-                f"{self['name']}: storage_type: invalid value, " \
-                f"should be 'file'"
 
-            if self["args"]["storage_type"] == "file":
+            assert "storage_type" in cfg, \
+                f"{self['name']}: mandatory parameter 'storage_type' not found"
+            assert isinstance(cfg["type"], str), \
+                f"{self['name']}: storage_type: invalid value, " \
+                f"should be string"
+            self["storage_type"] = cfg["storage_type"]
+            if self["storage_type"] == "file":
                 self.add_string_arg(cfg, "directory")
+            else:
+                raise RuntimeError(
+                    f"{self['name']}: storage_type: invalid storage type")
+
         else:
             raise RuntimeError(f"{self['name']}: type: invalid action type")
 
@@ -464,9 +476,6 @@ class Action:
 
     def __init__(self, milter_cfg, cfg):
         self.logger = cfg.logger
-        #logger = logging.getLogger(cfg["name"])
-        #self.logger = CustomLogger(logger, {"name": cfg["name"]})
-        #self.logger.setLevel(cfg["loglevel"])
 
         if cfg["conditions"] is None:
             self.conditions = None
@@ -474,30 +483,10 @@ class Action:
             self.conditions = Conditions(milter_cfg, cfg["conditions"])
 
         self.pretend = cfg["pretend"]
+        self._name = cfg["name"]
         self._func = cfg["func"]
         self._args = cfg["args"]
-
-        action_type = cfg["type"]
-        if action_type == "add_header":
-            self._func = add_header
-            self._need_body = False
-        elif action_type == "mod_header":
-            self._func = mod_header
-            self._need_body = False
-        elif action_type == "del_header":
-            self._func = del_header
-            self._need_body = False
-        elif action_type == "add_disclaimer":
-            self._func = add_disclaimer
-            self._need_body = True
-        elif action_type == "rewrite_links":
-            self._func = rewrite_links
-            self._need_body = True
-        elif action_type == "store":
-            self._func = store
-            self._need_body = True
-        else:
-            raise ValueError(f"invalid action type: {action_type}")
+        self._need_body = cfg["need_body"]
 
     def need_body(self):
         """Return the needs of this action."""
@@ -508,7 +497,8 @@ class Action:
         if pretend is None:
             pretend = self.pretend
 
-        logger = CustomLogger(self.logger, {"qid": milter.qid})
+        logger = CustomLogger(
+            self.logger, {"name": self._name, "qid": milter.qid})
 
         return self._func(milter=milter, pretend=pretend,
                           logger=logger, **self._args)

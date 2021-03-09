@@ -12,19 +12,66 @@
 # along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import logging
+__all__ = [
+    "ConditionsConfig",
+    "Conditions"]
 
-from netaddr import IPAddress
-from pymodmilter import CustomLogger
+import logging
+import re
+
+from netaddr import IPAddress, IPNetwork, AddrFormatError
+from pymodmilter import CustomLogger, BaseConfig
+
+
+class ConditionsConfig(BaseConfig):
+    def __init__(self, parent_cfg, cfg, debug):
+        if "loglevel" not in cfg:
+            cfg["loglevel"] = parent_cfg["loglevel"]
+
+        cfg["name"] = f"{parent_cfg['name']}: condition"
+
+        super().__init__(cfg, debug)
+
+        if "local" in cfg:
+            self.add_bool_arg(cfg, "local")
+
+        if "hosts" in cfg:
+            hosts = cfg["hosts"]
+            assert isinstance(hosts, list) and all(
+                [isinstance(host, str) for host in hosts]), \
+                f"{self['name']}: hosts: invalid value, " \
+                f"should be list of strings"
+
+            self["args"]["hosts"] = []
+            try:
+                for host in cfg["hosts"]:
+                    self["args"]["hosts"].append(IPNetwork(host))
+            except AddrFormatError as e:
+                raise ValueError(f"{self['name']}: hosts: {e}")
+
+        for arg in ("envfrom", "envto"):
+            if arg in cfg:
+                self.add_string_arg(cfg, arg)
+                try:
+                    self["args"][arg] = re.compile(
+                        self["args"][arg],
+                        re.IGNORECASE)
+                except re.error as e:
+                    raise ValueError(f"{self['name']}: {arg}: {e}")
+
+        self.logger.debug(f"{self['name']}: "
+                          f"loglevel={self['loglevel']}, "
+                          f"args={self['args']}")
 
 
 class Conditions:
     """Conditions to implement conditions for rules and actions."""
 
     def __init__(self, milter_cfg, cfg):
-        logger = logging.getLogger(cfg["name"])
-        self.logger = CustomLogger(logger, {"name": cfg["name"]})
-        self.logger.setLevel(cfg["loglevel"])
+        self.logger = cfg.logger
+        #logger = logging.getLogger(cfg["name"])
+        #self.logger = CustomLogger(logger, {"name": cfg["name"]})
+        #self.logger.setLevel(cfg["loglevel"])
 
         self._local_addrs = milter_cfg["local_addrs"]
         self._args = cfg["args"]

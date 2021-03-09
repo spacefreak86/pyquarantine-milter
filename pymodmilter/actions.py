@@ -12,6 +12,16 @@
 # along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+__all__ = [
+    "add_header",
+    "mod_header",
+    "del_header",
+    "add_disclaimer",
+    "rewrite_links",
+    "store",
+    "ActionConfig",
+    "Action"]
+
 import logging
 import os
 import re
@@ -23,7 +33,9 @@ from copy import copy
 from datetime import datetime
 from email.message import MIMEPart
 
-from pymodmilter import CustomLogger, Conditions, replace_illegal_chars
+from pymodmilter import CustomLogger, BaseConfig
+from pymodmilter.conditions import ConditionsConfig, Conditions
+from pymodmilter import replace_illegal_chars
 
 
 def add_header(milter, field, value, pretend=False,
@@ -316,13 +328,145 @@ def store(milter, directory, pretend=False,
         raise RuntimeError(f"unable to store message: {e}")
 
 
+class ActionConfig(BaseConfig):
+    def __init__(self, idx, rule_cfg, cfg, debug):
+        if "name" in cfg:
+            cfg["name"] = f"{rule_cfg['name']}: {cfg['name']}"
+        else:
+            cfg["name"] = f"{rule_cfg['name']}: Action #{idx}"
+
+        if "loglevel" not in cfg:
+            cfg["loglevel"] = rule_cfg["loglevel"]
+
+        super().__init__(cfg, debug)
+
+        self["pretend"] = rule_cfg["pretend"]
+        self["conditions"] = None
+        self["type"] = ""
+
+        if "pretend" in cfg:
+            pretend = cfg["pretend"]
+            assert isinstance(pretend, bool), \
+                f"{self['name']}: pretend: invalid value, should be bool"
+            self["pretend"] = pretend
+
+        assert "type" in cfg, \
+            f"{self['name']}: mandatory parameter 'type' not found"
+        assert isinstance(cfg["type"], str), \
+            f"{self['name']}: invalid value, should be string"
+        self["type"] = cfg["type"]
+
+        if self["type"] == "add_header":
+            self["func"] = add_header
+            self["need_body"] = False
+            self.add_string_arg(cfg, ("field", "value"))
+
+        elif self["type"] == "mod_header":
+            self["func"] = mod_header
+            self["need_body"] = False
+            args = ["field", "value"]
+            if "search" in cfg:
+                args.append("search")
+
+            for arg in args:
+                self.add_string_arg(cfg, arg)
+                if arg in ("field", "search"):
+                    try:
+                        self["args"][arg] = re.compile(
+                            self["args"][arg],
+                            re.MULTILINE + re.DOTALL + re.IGNORECASE)
+                    except re.error as e:
+                        raise ValueError(f"{self['name']}: {arg}: {e}")
+
+        elif self["type"] == "del_header":
+            self["func"] = del_header
+            self["need_body"] = False
+            args = ["field"]
+            if "value" in cfg:
+                args.append("value")
+
+            for arg in args:
+                self.add_string_arg(cfg, arg)
+                try:
+                    self["args"][arg] = re.compile(
+                        self["args"][arg],
+                        re.MULTILINE + re.DOTALL + re.IGNORECASE)
+                except re.error as e:
+                    raise ValueError(f"{self['name']}: {arg}: {e}")
+
+        elif self["type"] == "add_disclaimer":
+            self["func"] = add_disclaimer
+            self["need_body"] = True
+
+            if "error_policy" not in cfg:
+                cfg["error_policy"] = "wrap"
+
+            self.add_string_arg(
+                cfg, ("action", "html_template", "text_template",
+                      "error_policy"))
+            assert self["args"]["action"] in ("append", "prepend"), \
+                f"{self['name']}: action: invalid value, " \
+                f"should be 'append' or 'prepend'"
+            assert self["args"]["error_policy"] in ("wrap",
+                                                    "ignore",
+                                                    "reject"), \
+                f"{self['name']}: error_policy: invalid value, " \
+                f"should be 'wrap', 'ignore' or 'reject'"
+
+            try:
+                with open(self["args"]["html_template"], "r") as f:
+                    html = BeautifulSoup(f.read(), "html.parser")
+                    body = html.find('body')
+                    if body:
+                        # just use content within the body tag if present
+                        html = body
+                    self["args"]["html_template"] = html
+
+                with open(self["args"]["text_template"], "r") as f:
+                    self["args"]["text_template"] = f.read()
+
+            except IOError as e:
+                raise RuntimeError(
+                    f"{self['name']}: unable to open/read template file: {e}")
+
+        elif self["type"] == "rewrite_links":
+            self["func"] = rewrite_links
+            self["need_body"] = True
+            self.add_string_arg(cfg, "repl")
+
+        elif self["type"] == "store":
+            self["func"] = store
+            self["need_body"] = True
+            self.add_string_arg(cfg, "storage_type")
+            assert self["args"]["storage_type"] in ("file"), \
+                f"{self['name']}: storage_type: invalid value, " \
+                f"should be 'file'"
+
+            if self["args"]["storage_type"] == "file":
+                self.add_string_arg(cfg, "directory")
+        else:
+            raise RuntimeError(f"{self['name']}: type: invalid action type")
+
+        if "conditions" in cfg:
+            conditions = cfg["conditions"]
+            assert isinstance(conditions, dict), \
+                f"{self['name']}: conditions: invalid value, should be dict"
+            self["conditions"] = ConditionsConfig(self, conditions, debug)
+
+        self.logger.debug(f"pretend={self['pretend']}, "
+                          f"loglevel={self['loglevel']}, "
+                          f"type={self['type']}, "
+                          f"args={self['args']}")
+
+
 class Action:
     """Action to implement a pre-configured action to perform on e-mails."""
 
     def __init__(self, milter_cfg, cfg):
-        logger = logging.getLogger(cfg["name"])
-        self.logger = CustomLogger(logger, {"name": cfg["name"]})
-        self.logger.setLevel(cfg["loglevel"])
+        self.logger = cfg.logger
+        #logger = logging.getLogger(cfg["name"])
+        #self.logger = CustomLogger(logger, {"name": cfg["name"]})
+        #self.logger.setLevel(cfg["loglevel"])
 
         if cfg["conditions"] is None:
             self.conditions = None
@@ -330,6 +474,7 @@ class Action:
             self.conditions = Conditions(milter_cfg, cfg["conditions"])
 
         self.pretend = cfg["pretend"]
+        self._func = cfg["func"]
         self._args = cfg["args"]
 
         action_type = cfg["type"]

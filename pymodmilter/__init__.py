@@ -14,10 +14,11 @@
 
 __all__ = [
     "actions",
+    "base",
     "conditions",
+    "rules",
     "run",
-    "CustomLogger",
-    "Rule",
+    "ModifyMilterConfig",
     "ModifyMilter"]
 
 __version__ = "1.1.4"
@@ -26,130 +27,93 @@ from pymodmilter import _runtime_patches
 
 import Milter
 import logging
+import re
+import json
 
 from Milter.utils import parse_addr
-
 from collections import defaultdict
-
 from email.header import Header
-from email.message import MIMEPart
 from email.parser import BytesFeedParser
 from email.policy import default as default_policy, SMTP
 
-from pymodmilter.actions import Action
-from pymodmilter.conditions import Conditions
+from pymodmilter.base import CustomLogger, BaseConfig, MilterMessage
+from pymodmilter.base import replace_illegal_chars
+from pymodmilter.rules import RuleConfig, Rule
 
 
-class CustomLogger(logging.LoggerAdapter):
-    def process(self, msg, kwargs):
-        if "name" in self.extra:
-            msg = "{}: {}".format(self.extra["name"], msg)
+class ModifyMilterConfig(BaseConfig):
+    def __init__(self, cfgfile, debug=False):
+        try:
+            with open(cfgfile, "r") as fh:
+                # remove lines with leading # (comments), they
+                # are not allowed in json
+                cfg = re.sub(r"(?m)^\s*#.*\n?", "", fh.read())
+        except IOError as e:
+            raise RuntimeError(f"unable to open/read config file: {e}")
 
-        if "qid" in self.extra:
-            msg = "{}: {}".format(self.extra["qid"], msg)
+        try:
+            cfg = json.loads(cfg)
+        except json.JSONDecodeError as e:
+            cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
+            msg = "\n".join(cfg_text)
+            e.msg = f"{msg}\n{e.msg}"
+            raise e
 
-        if self.logger.getEffectiveLevel() != logging.DEBUG:
-            msg = msg.replace("\n", "").replace("\r", "")
+        if "global" in cfg:
+            assert isinstance(cfg["global"], dict), \
+                "global: invalid type, should be dict"
 
-        return msg, kwargs
+            cfg["global"]["name"] = "global"
+            super().__init__(cfg["global"], debug)
 
+            self.logger.debug("initialize config")
 
-class Rule:
-    """
-    Rule to implement multiple actions on emails.
-    """
-
-    def __init__(self, milter_cfg, cfg):
-        logger = logging.getLogger(cfg["name"])
-        self.logger = CustomLogger(logger, {"name": cfg["name"]})
-        self.logger.setLevel(cfg["loglevel"])
-
-        if cfg["conditions"] is None:
-            self.conditions = None
-        else:
-            self.conditions = Conditions(milter_cfg, cfg["conditions"])
-
-        self._need_body = False
-
-        self.actions = []
-        for action_cfg in cfg["actions"]:
-            action = Action(milter_cfg, action_cfg)
-            self.actions.append(action)
-            if action.need_body():
-                self._need_body = True
-
-        self.pretend = cfg["pretend"]
-
-    def need_body(self):
-        """Return True if this rule needs the message body."""
-        return self._need_body
-
-    def ignores(self, host=None, envfrom=None, envto=None):
-        args = {}
-
-        if host is not None:
-            args["host"] = host
-
-        if envfrom is not None:
-            args["envfrom"] = envfrom
-
-        if envto is not None:
-            args["envto"] = envto
-
-        if self.conditions is None or self.conditions.match(args):
-            for action in self.actions:
-                if action.conditions is None or action.conditions.match(args):
-                    return False
-
-        return True
-
-    def execute(self, milter, pretend=None):
-        """Execute all actions of this rule."""
-        if pretend is None:
-            pretend = self.pretend
-
-        for action in self.actions:
-            milter_action = action.execute(milter, pretend=pretend)
-            if milter_action is not None:
-                return milter_action
-
-
-class MilterMessage(MIMEPart):
-    def replace_header(self, _name, _value, idx=None):
-        _name = _name.lower()
-        counter = 0
-        for i, (k, v) in zip(range(len(self._headers)), self._headers):
-            if k.lower() == _name:
-                counter += 1
-                if not idx or counter == idx:
-                    self._headers[i] = self.policy.header_store_parse(
-                        k, _value)
-                    break
-
-        else:
-            raise KeyError(_name)
-
-    def remove_header(self, name, idx=None):
-        name = name.lower()
-        newheaders = []
-        counter = 0
-        for k, v in self._headers:
-            if k.lower() == name:
-                counter += 1
-                if counter != idx:
-                    newheaders.append((k, v))
+            if "pretend" in cfg["global"]:
+                pretend = cfg["global"]["pretend"]
+                assert isinstance(pretend, bool), \
+                    "global: pretend: invalid value, should be bool"
+                self["pretend"] = pretend
             else:
-                newheaders.append((k, v))
+                self["pretend"] = False
 
-        self._headers = newheaders
+            if "socket" in cfg["global"]:
+                socket = cfg["global"]["socket"]
+                assert isinstance(socket, str), \
+                    "global: socket: invalid value, should be string"
+                self["socket"] = socket
+            else:
+                self["socket"] = None
 
+            if "local_addrs" in cfg["global"]:
+                local_addrs = cfg["global"]["local_addrs"]
+                assert isinstance(local_addrs, list) and all(
+                    [isinstance(addr, str) for addr in local_addrs]), \
+                    "global: local_addrs: invalid value, " \
+                    "should be list of strings"
+                self["local_addrs"] = local_addrs
+            else:
+                self["local_addrs"] = [
+                    "::1/128",
+                    "127.0.0.0/8",
+                    "10.0.0.0/8",
+                    "172.16.0.0/12",
+                    "192.168.0.0/16"]
 
-def replace_illegal_chars(string):
-    """Replace illegal characters in header values."""
-    return string.replace(
-        "\x00", "").replace(
-        "\r", "").replace(
-        "\n", "")
+            self.logger.debug(f"socket={self['socket']}, "
+                              f"local_addrs={self['local_addrs']}, "
+                              f"pretend={self['pretend']}, "
+                              f"loglevel={self['loglevel']}")
+
+        assert "rules" in cfg, \
+            "mandatory parameter 'rules' not found"
+        assert isinstance(cfg["rules"], list), \
+            "rules: invalid value, should be list"
+
+        self.logger.debug("initialize rules config")
+        self["rules"] = []
+        for idx, rule_cfg in enumerate(cfg["rules"]):
+            self["rules"].append(
+                RuleConfig(idx, self, rule_cfg, debug))
 
 
 class ModifyMilter(Milter.Base):

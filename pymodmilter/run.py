@@ -12,6 +12,8 @@
 # along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+__all__ = ["main"]
+
 import Milter
 import argparse
 import logging
@@ -20,7 +22,7 @@ import sys
 
 from pymodmilter import ModifyMilter
 from pymodmilter import __version__ as version
-from pymodmilter.config import ModifyMilterConfig
+from pymodmilter import ModifyMilterConfig
 
 
 def main():
@@ -83,7 +85,7 @@ def main():
 
     try:
         logger.debug("prepar milter configuration")
-        cfg = ModifyMilterConfig(args.cfgfile, args.debug)
+        cfg = ModifyMilterConfig(args.config, args.debug)
 
         if not args.debug:
             logger.setLevel(cfg["loglevel"])
@@ -100,8 +102,6 @@ def main():
         if not cfg["rules"]:
             raise RuntimeError("no rules configured")
 
-        logger.debug("initializing rules ...")
-
         for rule_cfg in cfg["rules"]:
             if not rule_cfg["actions"]:
                 raise RuntimeError(
@@ -112,7 +112,7 @@ def main():
         sys.exit(255)
 
     if args.test:
-        print("Configuration ok")
+        print("Configuration OK")
         sys.exit(0)
 
     # setup console log for runtime

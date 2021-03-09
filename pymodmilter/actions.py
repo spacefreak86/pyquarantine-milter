@@ -365,11 +365,19 @@ class ActionConfig(BaseConfig):
         if self["type"] == "add_header":
             self["func"] = add_header
             self["need_body"] = False
+
+            if not "field" in cfg and "header" in cfg:
+                cfg["field"] = cfg["header"]
+
             self.add_string_arg(cfg, ("field", "value"))
 
         elif self["type"] == "mod_header":
             self["func"] = mod_header
             self["need_body"] = False
+
+            if not "field" in cfg and "header" in cfg:
+                cfg["field"] = cfg["header"]
+
             args = ["field", "value"]
             if "search" in cfg:
                 args.append("search")
@@ -387,6 +395,10 @@ class ActionConfig(BaseConfig):
         elif self["type"] == "del_header":
             self["func"] = del_header
             self["need_body"] = False
+
+            if not "field" in cfg and "header" in cfg:
+                cfg["field"] = cfg["header"]
+
             args = ["field"]
             if "value" in cfg:
                 args.append("value")
@@ -403,6 +415,12 @@ class ActionConfig(BaseConfig):
         elif self["type"] == "add_disclaimer":
             self["func"] = add_disclaimer
             self["need_body"] = True
+
+            if not "html_template" in cfg and "html_file" in cfg:
+                cfg["html_template"] = cfg["html_file"]
+
+            if not "text_template" in cfg and "text_file" in cfg:
+                cfg["text_template"] = cfg["text_file"]
 
             if "error_policy" not in cfg:
                 cfg["error_policy"] = "wrap"

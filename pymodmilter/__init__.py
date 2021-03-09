@@ -36,6 +36,7 @@ from email.message import MIMEPart
 from email.parser import BytesFeedParser
 from email.policy import default as default_policy, SMTP
 
+from pymodmilter.actions import Action
 from pymodmilter.conditions import Conditions
 
 
@@ -58,28 +59,26 @@ class Rule:
     Rule to implement multiple actions on emails.
     """
 
-    def __init__(self, name, local_addrs, conditions, actions, pretend=False,
-                 loglevel=logging.INFO):
-        logger = logging.getLogger(name)
-        self.logger = CustomLogger(logger, {"name": name})
-        self.logger.setLevel(loglevel)
+    def __init__(self, milter_cfg, cfg):
+        logger = logging.getLogger(cfg["name"])
+        self.logger = CustomLogger(logger, {"name": cfg["name"]})
+        self.logger.setLevel(cfg["loglevel"])
 
-        if logger is None:
-            logger = logging.getLogger(__name__)
-
-        self.logger = CustomLogger(logger, {"name": name})
-        self.conditions = Conditions(
-            local_addrs=local_addrs,
-            args=conditions,
-            logger=self.logger)
-        self.actions = actions
-        self.pretend = pretend
+        if cfg["conditions"] is None:
+            self.conditions = None
+        else:
+            self.conditions = Conditions(milter_cfg, cfg["conditions"])
 
         self._need_body = False
-        for action in actions:
+
+        self.actions = []
+        for action_cfg in cfg["actions"]:
+            action = Action(milter_cfg, action_cfg)
+            self.actions.append(action)
             if action.need_body():
                 self._need_body = True
-                break
+
+        self.pretend = cfg["pretend"]
 
     def need_body(self):
         """Return True if this rule needs the message body."""
@@ -97,9 +96,9 @@ class Rule:
         if envto is not None:
             args["envto"] = envto
 
-        if self.conditions.match(args):
+        if self.conditions is None or self.conditions.match(args):
             for action in self.actions:
-                if action.conditions.match(args):
+                if action.conditions is None or action.conditions.match(args):
                     return False
 
         return True
@@ -160,12 +159,11 @@ class ModifyMilter(Milter.Base):
     _loglevel = logging.INFO
 
     @staticmethod
-    def set_rules(rules):
-        ModifyMilter._rules = rules
-
-    @staticmethod
-    def set_loglevel(level):
-        ModifyMilter._loglevel = level
+    def set_config(cfg):
+        ModifyMilter._loglevel = cfg["loglevel"]
+        for rule_cfg in cfg["rules"]:
+            ModifyMilter._rules.append(
+                Rule(cfg, rule_cfg))
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)

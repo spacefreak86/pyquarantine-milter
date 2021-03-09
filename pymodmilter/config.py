@@ -27,7 +27,12 @@ from netaddr import IPNetwork, AddrFormatError
 
 
 class BaseConfig:
-    def __init__(self, cfg={}, debug=False):
+    def __init__(self, cfg={}, debug=False, logger=None):
+        if logger is None:
+            logger = logging.getLogger(__name__)
+
+        self.logger = logger
+
         self._cfg = {}
         if "name" in cfg:
             assert isinstance(cfg["name"], str), \
@@ -39,10 +44,13 @@ class BaseConfig:
         if debug:
             self["loglevel"] = logging.DEBUG
         elif "loglevel" in cfg:
-            level = getattr(logging, cfg["loglevel"].upper(), None)
-            assert isinstance(level, int), \
-                f"{self['name']}: loglevel: invalid value"
-            self["loglevel"] = level
+            if isinstance(cfg["loglevel"], int):
+                self["loglevel"] = cfg["loglevel"]
+            else:
+                level = getattr(logging, cfg["loglevel"].upper(), None)
+                assert isinstance(level, int), \
+                    f"{self['name']}: loglevel: invalid value"
+                self["loglevel"] = level
         else:
             self["loglevel"] = logging.INFO
 
@@ -137,7 +145,6 @@ class ActionConfig(BaseConfig):
         self["pretend"] = rule_cfg["pretend"]
         self["conditions"] = None
         self["type"] = ""
-        self["need_body"] = False
 
         if "pretend" in cfg:
             pretend = cfg["pretend"]
@@ -217,22 +224,23 @@ class ActionConfig(BaseConfig):
                 raise RuntimeError(
                     f"{self['name']}: unable to open/read template file: {e}")
 
-            self["need_body"] = True
-
         elif self["type"] == "rewrite_links":
             self.add_string_arg(cfg, "repl")
-            self["need_body"] = True
 
         elif self["type"] == "store":
             self.add_string_arg(cfg, "storage_type")
-            assert self["storage_type"] in ("file"), \
+            assert self["args"]["storage_type"] in ("file"), \
                 f"{self['name']}: storage_type: invalid value, " \
                 f"should be 'file'"
 
             if self["args"]["storage_type"] == "file":
                 self.add_string_arg(cfg, "directory")
 
-            self["need_body"] = True
+        if "conditions" in cfg:
+            conditions = cfg["conditions"]
+            assert isinstance(conditions, dict), \
+                f"{self['name']}: conditions: invalid value, should be dict"
+            self["conditions"] = ConditionsConfig(self, conditions, debug)
 
 
 class RuleConfig(BaseConfig):
@@ -264,6 +272,12 @@ class RuleConfig(BaseConfig):
         for idx, action_cfg in enumerate(cfg["actions"]):
             self["actions"].append(
                 ActionConfig(idx, self, action_cfg, debug))
+
+        if "conditions" in cfg:
+            conditions = cfg["conditions"]
+            assert isinstance(conditions, dict), \
+                f"{self['name']}: conditions: invalid value, should be dict"
+            self["conditions"] = ConditionsConfig(self, conditions, debug)
 
 
 class ModifyMilterConfig(BaseConfig):

@@ -13,61 +13,21 @@
 #
 
 import logging
-import re
 
-from netaddr import IPAddress, IPNetwork, AddrFormatError
+from netaddr import IPAddress
+from pymodmilter import CustomLogger
 
 
 class Conditions:
     """Conditions to implement conditions for rules and actions."""
 
-    def __init__(self, local_addrs, args, logger=None):
-        if logger is None:
-            logger = logging.getLogger(__name__)
+    def __init__(self, milter_cfg, cfg):
+        logger = logging.getLogger(cfg["name"])
+        self.logger = CustomLogger(logger, {"name": cfg["name"]})
+        self.logger.setLevel(cfg["loglevel"])
 
-        self._local_addrs = []
-        self.logger = logger
-        self._args = {}
-
-        try:
-            for addr in local_addrs:
-                self._local_addrs.append(IPNetwork(addr))
-        except AddrFormatError as e:
-            raise RuntimeError(f"invalid address in local_addrs: {e}")
-
-        try:
-            if "local" in args:
-                logger.debug(f"condition: local = {args['local']}")
-                self._args["local"] = args["local"]
-
-            if "hosts" in args:
-                logger.debug(f"condition: hosts = {args['hosts']}")
-                self._args["hosts"] = []
-                try:
-                    for host in args["hosts"]:
-                        self._args["hosts"].append(IPNetwork(host))
-                except AddrFormatError as e:
-                    raise RuntimeError(f"invalid address in hosts: {e}")
-
-            if "envfrom" in args:
-                logger.debug(f"condition: envfrom = {args['envfrom']}")
-                try:
-                    self._args["envfrom"] = re.compile(
-                        args["envfrom"], re.IGNORECASE)
-                except re.error as e:
-                    raise RuntimeError(f"unable to parse envfrom regex: {e}")
-
-            if "envto" in args:
-                logger.debug(f"condition: envto = {args['envto']}")
-                try:
-                    self._args["envto"] = re.compile(
-                        args["envto"], re.IGNORECASE)
-                except re.error as e:
-                    raise RuntimeError(f"unable to parse envto regex: {e}")
-
-        except KeyError as e:
-            raise RuntimeError(
-                f"mandatory argument not found: {e}")
+        self._local_addrs = milter_cfg["local_addrs"]
+        self._args = cfg["args"]
 
     def match(self, args):
         if "host" in args:

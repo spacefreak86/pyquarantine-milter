@@ -269,7 +269,7 @@ def add_disclaimer(milter, text, html, action, policy, pretend=False,
 
 
 def rewrite_links(milter, repl, pretend=False,
-                         logger=logging.getLogger(__name__)):
+                  logger=logging.getLogger(__name__)):
     """Rewrite link targets in the mail html body."""
 
     html_body, html_content = _get_body_content(milter.msg, "html")
@@ -318,106 +318,41 @@ def store(milter, directory, pretend=False,
 
 class Action:
     """Action to implement a pre-configured action to perform on e-mails."""
-    _need_body_map = {
-        "add_header": False,
-        "del_header": False,
-        "mod_header": False,
-        "add_disclaimer": True,
-        "rewrite_links": True,
-        "store": True}
 
-    def __init__(self, name, local_addrs, conditions, action_type, args,
-                 loglevel=logging.INFO, pretend=False):
-        logger = logging.getLogger(name)
-        self.logger = CustomLogger(logger, {"name": name})
-        self.logger.setLevel(loglevel)
+    def __init__(self, milter_cfg, cfg):
+        logger = logging.getLogger(cfg["name"])
+        self.logger = CustomLogger(logger, {"name": cfg["name"]})
+        self.logger.setLevel(cfg["loglevel"])
 
-        self.conditions = Conditions(
-            local_addrs=local_addrs,
-            args=conditions,
-            logger=self.logger)
-        self.pretend = pretend
-        self._args = {}
+        if cfg["conditions"] is None:
+            self.conditions = None
+        else:
+            self.conditions = Conditions(milter_cfg, cfg["conditions"])
 
-        if action_type not in self._need_body_map:
-            raise RuntimeError(f"invalid action type '{action_type}'")
-        self._need_body = self._need_body_map[action_type]
+        self.pretend = cfg["pretend"]
+        self._args = cfg["args"]
 
-        try:
-            if action_type == "add_header":
-                self._func = add_header
-                self._args["field"] = args["header"]
-                self._args["value"] = args["value"]
-                if "idx" in args:
-                    self._args["idx"] = args["idx"]
-
-            elif action_type in ["mod_header", "del_header"]:
-                args["field"] = args["header"]
-                del args["header"]
-                regex_args = ["field"]
-
-                if action_type == "mod_header":
-                    self._func = mod_header
-                    self._args["value"] = args["value"]
-                    regex_args.append("search")
-                elif action_type == "del_header":
-                    self._func = del_header
-                    if "value" in args:
-                        regex_args.append("value")
-
-                for arg in regex_args:
-                    try:
-                        self._args[arg] = re.compile(
-                            args[arg],
-                            re.MULTILINE + re.DOTALL + re.IGNORECASE)
-                    except re.error as e:
-                        raise RuntimeError(
-                            f"unable to parse {arg} regex: {e}")
-
-            elif action_type == "add_disclaimer":
-                self._func = add_disclaimer
-                if args["action"] not in ["append", "prepend"]:
-                    raise RuntimeError(f"invalid action '{args['action']}'")
-
-                self._args["action"] = args["action"]
-
-                if args["error_policy"] not in ["wrap", "ignore", "reject"]:
-                    raise RuntimeError(f"invalid policy '{args['policy']}'")
-
-                self._args["policy"] = args["error_policy"]
-
-                try:
-                    with open(args["html_file"], "r") as f:
-                        html = BeautifulSoup(
-                            f.read(), "html.parser")
-                        body = html.find('body')
-                        if body:
-                            # just use content within the body tag if present
-                            html = body
-                        self._args["html"] = html
-                    with open(args["text_file"], "r") as f:
-                        self._args["text"] = f.read()
-                except IOError as e:
-                    raise RuntimeError(f"unable to read template: {e}")
-
-            elif action_type == "rewrite_links":
-                self._func = rewrite_links
-                self._args["repl"] = args["repl"]
-
-            elif action_type == "store":
-                self._func = store
-                if args["storage_type"] not in ["file"]:
-                    raise RuntimeError(
-                        "invalid storage_type 'args['storage_type']'")
-
-                if args["storage_type"] == "file":
-                    self._args["directory"] = args["directory"]
-            else:
-                raise RuntimeError(f"invalid action type: {action_type}")
-
-        except KeyError as e:
-            raise RuntimeError(
-                f"mandatory argument not found: {e}")
+        action_type = cfg["type"]
+        if action_type == "add_header":
+            self._func = add_header
+            self._need_body = False
+        elif action_type == "mod_header":
+            self._func = mod_header
+            self._need_body = False
+        elif action_type == "del_header":
+            self._func = del_header
+            self._need_body = False
+        elif action_type == "add_disclaimer":
+            self._func = add_disclaimer
+            self._need_body = True
+        elif action_type == "rewrite_links":
+            self._func = rewrite_links
+            self._need_body = True
+        elif action_type == "store":
+            self._func = store
+            self._need_body = True
+        else:
+            raise ValueError(f"invalid action type: {action_type}")
 
     def need_body(self):
         """Return the needs of this action."""

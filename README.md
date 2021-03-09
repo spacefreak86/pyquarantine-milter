@@ -1,6 +1,6 @@
 # pymodmilter
 A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.  
-The project is currently in beta status, but it is already used in a productive enterprise environment which processes about a million e-mails per month.  
+The project is currently in beta status, but it is already used in a productive enterprise environment that processes about a million e-mails per month.  
 
 The basic idea is to define rules with conditions and actions which are processed when all conditions are true.
 
@@ -72,19 +72,19 @@ Config options for **action** objects:
   As described above in the [Global](#Global) section.
 
 Config options for **add_header** actions:
-  * **header**  
+  * **field**  
     Name of the header.
   * **value**  
     Value of the header.
 
 Config options for **del_header** actions:
-  * **header**  
+  * **field**  
     Regular expression to match against header names.
   * **value** (optional)
     Regular expression to match against the headers value.
 
 Config options for **mod_header** actions:
-  * **header**  
+  * **field**  
     Regular expression to match against header names.
   * **search** (optional)  
     Regular expression to match against header values. You may use subgroups or named subgroups (python syntax) to include parts of the original value in the new value.
@@ -96,9 +96,9 @@ Config options for **add_disclaimer** actions:
     Action to perform with the disclaimer. Possible values are:
     * append
     * prepend
-  * **html_file**  
+  * **html_template**  
     Path to a file which contains the html representation of the disclaimer.
-  * **text_file**  
+  * **text_template**  
     Path to a file which contains the text representation of the disclaimer.
   * **error_policy** (optional)  
     Set the error policy in case the disclaimer cannot be added (e.g. if no body part is present in the e-mail). Possible values are:

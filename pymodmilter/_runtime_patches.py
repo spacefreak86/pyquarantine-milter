@@ -90,6 +90,68 @@ setattr(email._header_value_parser, "DisplayName", DisplayName)
 setattr(email._header_value_parser, "get_name_addr", get_name_addr)
 
 
+# https://bugs.python.org/issue30681
+#
+# fix: https://github.com/python/cpython/pull/2254
+
+import email.errors
+from email.errors import HeaderDefect
+
+
+class InvalidDateDefect(HeaderDefect):
+    """Header has unparseable or invalid date"""
+
+
+setattr(email.errors, "InvalidDateDefect", InvalidDateDefect)
+
+
+import email.utils
+from email.utils import _parsedate_tz
+import datetime
+
+
+def parsedate_to_datetime(data):
+    parsed_date_tz = _parsedate_tz(data)
+    if parsed_date_tz is None:
+        raise ValueError('Invalid date value or format "%s"' % str(data))
+    *dtuple, tz = parsed_date_tz
+    if tz is None:
+        return datetime.datetime(*dtuple[:6])
+    return datetime.datetime(*dtuple[:6],
+            tzinfo=datetime.timezone(datetime.timedelta(seconds=tz)))
+
+
+setattr(email.utils, "parsedate_to_datetime", parsedate_to_datetime)
+
+
+import email.headerregistry
+from email import utils, _header_value_parser as parser
+
+@classmethod
+def parse(cls, value, kwds):
+    if not value:
+        kwds['defects'].append(errors.HeaderMissingRequiredValue())
+        kwds['datetime'] = None
+        kwds['decoded'] = ''
+        kwds['parse_tree'] = parser.TokenList()
+        return
+    if isinstance(value, str):
+        kwds['decoded'] = value
+        try:
+            value = utils.parsedate_to_datetime(value)
+        except ValueError:
+            kwds['defects'].append(errors.InvalidDateDefect('Invalid date value or format'))
+            kwds['datetime'] = None
+            kwds['parse_tree'] = parser.TokenList()
+            return
+    kwds['datetime'] = value
+    kwds['decoded'] = utils.format_datetime(kwds['datetime'])
+    kwds['parse_tree'] = cls.value_parser(kwds['decoded'])
+
+
+setattr(email.headerregistry.DateHeader, "parse", parse)
+
+
 #######################################
 #  add charset alias for windows-874  #
 #######################################

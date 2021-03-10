@@ -7,9 +7,9 @@ pidfile="/run/${RC_SVCNAME}.pid"
 command="/usr/bin/pymodmilter"
 command_args="${milter_opts}"
 command_background=true
-start_stop_daemon_args="--user ${user}"
-
+command_user="${user}"
 extra_commands="configtest"
+start_stop_daemon_args="--wait 500"
 
 depend() {
 	need net

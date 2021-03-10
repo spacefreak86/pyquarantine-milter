@@ -135,7 +135,7 @@ def main():
 
     rc = 0
     try:
-        Milter.runmilter("pymodmilter", socketname=socket, timeout=300)
+        Milter.runmilter("pymodmilter", socketname=socket, timeout=600)
         logger.info("pymodmilter stopped")
     except Milter.milter.error as e:
         logger.error(e)

@@ -46,6 +46,6 @@ setup(name = "pymodmilter",
             ]
         )
     ],
-    install_requires = ["pymilter", "netaddr"],
+    install_requires = ["pymilter", "netaddr", "beautifulsoup4[lxml]"],
     python_requires = ">=3.6"
 )

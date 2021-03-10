@@ -26,6 +26,9 @@ from pymodmilter import ModifyMilterConfig
 
 
 def main():
+    python_version = ".".join([str(v) for v in sys.version_info[0:3]])
+    python_version = f"{python_version}-{sys.version_info[3]}"
+
     "Run PyMod-Milter."
     parser = argparse.ArgumentParser(
         description="PyMod milter daemon",
@@ -58,7 +61,7 @@ def main():
         "-v", "--version",
         help="Print version.",
         action="version",
-        version=f"%(prog)s ({version})")
+        version=f"%(prog)s {version} (python {python_version})")
 
     args = parser.parse_args()
 

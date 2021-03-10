@@ -8,6 +8,7 @@ The basic idea is to define rules with conditions and actions which are processe
 Pymodmilter is depending on these python packages, but they are installed automatically if you are working with pip.
 * [pymilter](https://pythonhosted.org/pymilter/)
 * [netaddr](https://github.com/drkjam/netaddr/)
+* [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/)
 
 ## Installation
 * Install pymodmilter with pip and copy the example config file.

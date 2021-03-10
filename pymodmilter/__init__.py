@@ -21,7 +21,7 @@ __all__ = [
     "ModifyMilterConfig",
     "ModifyMilter"]
 
-__version__ = "1.1.4"
+__version__ = "1.1.5"
 
 from pymodmilter import _runtime_patches
 

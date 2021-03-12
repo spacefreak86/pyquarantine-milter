@@ -136,8 +136,5 @@ class MilterMessage(MIMEPart):
 
 
 def replace_illegal_chars(string):
-    """Replace illegal characters in header values."""
-    return string.replace(
-        "\x00", "").replace(
-        "\r", "").replace(
-        "\n", "")
+    """Remove illegal characters from header values."""
+    return "".join(string.replace("\x00", "").splitlines())

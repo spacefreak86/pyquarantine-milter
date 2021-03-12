@@ -279,8 +279,8 @@ class ModifyMilter(Milter.Base):
     def header(self, field, value):
         try:
             # remove surrogates
-            field = field.encode("ascii", errors="replace")
-            value = value.encode("ascii", errors="replace")
+            field = field.encode("ascii", errors="surrogateescape")
+            value = value.encode("ascii", errors="surrogateescape")
 
             self._fp.feed(field + b": " + value + b"\r\n")
         except Exception as e:

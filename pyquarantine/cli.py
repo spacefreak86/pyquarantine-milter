@@ -286,6 +286,13 @@ def delete(quarantines, args):
     logger.info("quarantined email deleted successfully")
 
 
+def get(quarantines, args):
+    storage = _get_storage(quarantines, args.quarantine)
+    fp, _ = storage.get_mail(args.quarantine_id)
+    print(fp.read().decode())
+    fp.close()
+
+
 class StdErrFilter(logging.Filter):
     def filter(self, rec):
         return rec.levelno in (logging.ERROR, logging.WARNING)
@@ -452,6 +459,17 @@ def main():
         help="Delete email for all recipients.",
         action="store_true")
     quarantine_delete_parser.set_defaults(func=delete)
+    # quarantine get command
+    quarantine_get_parser = quarantine_subparsers.add_parser(
+        "get",
+        description="Get email from quarantine.",
+        help="Get email from quarantine",
+        formatter_class=formatter_class)
+    quarantine_get_parser.add_argument(
+        "quarantine_id",
+        metavar="ID",
+        help="Quarantine ID.")
+    quarantine_get_parser.set_defaults(func=get)
 
     # whitelist command group
     whitelist_parser = subparsers.add_parser(

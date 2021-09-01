@@ -92,7 +92,7 @@ setattr(email._header_value_parser, "get_name_addr", get_name_addr)
 
 # https://bugs.python.org/issue30681
 #
-# fix: https://github.com/python/cpython/pull/2254
+# fix: https://github.com/python/cpython/pull/22090
 
 import email.errors
 from email.errors import HeaderDefect

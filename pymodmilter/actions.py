@@ -32,7 +32,6 @@ from collections import defaultdict
 from copy import copy
 from datetime import datetime
 from email.message import MIMEPart
-from email.policy import SMTP
 
 from pymodmilter import CustomLogger, BaseConfig
 from pymodmilter.conditions import ConditionsConfig, Conditions
@@ -205,7 +204,7 @@ def _patch_message_body(milter, action, text_template, html_template, logger):
 
 def _wrap_message(milter, logger):
     attachment = MIMEPart()
-    attachment.set_content(milter.msg.as_bytes(policy=SMTP),
+    attachment.set_content(milter.msg.as_bytes(),
                            maintype="plain", subtype="text",
                            disposition="attachment",
                            filename=f"{milter.qid}.eml",
@@ -331,7 +330,7 @@ def store(milter, directory, original=False, pretend=False,
                 milter.fp.seek(0)
                 fp.write(milter.fp.read())
             else:
-                fp.write(milter.msg.as_bytes(policy=SMTP))
+                fp.write(milter.msg.as_bytes())
     except IOError as e:
         raise RuntimeError(f"unable to store message: {e}")
 

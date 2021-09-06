@@ -34,7 +34,7 @@ from Milter.utils import parse_addr
 from collections import defaultdict
 from email import message_from_binary_file
 from email.header import Header
-from email.policy import default as default_policy, SMTP
+from email.policy import SMTPUTF8
 from io import BytesIO
 from netaddr import IPNetwork, AddrFormatError
 
@@ -297,7 +297,7 @@ class ModifyMilter(Milter.Base):
         try:
             self.fp.seek(0)
             self.msg = message_from_binary_file(
-                self.fp, _class=MilterMessage, policy=default_policy)
+                self.fp, _class=MilterMessage, policy=SMTPUTF8)
 
             self.msg_info = defaultdict(str)
             self.msg_info["ip"] = self.IP
@@ -316,7 +316,7 @@ class ModifyMilter(Milter.Base):
                     break
 
             if self._replacebody:
-                data = self.msg.as_bytes(policy=SMTP)
+                data = self.msg.as_bytes()
                 body_pos = data.find(b"\r\n\r\n") + 4
                 self.logger.debug("milter: replacebody")
                 super().replacebody(data[body_pos:])

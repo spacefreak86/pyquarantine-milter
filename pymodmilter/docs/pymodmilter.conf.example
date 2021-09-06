@@ -28,7 +28,7 @@
         # Notes:  A list of local hosts and networks.
         # Value:  [ LIST ]
         #
-        "local_addrs": ["::1/128", "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
+        "local_addrs": ["fe80::/64", "::1/128", "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
 
         # Option: loglevel
         # Type:   String
@@ -206,7 +206,14 @@
                     # Type:   String
                     # Notes:  Directory used to store e-mails.
                     # Value: [ file ]
-                    "directory": "/mnt/messages"
+                    "directory": "/mnt/messages",
+
+                    # Option: original
+                    # Type:   Bool
+                    # Notes:  If set to true, store the message as received by the MTA instead of storing the current state
+                    #         of the message, that may was modified already by other actions.
+                    # Value: [ true | false ]
+                    "original": true
                 }
             ]
         }

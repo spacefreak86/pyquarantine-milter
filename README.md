@@ -28,7 +28,7 @@ Config options in **global** section:
   The socket used to communicate with the MTA. If it is not specified in the config, it has to be set as command line option.
 * **local_addrs** (optional)  
   A list of hosts and network addresses which are considered local. It is used to for the condition option [local](#Conditions).  
-  Default: **::1/128, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16**
+  Default: **fe80::/64, ::1/128, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16**
 * **loglevel**  (optional)
   Set the log level. This option may be overriden by any rule or action object. Possible values are:
   * **error**  
@@ -115,6 +115,9 @@ Config options for **store** actions:
   * **storage_type**  
     Storage type. Possible values are:
     * **file**
+  * **original** (optional)  
+    Default: **false**
+    If set to true, store the message as received by the MTA instead of storing the current state of the message, that may was modified already by other actions.
 
 Config options for **file** storage:
   * **directory**  

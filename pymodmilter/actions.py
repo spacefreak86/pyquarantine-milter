@@ -32,6 +32,7 @@ from collections import defaultdict
 from copy import copy
 from datetime import datetime
 from email.message import MIMEPart
+from email.policy import SMTP
 
 from pymodmilter import CustomLogger, BaseConfig
 from pymodmilter.conditions import ConditionsConfig, Conditions
@@ -204,7 +205,7 @@ def _patch_message_body(milter, action, text_template, html_template, logger):
 
 def _wrap_message(milter, logger):
     attachment = MIMEPart()
-    attachment.set_content(milter.msg.as_bytes(),
+    attachment.set_content(milter.msg.as_bytes(policy=SMTP),
                            maintype="plain", subtype="text",
                            disposition="attachment",
                            filename=f"{milter.qid}.eml",
@@ -317,7 +318,7 @@ def rewrite_links(milter, repl, pretend=False,
                 milter.replacebody()
 
 
-def store(milter, directory, pretend=False,
+def store(milter, directory, original=False, pretend=False,
           logger=logging.getLogger(__name__)):
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     store_id = f"{timestamp}_{milter.qid}"
@@ -326,7 +327,11 @@ def store(milter, directory, pretend=False,
     logger.info(f"store message in file {datafile}")
     try:
         with open(datafile, "wb") as fp:
-            fp.write(milter.msg.as_bytes())
+            if original:
+                milter.fp.seek(0)
+                fp.write(milter.fp.read())
+            else:
+                fp.write(milter.msg.as_bytes(policy=SMTP))
     except IOError as e:
         raise RuntimeError(f"unable to store message: {e}")
 
@@ -468,6 +473,10 @@ class ActionConfig(BaseConfig):
                 f"{self['name']}: storage_type: invalid value, " \
                 f"should be string"
             self["storage_type"] = cfg["storage_type"]
+
+            if "original" in cfg:
+                self.add_bool_arg(cfg, "original")
+
             if self["storage_type"] == "file":
                 self.add_string_arg(cfg, "directory")
             else:

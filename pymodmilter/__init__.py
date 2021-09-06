@@ -32,9 +32,10 @@ import json
 
 from Milter.utils import parse_addr
 from collections import defaultdict
+from email import message_from_binary_file
 from email.header import Header
-from email.parser import BytesFeedParser
 from email.policy import default as default_policy, SMTP
+from io import BytesIO
 from netaddr import IPNetwork, AddrFormatError
 
 from pymodmilter.base import CustomLogger, BaseConfig, MilterMessage
@@ -92,6 +93,7 @@ class ModifyMilterConfig(BaseConfig):
                     "should be list of strings"
             else:
                 local_addrs = [
+                    "fe80::/64",
                     "::1/128",
                     "127.0.0.0/8",
                     "10.0.0.0/8",
@@ -139,12 +141,6 @@ class ModifyMilter(Milter.Base):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(ModifyMilter._loglevel)
 
-        # save rules, it must not change during runtime
-        self.rules = ModifyMilter._rules.copy()
-
-        self.msg = None
-        self._replace_body = False
-
     def addheader(self, field, value, idx=-1):
         value = replace_illegal_chars(Header(s=value).encode())
         self.logger.debug(f"milter: addheader: {field}: {value}")
@@ -181,28 +177,20 @@ class ModifyMilter(Milter.Base):
                 self.addheader(field, value)
 
     def replacebody(self):
-        self._replace_body = True
+        self._replacebody = True
 
     def connect(self, IPname, family, hostaddr):
         try:
             if hostaddr is None:
-                self.logger.error("unable to proceed, host address is None")
+                self.logger.error(f"received invalid host address {hostaddr}, "
+                                  f"unable to proceed")
                 return Milter.TEMPFAIL
 
+            self.IP = hostaddr[0]
+            self.port = hostaddr[1]
             self.logger.debug(
-                f"accepted milter connection from {hostaddr[0]} "
-                f"port {hostaddr[1]}")
-
-            # remove rules which ignore this host
-            for rule in self.rules.copy():
-                if rule.ignores(host=hostaddr[0]):
-                    self.rules.remove(rule)
-
-            if not self.rules:
-                self.logger.debug(
-                    f"host {hostaddr[0]} is ignored by all rules, "
-                    f"skip further processing")
-                return Milter.ACCEPT
+                f"accepted milter connection from {self.IP} "
+                f"port {self.port}")
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in connect method: {e}")
@@ -210,20 +198,21 @@ class ModifyMilter(Milter.Base):
 
         return Milter.CONTINUE
 
+    def hello(self, heloname):
+        try:
+            self.heloname = heloname
+            self.logger.debug(f"received HELO name: {heloname}")
+        except Exception as e:
+            self.logger.exception(
+                f"an exception occured in hello method: {e}")
+            return Milter.TEMPFAIL
+
+        return Milter.CONTINUE
+
     def envfrom(self, mailfrom, *str):
         try:
-            mailfrom = "@".join(parse_addr(mailfrom)).lower()
-            for rule in self.rules.copy():
-                if rule.ignores(envfrom=mailfrom):
-                    self.rules.remove(rule)
-
-            if not self.rules:
-                self.logger.debug(
-                    f"envelope-from address {mailfrom} is ignored by "
-                    f"all rules, skip further processing")
-                return Milter.ACCEPT
-
-            self.recipients = set()
+            self.mailfrom = "@".join(parse_addr(mailfrom)).lower()
+            self.rcpts = set()
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in envfrom method: {e}")
@@ -233,7 +222,7 @@ class ModifyMilter(Milter.Base):
 
     def envrcpt(self, to, *str):
         try:
-            self.recipients.add("@".join(parse_addr(to)).lower())
+            self.rcpts.add("@".join(parse_addr(to)).lower())
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in envrcpt method: {e}")
@@ -243,32 +232,25 @@ class ModifyMilter(Milter.Base):
 
     def data(self):
         try:
-            for rule in self.rules.copy():
-                if rule.ignores(envto=[*self.recipients]):
-                    self.rules.remove(rule)
-
-            if not self.rules:
-                self.logger.debug(
-                    "envelope-to addresses are ignored by all rules, "
-                    "skip further processing")
-                return Milter.ACCEPT
-
             self.qid = self.getsymval('i')
             self.logger = CustomLogger(self.logger, {"qid": self.qid})
             self.logger.debug("received queue-id from MTA")
 
-            self.fields = None
-            self.fields_bytes = None
-            self.body_data = None
+            self.rules = []
+            self._headersonly = True
+            for rule in ModifyMilter._rules:
+                if not rule.ignores(host=self.IP, envfrom=self.mailfrom,
+                                    envto=[*self.rcpts]):
+                    self.rules.append(rule)
+                    if rule.need_body():
+                        self._headersonly = False
 
-            self._fp = BytesFeedParser(
-                _factory=MilterMessage, policy=default_policy)
-            self._keep_body = False
-            for rule in self.rules:
-                if rule.need_body():
-                    self._keep_body = True
-                    break
+            if not self.rules:
+                self.logger.debug(
+                    "message is ignored by all rules, skip further processing")
+                return Milter.ACCEPT
 
+            self.fp = BytesIO()
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in data method: {e}")
@@ -282,7 +264,7 @@ class ModifyMilter(Milter.Base):
             field = field.encode("ascii", errors="replace")
             value = value.encode("ascii", errors="replace")
 
-            self._fp.feed(field + b": " + value + b"\r\n")
+            self.fp.write(field + b": " + value + b"\r\n")
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in header method: {e}")
@@ -292,7 +274,7 @@ class ModifyMilter(Milter.Base):
 
     def eoh(self):
         try:
-            self._fp.feed(b"\r\n")
+            self.fp.write(b"\r\n")
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in eoh method: {e}")
@@ -302,8 +284,8 @@ class ModifyMilter(Milter.Base):
 
     def body(self, chunk):
         try:
-            if self._keep_body:
-                self._fp.feed(chunk)
+            if not self._headersonly:
+                self.fp.write(chunk)
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in body method: {e}")
@@ -313,7 +295,19 @@ class ModifyMilter(Milter.Base):
 
     def eom(self):
         try:
-            self.msg = self._fp.close()
+            self.fp.seek(0)
+            self.msg = message_from_binary_file(
+                self.fp, _class=MilterMessage, policy=default_policy)
+
+            self.msg_info = defaultdict(str)
+            self.msg_info["ip"] = self.IP
+            self.msg_info["port"] = self.port
+            self.msg_info["heloname"] = self.heloname
+            self.msg_info["envfrom"] = self.mailfrom
+            self.msg_info["rcpts"] = self.rcpts
+            self.msg_info["qid"] = self.qid
+
+            self._replacebody = False
             milter_action = None
             for rule in self.rules:
                 milter_action = rule.execute(self)
@@ -321,7 +315,7 @@ class ModifyMilter(Milter.Base):
                 if milter_action is not None:
                     break
 
-            if self._replace_body:
+            if self._replacebody:
                 data = self.msg.as_bytes(policy=SMTP)
                 body_pos = data.find(b"\r\n\r\n") + 4
                 self.logger.debug("milter: replacebody")

@@ -243,7 +243,6 @@ class ModifyMilter(Milter.Base):
             # pre-filter rules and actions by the host condition, other
             # conditions (headers, envelope-from, envelope-to) may get
             # changed by executed actions later on.
-            # rules are copied to preserve the originally configured actions.
             # also check if the mail body is needed by any upcoming action.
 
             self.rules = []
@@ -260,6 +259,7 @@ class ModifyMilter(Milter.Base):
                                 self._headersonly = False
 
                     if actions:
+                        # copy needed rules to preserve configured actions
                         rule = copy(rule)
                         rule.actions = actions
                         self.rules.append(rule)

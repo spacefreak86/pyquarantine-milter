@@ -324,15 +324,17 @@ def store(milter, directory, original=False, pretend=False,
     datafile = os.path.join(directory, store_id)
 
     logger.info(f"store message in file {datafile}")
-    try:
-        with open(datafile, "wb") as fp:
-            if original:
-                milter.fp.seek(0)
-                fp.write(milter.fp.read())
-            else:
-                fp.write(milter.msg.as_bytes())
-    except IOError as e:
-        raise RuntimeError(f"unable to store message: {e}")
+
+    if not pretend:
+        try:
+            with open(datafile, "wb") as fp:
+                if original:
+                    milter.fp.seek(0)
+                    fp.write(milter.fp.read())
+                else:
+                    fp.write(milter.msg.as_bytes())
+        except IOError as e:
+            raise RuntimeError(f"unable to store message: {e}")
 
 
 class ActionConfig(BaseConfig):

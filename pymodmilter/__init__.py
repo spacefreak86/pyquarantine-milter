@@ -33,7 +33,8 @@ import json
 from Milter.utils import parse_addr
 from collections import defaultdict
 from email import message_from_binary_file
-from email.header import Header
+from email.header import Header, decode_header, make_header
+from email.headerregistry import AddressHeader, _default_header_map
 from email.policy import SMTPUTF8
 from io import BytesIO
 from netaddr import IPNetwork, AddrFormatError
@@ -129,6 +130,8 @@ class ModifyMilter(Milter.Base):
 
     _rules = []
     _loglevel = logging.INFO
+    _addr_fields = [f for f, v in _default_header_map.items()
+                    if issubclass(v, AddressHeader)]
 
     @staticmethod
     def set_config(cfg):
@@ -260,6 +263,19 @@ class ModifyMilter(Milter.Base):
 
     def header(self, field, value):
         try:
+            # remove CR and LF from address fields, otherwise pythons
+            # email library throws an exception
+            if field.lower() in ModifyMilter._addr_fields:
+                try:
+                    v = str(make_header(decode_header(value)))
+                except Exception as e:
+                    self.logger.error(
+                        f"unable to decode field '{field}': {e}")
+                else:
+                    if any(c in v for c in ["\r", "\n"]):
+                        v = v.replace("\r", "").replace("\n", "")
+                        value = Header(s=v).encode()
+
             # remove surrogates
             field = field.encode("ascii", errors="replace")
             value = value.encode("ascii", errors="replace")
@@ -297,7 +313,8 @@ class ModifyMilter(Milter.Base):
         try:
             self.fp.seek(0)
             self.msg = message_from_binary_file(
-                self.fp, _class=MilterMessage, policy=SMTPUTF8)
+                self.fp, _class=MilterMessage, policy=SMTPUTF8.clone(
+                    refold_source='none'))
 
             self.msg_info = defaultdict(str)
             self.msg_info["ip"] = self.IP

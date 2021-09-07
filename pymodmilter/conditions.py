@@ -19,7 +19,7 @@ __all__ = [
 import re
 
 from netaddr import IPAddress, IPNetwork, AddrFormatError
-from pymodmilter import BaseConfig
+from pymodmilter import CustomLogger, BaseConfig
 
 
 class ConditionsConfig(BaseConfig):
@@ -58,6 +58,15 @@ class ConditionsConfig(BaseConfig):
                 except re.error as e:
                     raise ValueError(f"{self['name']}: {arg}: {e}")
 
+        if "header" in cfg:
+            self.add_string_arg(cfg, "header")
+            try:
+                self["args"]["header"] = re.compile(
+                    self["args"]["header"],
+                    re.IGNORECASE + re.DOTALL + re.MULTILINE)
+            except re.error as e:
+                raise ValueError(f"{self['name']}: header: {e}")
+
         self.logger.debug(f"{self['name']}: "
                           f"loglevel={self['loglevel']}, "
                           f"args={self['args']}")
@@ -70,11 +79,13 @@ class Conditions:
         self.logger = cfg.logger
 
         self._local_addrs = milter_cfg["local_addrs"]
+        self._name = cfg["name"]
         self._args = cfg["args"]
 
-    def match(self, args):
-        if "host" in args:
-            ip = IPAddress(args["host"])
+    def match(self, host=None, envfrom=None, envto=None, headers=None):
+        logger = CustomLogger(self.logger, {"name": self._name})
+        if host:
+            ip = IPAddress(host)
 
             if "local" in self._args:
                 is_local = False
@@ -84,13 +95,13 @@ class Conditions:
                         break
 
                 if is_local != self._args["local"]:
-                    self.logger.debug(
-                        f"ignore host {args['host']}, "
+                    logger.debug(
+                        f"ignore host {host}, "
                         f"condition local does not match")
                     return False
 
-                self.logger.debug(
-                    f"condition local matches for host {args['host']}")
+                logger.debug(
+                    f"condition local matches for host {host}")
 
             if "hosts" in self._args:
                 found = False
@@ -100,38 +111,55 @@ class Conditions:
                         break
 
                 if not found:
-                    self.logger.debug(
-                        f"ignore host {args['host']}, "
+                    logger.debug(
+                        f"ignore host {host}, "
                         f"condition hosts does not match")
                     return False
 
-                self.logger.debug(
-                    f"condition hosts matches for host {args['host']}")
+                logger.debug(
+                    f"condition hosts matches for host {host}")
 
-        if "envfrom" in args and "envfrom" in self._args:
-            if not self._args["envfrom"].match(args["envfrom"]):
-                self.logger.debug(
-                    f"ignore envelope-from address {args['envfrom']}, "
+        if envfrom and "envfrom" in self._args:
+            if not self._args["envfrom"].match(envfrom):
+                logger.debug(
+                    f"ignore envelope-from address {envfrom}, "
                     f"condition envfrom does not match")
                 return False
 
-            self.logger.debug(
+            logger.debug(
                 f"condition envfrom matches for "
-                f"envelope-from address {args['envfrom']}")
+                f"envelope-from address {envfrom}")
 
-        if "envto" in args and "envto" in self._args:
-            if not isinstance(args["envto"], list):
-                args["envto"] = [args["envto"]]
+        if envto and "envto" in self._args:
+            if not isinstance(envto, list):
+                envto = [envto]
 
-            for envto in args["envto"]:
-                if not self._args["envto"].match(envto):
-                    self.logger.debug(
-                        f"ignore envelope-to address {args['envto']}, "
+            for to in envto:
+                if not self._args["envto"].match(to):
+                    logger.debug(
+                        f"ignore envelope-to address {envto}, "
                         f"condition envto does not match")
                     return False
 
-            self.logger.debug(
+            logger.debug(
                 f"condition envto matches for "
-                f"envelope-to address {args['envto']}")
+                f"envelope-to address {envto}")
+
+        if headers and "header" in self._args:
+            match = None
+            for field, value in headers:
+                header = f"{field}: {value}"
+                match = self._args["header"].search(header)
+                if match:
+                    logger.debug(
+                        f"condition header matches for "
+                        f"header: {header}")
+                    break
+
+            if not match:
+                logger.debug(
+                    "ignore message, "
+                    "condition header does not match")
+                return False
 
         return True

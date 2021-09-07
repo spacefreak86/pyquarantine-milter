@@ -32,6 +32,7 @@ import json
 
 from Milter.utils import parse_addr
 from collections import defaultdict
+from copy import copy
 from email import message_from_binary_file
 from email.header import Header, decode_header, make_header
 from email.headerregistry import AddressHeader, _default_header_map
@@ -239,14 +240,29 @@ class ModifyMilter(Milter.Base):
             self.logger = CustomLogger(self.logger, {"qid": self.qid})
             self.logger.debug("received queue-id from MTA")
 
+            # pre-filter rules and actions by the host condition, other
+            # conditions (headers, envelope-from, envelope-to) may get
+            # changed by executed actions later on.
+            # rules are copied to preserve the originally configured actions.
+            # also check if the mail body is needed by any upcoming action.
+
             self.rules = []
             self._headersonly = True
             for rule in ModifyMilter._rules:
-                if not rule.ignores(host=self.IP, envfrom=self.mailfrom,
-                                    envto=[*self.rcpts]):
-                    self.rules.append(rule)
-                    if rule.need_body():
-                        self._headersonly = False
+                if rule.conditions is None or \
+                        rule.conditions.match(host=self.IP):
+                    actions = []
+                    for action in rule.actions:
+                        if action.conditions is None or \
+                                action.conditions.match(host=self.IP):
+                            actions.append(action)
+                            if action.need_body():
+                                self._headersonly = False
+
+                    if actions:
+                        rule = copy(rule)
+                        rule.actions = actions
+                        self.rules.append(rule)
 
             if not self.rules:
                 self.logger.debug(
@@ -311,11 +327,11 @@ class ModifyMilter(Milter.Base):
 
     def eom(self):
         try:
+            # setup msg and msg_info to be read/modified by rules and actions
             self.fp.seek(0)
             self.msg = message_from_binary_file(
                 self.fp, _class=MilterMessage, policy=SMTPUTF8.clone(
                     refold_source='none'))
-
             self.msg_info = defaultdict(str)
             self.msg_info["ip"] = self.IP
             self.msg_info["port"] = self.port
@@ -328,7 +344,6 @@ class ModifyMilter(Milter.Base):
             milter_action = None
             for rule in self.rules:
                 milter_action = rule.execute(self)
-
                 if milter_action is not None:
                     break
 

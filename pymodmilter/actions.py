@@ -518,13 +518,14 @@ class Action:
         """Return the needs of this action."""
         return self._need_body
 
-    def execute(self, milter, pretend=None):
+    def execute(self, milter):
         """Execute configured action."""
-        if pretend is None:
-            pretend = self.pretend
-
         logger = CustomLogger(
             self.logger, {"name": self._name, "qid": milter.qid})
 
-        return self._func(milter=milter, pretend=pretend,
-                          logger=logger, **self._args)
+        if self.conditions is None or \
+                self.conditions.match(envfrom=milter.mailfrom,
+                                      envto=[*milter.rcpts],
+                                      headers=milter.msg.items()):
+            return self._func(milter=milter, pretend=self.pretend,
+                              logger=logger, **self._args)

@@ -77,46 +77,19 @@ class Rule:
         else:
             self.conditions = Conditions(milter_cfg, cfg["conditions"])
 
-        self._need_body = False
-
         self.actions = []
         for action_cfg in cfg["actions"]:
-            action = Action(milter_cfg, action_cfg)
-            self.actions.append(action)
-            if action.need_body():
-                self._need_body = True
+            self.actions.append(Action(milter_cfg, action_cfg))
 
         self.pretend = cfg["pretend"]
 
-    def need_body(self):
-        """Return True if this rule needs the message body."""
-        return self._need_body
-
-    def ignores(self, host=None, envfrom=None, envto=None):
-        args = {}
-
-        if host is not None:
-            args["host"] = host
-
-        if envfrom is not None:
-            args["envfrom"] = envfrom
-
-        if envto is not None:
-            args["envto"] = envto
-
-        if self.conditions is None or self.conditions.match(args):
-            for action in self.actions:
-                if action.conditions is None or action.conditions.match(args):
-                    return False
-
-        return True
-
-    def execute(self, milter, pretend=None):
+    def execute(self, milter):
         """Execute all actions of this rule."""
-        if pretend is None:
-            pretend = self.pretend
-
-        for action in self.actions:
-            milter_action = action.execute(milter, pretend=pretend)
-            if milter_action is not None:
-                return milter_action
+        if self.conditions is None or \
+                self.conditions.match(envfrom=milter.mailfrom,
+                                      envto=[*milter.rcpts],
+                                      headers=milter.msg.items()):
+            for action in self.actions:
+                milter_action = action.execute(milter)
+                if milter_action is not None:
+                    return milter_action

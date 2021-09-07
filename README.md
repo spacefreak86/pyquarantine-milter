@@ -67,9 +67,9 @@ Config options for **action** objects:
   * **store**
 * **conditions** (optional)  
   A list of conditions which all have to be true to process the action.
-* **pretend** (optional)  
-  Just pretend all actions of this rule, for test purposes.
 * **loglevel** (optional)  
+  As described above in the [Global](#Global) section.
+* **pretend** (optional)  
   As described above in the [Global](#Global) section.
 
 Config options for **add_header** actions:

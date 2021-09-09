@@ -16,9 +16,11 @@ __all__ = [
     "actions",
     "base",
     "conditions",
+    "mailer",
     "modifications",
     "rules",
     "run",
+    "storages",
     "ModifyMilterConfig",
     "ModifyMilter"]
 

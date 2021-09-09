@@ -20,9 +20,8 @@ import logging
 import logging.handlers
 import sys
 
-from pymodmilter import ModifyMilter
+from pymodmilter import ModifyMilterConfig, ModifyMilter
 from pymodmilter import __version__ as version
-from pymodmilter import ModifyMilterConfig
 
 
 def main():

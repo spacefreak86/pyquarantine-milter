@@ -16,12 +16,13 @@ __all__ = [
     "actions",
     "base",
     "conditions",
+    "modifications",
     "rules",
     "run",
     "ModifyMilterConfig",
     "ModifyMilter"]
 
-__version__ = "1.1.7"
+__version__ = "1.2.0"
 
 from pymodmilter import _runtime_patches
 
@@ -327,18 +328,15 @@ class ModifyMilter(Milter.Base):
 
     def eom(self):
         try:
-            # setup msg and msg_info to be read/modified by rules and actions
+            # msg and msginfo contain the runtime data that
+            # is read/modified by actions
             self.fp.seek(0)
             self.msg = message_from_binary_file(
                 self.fp, _class=MilterMessage, policy=SMTPUTF8.clone(
                     refold_source='none'))
-            self.msg_info = defaultdict(str)
-            self.msg_info["ip"] = self.IP
-            self.msg_info["port"] = self.port
-            self.msg_info["heloname"] = self.heloname
-            self.msg_info["envfrom"] = self.mailfrom
-            self.msg_info["rcpts"] = self.rcpts
-            self.msg_info["qid"] = self.qid
+            self.msginfo = {
+                "mailfrom": self.mailfrom,
+                "rcpts": self.rcpts}
 
             self._replacebody = False
             milter_action = None

@@ -336,7 +336,8 @@ class ModifyMilter(Milter.Base):
                     refold_source='none'))
             self.msginfo = {
                 "mailfrom": self.mailfrom,
-                "rcpts": self.rcpts}
+                "rcpts": self.rcpts,
+                "storage_id": None}
 
             self._replacebody = False
             milter_action = None

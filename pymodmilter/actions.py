@@ -176,6 +176,10 @@ class ActionConfig(BaseConfig):
                         f"{self['name']}: file quarantine directory "
                         f"'{self['directory']}' does not exist or is "
                         f"not writable")
+
+                if "skip_metadata" in cfg:
+                    self.add_bool_arg(cfg, "skip_metadata")
+
             else:
                 raise RuntimeError(
                     f"{self['name']}: storage_type: invalid storage type")
@@ -217,12 +221,11 @@ class Action:
 
     def execute(self, milter):
         """Execute configured action."""
-        logger = CustomLogger(
-            self.logger, {"name": self._name, "qid": milter.qid})
-
         if self.conditions is None or \
                 self.conditions.match(envfrom=milter.mailfrom,
                                       envto=[*milter.rcpts],
                                       headers=milter.msg.items()):
+            logger = CustomLogger(
+                self.logger, {"name": self._name, "qid": milter.qid})
             return self._class.execute(
                 milter=milter, pretend=self.pretend, logger=logger)

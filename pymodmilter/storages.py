@@ -50,10 +50,11 @@ class BaseMailStorage(object):
 
 class FileMailStorage(BaseMailStorage):
     "Storage class to store mails on filesystem."
-    def __init__(self, directory, original=False):
+    def __init__(self, directory, original=False, skip_metadata=False):
         super().__init__()
         self.directory = directory
         self.original = original
+        self.skip_metadata = skip_metadata
         self._metadata_suffix = ".metadata"
 
     def _save_datafile(self, storage_id, data):
@@ -98,19 +99,20 @@ class FileMailStorage(BaseMailStorage):
         # save mail
         datafile = self._save_datafile(storage_id, data)
 
-        # save metadata
-        metadata = {
-            "mailfrom": mailfrom,
-            "recipients": recipients,
-            "subject": subject,
-            "timestamp": timegm(gmtime()),
-            "queue_id": qid}
+        if not self.skip_metadata:
+            # save metadata
+            metadata = {
+                "mailfrom": mailfrom,
+                "recipients": recipients,
+                "subject": subject,
+                "timestamp": timegm(gmtime()),
+                "queue_id": qid}
 
-        try:
-            self._save_metafile(storage_id, metadata)
-        except RuntimeError as e:
-            os.remove(datafile)
-            raise e
+            try:
+                self._save_metafile(storage_id, metadata)
+            except RuntimeError as e:
+                os.remove(datafile)
+                raise e
 
         return (storage_id, datafile)
 
@@ -131,6 +133,7 @@ class FileMailStorage(BaseMailStorage):
         storage_id, datafile = self.add(
             data(), milter.qid, mailfrom, recipients, subject)
         logger.info(f"stored message in file {datafile}")
+        milter.msginfo["storage_id"] = storage_id
 
     def get_metadata(self, storage_id):
         "Return metadata of email in storage."

@@ -370,7 +370,7 @@ class ActionConfig(BaseConfig):
 
         if self["type"] == "add_header":
             self["func"] = add_header
-            self["need_body"] = False
+            self["headersonly"] = True
 
             if "field" not in cfg and "header" in cfg:
                 cfg["field"] = cfg["header"]
@@ -379,7 +379,7 @@ class ActionConfig(BaseConfig):
 
         elif self["type"] == "mod_header":
             self["func"] = mod_header
-            self["need_body"] = False
+            self["headersonly"] = True
 
             if "field" not in cfg and "header" in cfg:
                 cfg["field"] = cfg["header"]
@@ -400,7 +400,7 @@ class ActionConfig(BaseConfig):
 
         elif self["type"] == "del_header":
             self["func"] = del_header
-            self["need_body"] = False
+            self["headersonly"] = True
 
             if "field" not in cfg and "header" in cfg:
                 cfg["field"] = cfg["header"]
@@ -420,7 +420,7 @@ class ActionConfig(BaseConfig):
 
         elif self["type"] == "add_disclaimer":
             self["func"] = add_disclaimer
-            self["need_body"] = True
+            self["headersonly"] = False
 
             if "html_template" not in cfg and "html_file" in cfg:
                 cfg["html_template"] = cfg["html_file"]
@@ -461,12 +461,12 @@ class ActionConfig(BaseConfig):
 
         elif self["type"] == "rewrite_links":
             self["func"] = rewrite_links
-            self["need_body"] = True
+            self["headersonly"] = False
             self.add_string_arg(cfg, "repl")
 
         elif self["type"] == "store":
             self["func"] = store
-            self["need_body"] = True
+            self["headersonly"] = False
 
             assert "storage_type" in cfg, \
                 f"{self['name']}: mandatory parameter 'storage_type' not found"
@@ -514,11 +514,11 @@ class Action:
         self._name = cfg["name"]
         self._func = cfg["func"]
         self._args = cfg["args"]
-        self._need_body = cfg["need_body"]
+        self._headersonly = cfg["headersonly"]
 
-    def need_body(self):
+    def headersonly(self):
         """Return the needs of this action."""
-        return self._need_body
+        return self._headersonly
 
     def execute(self, milter):
         """Execute configured action."""

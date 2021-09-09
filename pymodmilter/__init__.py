@@ -255,7 +255,7 @@ class ModifyMilter(Milter.Base):
                         if action.conditions is None or \
                                 action.conditions.match(host=self.IP):
                             actions.append(action)
-                            if action.need_body():
+                            if not action.headersonly():
                                 self._headersonly = False
 
                     if actions:

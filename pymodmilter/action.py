@@ -176,9 +176,12 @@ class ActionConfig(BaseConfig):
                         f"{self['name']}: file quarantine directory "
                         f"'{self['directory']}' does not exist or is "
                         f"not writable")
-
+                
                 if "skip_metadata" in cfg:
                     self.add_bool_arg(cfg, "skip_metadata")
+
+                if "metavar" in cfg:
+                    self.add_string_arg(cfg, "metavar")
 
             else:
                 raise RuntimeError(

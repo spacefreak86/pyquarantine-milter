@@ -54,26 +54,32 @@ class BaseMailStorage(object):
 
 class FileMailStorage(BaseMailStorage):
     "Storage class to store mails on filesystem."
-    def __init__(self, directory, original=False, skip_metadata=False):
+    def __init__(self, directory, original=False, skip_metadata=False,
+                 metavar=None):
         super().__init__()
         self.directory = directory
         self.original = original
         self.skip_metadata = skip_metadata
+        self.metavar = metavar
         self._metadata_suffix = ".metadata"
 
-    def _save_datafile(self, storage_id, data):
+    def get_storageid(self, qid):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        return f"{timestamp}_{qid}"
+
+    def _get_file_paths(self, storage_id):
         datafile = os.path.join(self.directory, storage_id)
+        metafile = f"{datafile}${self._metadata_suffix}"
+        return metafile, datafile
+
+    def _save_datafile(self, datafile, data):
         try:
             with open(datafile, "wb") as f:
                 f.write(data)
         except IOError as e:
             raise RuntimeError(f"unable save data file: {e}")
 
-        return datafile
-
-    def _save_metafile(self, storage_id, metadata):
-        metafile = os.path.join(
-            self.directory, f"{storage_id}{self._metadata_suffix}")
+    def _save_metafile(self, metafile, metadata):
         try:
             with open(metafile, "w") as f:
                 json.dump(metadata, f, indent=2)
@@ -81,27 +87,23 @@ class FileMailStorage(BaseMailStorage):
             raise RuntimeError(f"unable to save metadata file: {e}")
 
     def _remove(self, storage_id):
-        datafile = os.path.join(self.directory, storage_id)
-        metafile = f"{datafile}{self._metadata_suffix}"
+        metafile, datafile = self._get_file_paths(storage_id)
 
         try:
             os.remove(metafile)
-        except IOError as e:
-            raise RuntimeError(f"unable to remove metadata file: {e}")
-
-        try:
             os.remove(datafile)
         except IOError as e:
-            raise RuntimeError(f"unable to remove data file: {e}")
+            raise RuntimeError(f"unable to remove file: {e}")
 
     def add(self, data, qid, mailfrom="", recipients=[], subject=""):
         "Add email to file storage and return storage id."
         super().add(data, qid, mailfrom, recipients)
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        storage_id = f"{timestamp}_{qid}"
+
+        storage_id = self.get_storageid(qid)
+        metafile, datafile = self._get_file_paths(storage_id)
 
         # save mail
-        datafile = self._save_datafile(storage_id, data)
+        self._save_datafile(datafile, data)
 
         if not self.skip_metadata:
             # save metadata
@@ -113,12 +115,12 @@ class FileMailStorage(BaseMailStorage):
                 "queue_id": qid}
 
             try:
-                self._save_metafile(storage_id, metadata)
+                self._save_metafile(metafile, metadata)
             except RuntimeError as e:
                 os.remove(datafile)
                 raise e
 
-        return (storage_id, datafile)
+        return storage_id, metafile, datafile
 
     def execute(self, milter, pretend=False,
                 logger=logging.getLogger(__name__)):
@@ -135,18 +137,23 @@ class FileMailStorage(BaseMailStorage):
             subject = milter.msg["subject"] or ""
 
         if not pretend:
-            storage_id, datafile = self.add(
+            storage_id, metafile, datafile = self.add(
                 data(), milter.qid, mailfrom, recipients, subject)
             logger.info(f"stored message in file {datafile}")
-            milter.msginfo["vars"]["STORAGEID"] = storage_id
-            milter.msginfo["vars"]["DATAFILE"] = datafile
+        else:
+            storage_id = self.get_storageid(milter.qid)
+            metafile, datafile = self._get_file_paths(storage_id)
+
+        if self.metavar:
+            milter.msginfo["vars"][f"{self.metavar}_ID"] = storage_id
+            milter.msginfo["vars"][f"{self.metavar}_METAFILE"] = metafile
+            milter.msginfo["vars"][f"{self.metavar}_DATAFILE"] = datafile
 
     def get_metadata(self, storage_id):
         "Return metadata of email in storage."
         super(FileMailStorage, self).get_metadata(storage_id)
 
-        metafile = os.path.join(
-            self.directory, f"{storage_id}{self._metadata_suffix}")
+        metafile, _ = self._get_file_paths(storage_id)
         if not os.path.isfile(metafile):
             raise RuntimeError(
                 f"invalid storage id '{storage_id}'")
@@ -204,24 +211,28 @@ class FileMailStorage(BaseMailStorage):
         "Delete email from storage."
         super(FileMailStorage, self).delete(storage_id, recipients)
 
+        if not recipients:
+            self._remove(storage_id)
+            return
+
         try:
             metadata = self.get_metadata(storage_id)
         except RuntimeError as e:
             raise RuntimeError(f"unable to delete email: {e}")
 
-        if not recipients:
-            self._remove(storage_id)
-        else:
-            if type(recipients) == str:
-                recipients = [recipients]
-            for recipient in recipients:
-                if recipient not in metadata["recipients"]:
-                    raise RuntimeError(f"invalid recipient '{recipient}'")
-                metadata["recipients"].remove(recipient)
-                if not metadata["recipients"]:
-                    self._remove(storage_id)
-                else:
-                    self._save_metafile(storage_id, metadata)
+        metafile, _ = self._get_file_paths(storage_id)
+
+        if type(recipients) == str:
+            recipients = [recipients]
+
+        for recipient in recipients:
+            if recipient not in metadata["recipients"]:
+                raise RuntimeError(f"invalid recipient '{recipient}'")
+            metadata["recipients"].remove(recipient)
+            if not metadata["recipients"]:
+                self._remove(storage_id)
+            else:
+                self._save_metafile(metafile, metadata)
 
     def get_mail(self, storage_id):
         super(FileMailStorage, self).get_mail(storage_id)

@@ -31,6 +31,10 @@ class BaseMailStorage(object):
         "Add email to storage."
         return ("", "")
 
+    def execute(self, milter, pretend=False,
+                logger=logging.getLogger(__name__)):
+        return
+
     def find(self, mailfrom=None, recipients=None, older_than=None):
         "Find emails in storage."
         return

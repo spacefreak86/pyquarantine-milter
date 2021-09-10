@@ -20,6 +20,7 @@ __all__ = [
     "RewriteLinks"]
 
 import logging
+import re
 
 from base64 import b64encode
 from bs4 import BeautifulSoup
@@ -53,9 +54,17 @@ class AddHeader:
 class ModHeader:
     """Change the value of a mail header field."""
     def __init__(self, field, value, search=None):
-        self.field = field
         self.value = value
-        self.search = search
+
+        try:
+            self.field = re.compile(field, re.IGNORECASE)
+            if search is not None:
+                self.search = re.compile(
+                    search, re.MULTILINE + re.DOTALL + re.IGNORECASE)
+            else:
+                self.search = search
+        except re.error as e:
+            raise RuntimeError(e)
 
     def execute(self, milter, pretend=False,
                 logger=logging.getLogger(__name__)):
@@ -101,8 +110,15 @@ class ModHeader:
 class DelHeader:
     """Delete a mail header field."""
     def __init__(self, field, value=None):
-        self.field = field
-        self.value = value
+        try:
+            self.field = re.compile(field, re.IGNORECASE)
+            if value is not None:
+                self.value = re.compile(
+                    value, re.MULTILINE + re.DOTALL + re.IGNORECASE)
+            else:
+                self.value = value
+        except re.error as e:
+            raise RuntimeError(e)
 
     def execute(self, milter, pretend=False,
                 logger=logging.getLogger(__name__)):
@@ -196,8 +212,18 @@ def _wrap_message(milter):
 class AddDisclaimer:
     """Append or prepend a disclaimer to the mail body."""
     def __init__(self, text_template, html_template, action, error_policy):
-        self.text_template = text_template
-        self.html_template = html_template
+        try:
+            with open(text_template, "r") as f:
+                self.text_template = f.read()
+
+            with open(html_template, "r") as f:
+                html = BeautifulSoup(f.read(), "html.parser")
+
+        except IOError as e:
+            raise RuntimeError(e)
+
+        body = html.find('body')
+        self.html_template = body or html
         self.action = action
         self.error_policy = error_policy
 

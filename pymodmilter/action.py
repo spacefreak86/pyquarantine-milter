@@ -17,9 +17,6 @@ __all__ = [
     "Action"]
 
 import os
-import re
-
-from bs4 import BeautifulSoup
 
 from pymodmilter import CustomLogger, BaseConfig
 from pymodmilter.conditions import ConditionsConfig, Conditions
@@ -60,70 +57,33 @@ class ActionConfig(BaseConfig):
         if self["type"] == "add_header":
             self["class"] = modify.AddHeader
             self["headersonly"] = True
-
-            if "field" not in cfg and "header" in cfg:
-                cfg["field"] = cfg["header"]
-
-            self.add_string_arg(cfg, ("field", "value"))
-
+            self.add_string_arg(cfg, ["field", "value"])
         elif self["type"] == "mod_header":
             self["class"] = modify.ModHeader
             self["headersonly"] = True
-
-            if "field" not in cfg and "header" in cfg:
-                cfg["field"] = cfg["header"]
-
             args = ["field", "value"]
             if "search" in cfg:
                 args.append("search")
 
-            for arg in args:
-                self.add_string_arg(cfg, arg)
-                if arg in ("field", "search"):
-                    try:
-                        self["args"][arg] = re.compile(
-                            self["args"][arg],
-                            re.MULTILINE + re.DOTALL + re.IGNORECASE)
-                    except re.error as e:
-                        raise ValueError(f"{self['name']}: {arg}: {e}")
-
+            self.add_string_arg(cfg, args)
         elif self["type"] == "del_header":
             self["class"] = modify.DelHeader
             self["headersonly"] = True
-
-            if "field" not in cfg and "header" in cfg:
-                cfg["field"] = cfg["header"]
-
             args = ["field"]
             if "value" in cfg:
                 args.append("value")
 
-            for arg in args:
-                self.add_string_arg(cfg, arg)
-                try:
-                    self["args"][arg] = re.compile(
-                        self["args"][arg],
-                        re.MULTILINE + re.DOTALL + re.IGNORECASE)
-                except re.error as e:
-                    raise ValueError(f"{self['name']}: {arg}: {e}")
-
+            self.add_string_arg(cfg, args)
         elif self["type"] == "add_disclaimer":
             self["class"] = modify.AddDisclaimer
             self["headersonly"] = False
-
-            if "html_template" not in cfg and "html_file" in cfg:
-                cfg["html_template"] = cfg["html_file"]
-
-            if "text_template" not in cfg and "text_file" in cfg:
-                cfg["text_template"] = cfg["text_file"]
-
             if "error_policy" not in cfg:
                 cfg["error_policy"] = "wrap"
 
             self.add_string_arg(
-                cfg, ("action", "html_template", "text_template",
-                      "error_policy"))
-            assert self["args"]["action"] in ("append", "prepend"), \
+                cfg, ["action", "html_template", "text_template",
+                      "error_policy"])
+            assert self["args"]["action"] in ["append", "prepend"], \
                 f"{self['name']}: action: invalid value, " \
                 f"should be 'append' or 'prepend'"
             assert self["args"]["error_policy"] in ("wrap",
@@ -131,22 +91,6 @@ class ActionConfig(BaseConfig):
                                                     "reject"), \
                 f"{self['name']}: error_policy: invalid value, " \
                 f"should be 'wrap', 'ignore' or 'reject'"
-
-            try:
-                with open(self["args"]["html_template"], "r") as f:
-                    html = BeautifulSoup(f.read(), "html.parser")
-                    body = html.find('body')
-                    if body:
-                        # just use content within the body tag if present
-                        html = body
-                    self["args"]["html_template"] = html
-
-                with open(self["args"]["text_template"], "r") as f:
-                    self["args"]["text_template"] = f.read()
-
-            except IOError as e:
-                raise RuntimeError(
-                    f"{self['name']}: unable to open/read template file: {e}")
 
         elif self["type"] == "rewrite_links":
             self["class"] = modify.RewriteLinks
@@ -176,7 +120,7 @@ class ActionConfig(BaseConfig):
                         f"{self['name']}: file quarantine directory "
                         f"'{self['directory']}' does not exist or is "
                         f"not writable")
-                
+
                 if "skip_metadata" in cfg:
                     self.add_bool_arg(cfg, "skip_metadata")
 

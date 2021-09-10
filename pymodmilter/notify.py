@@ -119,22 +119,26 @@ class EMailNotification(BaseNotification):
         self.mailfrom = envelope_from
         self.from_header = from_header
         self.subject = subject
-        self.template = open(template, "r").read()
-        self.embedded_imgs = []
-        for img_path in embed_imgs:
-            img = MIMEImage(open(img_path, "rb").read())
-            filename = basename(img_path)
-            img.add_header("Content-ID", f"<{filename}>")
-            self.embedded_imgs.append(img)
+        try:
+            self.template = open(template, "r").read()
+            self.embedded_imgs = []
+            for img_path in embed_imgs:
+                img = MIMEImage(open(img_path, "rb").read())
+                filename = basename(img_path)
+                img.add_header("Content-ID", f"<{filename}>")
+                self.embedded_imgs.append(img)
 
-        self.replacement_img = repl_img
-        self.strip_images = strip_imgs
+            self.replacement_img = repl_img
+            self.strip_images = strip_imgs
 
-        if not strip_imgs and repl_img:
-            self.replacement_img = MIMEImage(
-                open(repl_img, "rb").read())
-            self.replacement_img.add_header(
-                "Content-ID", "<removed_for_security_reasons>")
+            if not strip_imgs and repl_img:
+                self.replacement_img = MIMEImage(
+                    open(repl_img, "rb").read())
+                self.replacement_img.add_header(
+                    "Content-ID", "<removed_for_security_reasons>")
+
+        except IOError as e:
+            raise RuntimeError(e)
 
         self.parser_lib = parser_lib
 

@@ -79,7 +79,7 @@ def main():
         logger.setLevel(logging.INFO)
 
     try:
-        logger.debug("prepar milter configuration")
+        logger.debug("prepare milter configuration")
         cfg = ModifyMilterConfig(args.config, args.debug)
 
         if not args.debug:
@@ -106,6 +106,12 @@ def main():
         logger.error(e)
         sys.exit(255)
 
+    try:
+        ModifyMilter.set_config(cfg)
+    except (RuntimeError, ValueError) as e:
+        logger.error(e)
+        sys.exit(254)
+
     if args.test:
         print("Configuration OK")
         sys.exit(0)
@@ -123,7 +129,6 @@ def main():
     root_logger.addHandler(sysloghandler)
 
     logger.info("pymodmilter starting")
-    ModifyMilter.set_config(cfg)
 
     # register milter factory class
     Milter.factory = ModifyMilter

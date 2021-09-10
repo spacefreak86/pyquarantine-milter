@@ -131,6 +131,25 @@ class ActionConfig(BaseConfig):
                 raise RuntimeError(
                     f"{self['name']}: storage_type: invalid storage type")
 
+        elif self["type"] == "notify":
+            self["headersonly"] = False
+
+            self.add_string_arg(
+                cfg, ["smtp_host", "envelope_from", "from", "subject",
+                      "template"])
+            self.add_int_arg(cfg, "smtp_port")
+
+            if "embedded_imgs" in cfg:
+                assert isinstance(cfg["embedded_imgs"], list), \
+                    f"{self['name']}: embedded_imgs: invalid value, " \
+                    f"should be list"
+                for img in cfg["embedded_imgs"]:
+                    assert isinstance(img, str), \
+                        f"{self['name']}: embedded_imgs: invalid entry, " \
+                        f"should be string"
+
+                self["args"]["embedded_imgs"] = cfg["embedded_imgs"]
+
         else:
             raise RuntimeError(f"{self['name']}: type: invalid action type")
 

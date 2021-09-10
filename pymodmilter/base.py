@@ -104,6 +104,17 @@ class BaseConfig:
                 f"{self['name']}: {arg}: invalid value, should be bool"
             self["args"][arg] = cfg[arg]
 
+    def add_int_arg(self, cfg, args):
+        if isinstance(args, str):
+            args = [args]
+
+        for arg in args:
+            assert arg in cfg, \
+                f"{self['name']}: mandatory parameter '{arg}' not found"
+            assert isinstance(cfg[arg], int), \
+                f"{self['name']}: {arg}: invalid value, should be integer"
+            self["args"][arg] = cfg[arg]
+
 
 class MilterMessage(MIMEPart):
     def replace_header(self, _name, _value, idx=None):

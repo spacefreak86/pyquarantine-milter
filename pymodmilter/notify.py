@@ -121,12 +121,12 @@ class EMailNotification(BaseNotification):
         self.subject = subject
         try:
             self.template = open(template, "r").read()
-            self.embedded_imgs = []
+            self.embed_imgs = []
             for img_path in embed_imgs:
                 img = MIMEImage(open(img_path, "rb").read())
                 filename = basename(img_path)
                 img.add_header("Content-ID", f"<{filename}>")
-                self.embedded_imgs.append(img)
+                self.embed_imgs.append(img)
 
             self.replacement_img = repl_img
             self.strip_images = strip_imgs
@@ -297,7 +297,7 @@ class EMailNotification(BaseNotification):
                 logger.debug("attaching notification_replacement_img")
                 msg.attach(self.replacement_img)
 
-            for img in self.embedded_imgs:
+            for img in self.embed_imgs:
                 logger.debug("attaching imgage")
                 msg.attach(img)
 

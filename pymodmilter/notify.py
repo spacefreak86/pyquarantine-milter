@@ -264,7 +264,9 @@ class EMailNotification(BaseNotification):
             logger.debug("parsing email template")
 
             # generate dict containing all template variables
-            template_vars.update({
+
+            variables = defaultdict(str, template_vars)
+            variables.update({
                 "HTML_TEXT": sanitized_text,
                 "FROM": escape(msg["from"], quote=False),
                 "ENVELOPE_FROM": escape(mailfrom, quote=False),
@@ -276,7 +278,7 @@ class EMailNotification(BaseNotification):
                 "SUBJECT": escape(msg["subject"], quote=False)})
 
             # parse template
-            htmltext = self.template.format_map(template_vars)
+            htmltext = self.template.format_map(variables)
 
             msg = MIMEMultipart('related')
             msg["From"] = self.from_header.format_map(
@@ -307,3 +309,11 @@ class EMailNotification(BaseNotification):
                 mailer.sendmail(self.smtp_host, self.smtp_port, qid,
                                 self.mailfrom, recipient, msg.as_string(),
                                 "notification email")
+
+    def execute(self, milter, pretend=False,
+                logger=logging.getLogger(__name__)):
+        self.notify(msg=milter.msg, qid=milter.qid,
+                    mailfrom=milter.msginfo["mailfrom"],
+                    recipients=milter.msginfo["rcpts"],
+                    template_vars=milter["msginfo"]["vars"],
+                    logger=logger)

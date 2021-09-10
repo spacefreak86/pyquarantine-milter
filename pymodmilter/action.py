@@ -23,7 +23,7 @@ from bs4 import BeautifulSoup
 
 from pymodmilter import CustomLogger, BaseConfig
 from pymodmilter.conditions import ConditionsConfig, Conditions
-from pymodmilter import modifications, storages
+from pymodmilter import modify, storage
 
 
 class ActionConfig(BaseConfig):
@@ -58,7 +58,7 @@ class ActionConfig(BaseConfig):
         self["type"] = cfg["type"]
 
         if self["type"] == "add_header":
-            self["class"] = modifications.AddHeader
+            self["class"] = modify.AddHeader
             self["headersonly"] = True
 
             if "field" not in cfg and "header" in cfg:
@@ -67,7 +67,7 @@ class ActionConfig(BaseConfig):
             self.add_string_arg(cfg, ("field", "value"))
 
         elif self["type"] == "mod_header":
-            self["class"] = modifications.ModHeader
+            self["class"] = modify.ModHeader
             self["headersonly"] = True
 
             if "field" not in cfg and "header" in cfg:
@@ -88,7 +88,7 @@ class ActionConfig(BaseConfig):
                         raise ValueError(f"{self['name']}: {arg}: {e}")
 
         elif self["type"] == "del_header":
-            self["class"] = modifications.DelHeader
+            self["class"] = modify.DelHeader
             self["headersonly"] = True
 
             if "field" not in cfg and "header" in cfg:
@@ -108,7 +108,7 @@ class ActionConfig(BaseConfig):
                     raise ValueError(f"{self['name']}: {arg}: {e}")
 
         elif self["type"] == "add_disclaimer":
-            self["class"] = modifications.AddDisclaimer
+            self["class"] = modify.AddDisclaimer
             self["headersonly"] = False
 
             if "html_template" not in cfg and "html_file" in cfg:
@@ -149,7 +149,7 @@ class ActionConfig(BaseConfig):
                     f"{self['name']}: unable to open/read template file: {e}")
 
         elif self["type"] == "rewrite_links":
-            self["class"] = modifications.RewriteLinks
+            self["class"] = modify.RewriteLinks
             self["headersonly"] = False
             self.add_string_arg(cfg, "repl")
 
@@ -167,7 +167,7 @@ class ActionConfig(BaseConfig):
                 self.add_bool_arg(cfg, "original")
 
             if self["storage_type"] == "file":
-                self["class"] = storages.FileMailStorage
+                self["class"] = storage.FileMailStorage
                 self.add_string_arg(cfg, "directory")
                 # check if directory exists and is writable
                 if not os.path.isdir(self["args"]["directory"]) or \

@@ -134,10 +134,12 @@ class FileMailStorage(BaseMailStorage):
             recipients = list(milter.msginfo["rcpts"])
             subject = milter.msg["subject"] or ""
 
-        storage_id, datafile = self.add(
-            data(), milter.qid, mailfrom, recipients, subject)
-        logger.info(f"stored message in file {datafile}")
-        milter.msginfo["storage_id"] = storage_id
+        if not pretend:
+            storage_id, datafile = self.add(
+                data(), milter.qid, mailfrom, recipients, subject)
+            logger.info(f"stored message in file {datafile}")
+            milter.msginfo["vars"]["STORAGEID"] = storage_id
+            milter.msginfo["vars"]["DATAFILE"] = datafile
 
     def get_metadata(self, storage_id):
         "Return metadata of email in storage."

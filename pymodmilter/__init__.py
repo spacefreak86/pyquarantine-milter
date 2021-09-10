@@ -13,14 +13,15 @@
 #
 
 __all__ = [
-    "actions",
+    "action",
     "base",
     "conditions",
     "mailer",
-    "modifications",
-    "rules",
+    "modify",
+    "notify",
+    "rule",
     "run",
-    "storages",
+    "storage",
     "ModifyMilterConfig",
     "ModifyMilter"]
 
@@ -45,7 +46,7 @@ from netaddr import IPNetwork, AddrFormatError
 
 from pymodmilter.base import CustomLogger, BaseConfig, MilterMessage
 from pymodmilter.base import replace_illegal_chars
-from pymodmilter.rules import RuleConfig, Rule
+from pymodmilter.rule import RuleConfig, Rule
 
 
 class ModifyMilterConfig(BaseConfig):
@@ -339,12 +340,14 @@ class ModifyMilter(Milter.Base):
             self.msginfo = {
                 "mailfrom": self.mailfrom,
                 "rcpts": self.rcpts,
-                "storage_id": None}
+                "vars": {}}
 
             self._replacebody = False
             milter_action = None
             for rule in self.rules:
                 milter_action = rule.execute(self)
+                self.logger.debug(
+                    f"current template variables: {self.msginfo['vars']}")
                 if milter_action is not None:
                     break
 

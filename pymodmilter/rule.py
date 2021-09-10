@@ -17,7 +17,7 @@ __all__ = [
     "Rule"]
 
 from pymodmilter import BaseConfig
-from pymodmilter.actions import ActionConfig, Action
+from pymodmilter.action import ActionConfig, Action
 from pymodmilter.conditions import ConditionsConfig, Conditions
 
 

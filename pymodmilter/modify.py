@@ -27,6 +27,7 @@ from bs4 import BeautifulSoup
 from collections import defaultdict
 from copy import copy
 from email.message import MIMEPart
+from email.policy import SMTPUTF8
 
 from pymodmilter import replace_illegal_chars
 
@@ -192,7 +193,7 @@ def _inject_body(milter):
 
 
 def _wrap_message(milter):
-    attachment = MIMEPart()
+    attachment = MIMEPart(policy=SMTPUTF8)
     attachment.set_content(milter.msg.as_bytes(),
                            maintype="plain", subtype="text",
                            disposition="attachment",

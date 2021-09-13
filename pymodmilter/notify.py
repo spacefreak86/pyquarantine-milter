@@ -268,7 +268,7 @@ class EMailNotification(BaseNotification):
                 "FROM": escape(msg["from"], quote=False),
                 "ENVELOPE_FROM": escape(mailfrom, quote=False),
                 "ENVELOPE_FROM_URL": escape(quote(mailfrom),
-                                                  quote=False),
+                                            quote=False),
                 "TO": escape(msg["to"], quote=False),
                 "ENVELOPE_TO": escape(recipient, quote=False),
                 "ENVELOPE_TO_URL": escape(quote(recipient)),

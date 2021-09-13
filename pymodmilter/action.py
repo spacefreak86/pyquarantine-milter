@@ -18,9 +18,10 @@ __all__ = [
 
 import os
 
-from pymodmilter import CustomLogger, BaseConfig
-from pymodmilter.conditions import ConditionsConfig, Conditions
+from pymodmilter import BaseConfig
 from pymodmilter import modify, notify, storage
+from pymodmilter.base import CustomLogger
+from pymodmilter.conditions import ConditionsConfig, Conditions
 
 
 class ActionConfig(BaseConfig):
@@ -173,8 +174,6 @@ class Action:
     """Action to implement a pre-configured action to perform on e-mails."""
 
     def __init__(self, milter_cfg, cfg):
-        self.logger = cfg.logger
-
         if cfg["conditions"] is None:
             self.conditions = None
         else:
@@ -184,6 +183,7 @@ class Action:
         self._name = cfg["name"]
         self._class = cfg["class"](**cfg["args"])
         self._headersonly = cfg["headersonly"]
+        self.logger = cfg.logger
 
     def headersonly(self):
         """Return the needs of this action."""
@@ -191,11 +191,12 @@ class Action:
 
     def execute(self, milter):
         """Execute configured action."""
+        logger = CustomLogger(
+            self.logger, {"qid": milter.qid, "name": self._name})
         if self.conditions is None or \
                 self.conditions.match(envfrom=milter.mailfrom,
                                       envto=[*milter.rcpts],
-                                      headers=milter.msg.items()):
-            logger = CustomLogger(
-                self.logger, {"name": self._name, "qid": milter.qid})
+                                      headers=milter.msg.items(),
+                                      qid=milter.qid):
             return self._class.execute(
                 milter=milter, pretend=self.pretend, logger=logger)

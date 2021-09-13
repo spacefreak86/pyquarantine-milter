@@ -253,11 +253,12 @@ class ModifyMilter(Milter.Base):
             self._headersonly = True
             for rule in ModifyMilter._rules:
                 if rule.conditions is None or \
-                        rule.conditions.match(host=self.IP):
+                        rule.conditions.match(host=self.IP, qid=self.qid):
                     actions = []
                     for action in rule.actions:
                         if action.conditions is None or \
-                                action.conditions.match(host=self.IP):
+                                action.conditions.match(host=self.IP,
+                                                        qid=self.qid):
                             actions.append(action)
                             if not action.headersonly():
                                 self._headersonly = False

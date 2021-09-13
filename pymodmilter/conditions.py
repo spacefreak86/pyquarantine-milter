@@ -19,7 +19,7 @@ __all__ = [
 import re
 
 from netaddr import IPAddress, IPNetwork, AddrFormatError
-from pymodmilter import CustomLogger, BaseConfig
+from pymodmilter import BaseConfig, CustomLogger
 
 
 class ConditionsConfig(BaseConfig):
@@ -76,14 +76,19 @@ class Conditions:
     """Conditions to implement conditions for rules and actions."""
 
     def __init__(self, milter_cfg, cfg):
-        self.logger = cfg.logger
-
         self._local_addrs = milter_cfg["local_addrs"]
         self._name = cfg["name"]
         self._args = cfg["args"]
+        self.logger = cfg.logger
 
-    def match(self, host=None, envfrom=None, envto=None, headers=None):
-        logger = CustomLogger(self.logger, {"name": self._name})
+    def match(self, host=None, envfrom=None, envto=None, headers=None,
+              qid=None):
+        if qid is None:
+            logger = self.logger
+        else:
+            logger = CustomLogger(
+                self.logger, {"qid": qid, "name": self._name})
+
         if host:
             ip = IPAddress(host)
 

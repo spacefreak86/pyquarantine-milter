@@ -22,7 +22,7 @@ from glob import glob
 from time import gmtime
 
 
-class BaseMailStorage(object):
+class BaseMailStorage:
     "Mail storage base class"
     def __init__(self):
         return
@@ -69,7 +69,7 @@ class FileMailStorage(BaseMailStorage):
 
     def _get_file_paths(self, storage_id):
         datafile = os.path.join(self.directory, storage_id)
-        metafile = f"{datafile}${self._metadata_suffix}"
+        metafile = f"{datafile}{self._metadata_suffix}"
         return metafile, datafile
 
     def _save_datafile(self, datafile, data):
@@ -90,7 +90,9 @@ class FileMailStorage(BaseMailStorage):
         metafile, datafile = self._get_file_paths(storage_id)
 
         try:
-            os.remove(metafile)
+            if not self.skip_metadata:
+                os.remove(metafile)
+
             os.remove(datafile)
         except IOError as e:
             raise RuntimeError(f"unable to remove file: {e}")
@@ -105,7 +107,9 @@ class FileMailStorage(BaseMailStorage):
         # save mail
         self._save_datafile(datafile, data)
 
-        if not self.skip_metadata:
+        if self.skip_metadata:
+            metafile = None
+        else:
             # save metadata
             metadata = {
                 "mailfrom": mailfrom,
@@ -146,12 +150,16 @@ class FileMailStorage(BaseMailStorage):
 
         if self.metavar:
             milter.msginfo["vars"][f"{self.metavar}_ID"] = storage_id
-            milter.msginfo["vars"][f"{self.metavar}_METAFILE"] = metafile
             milter.msginfo["vars"][f"{self.metavar}_DATAFILE"] = datafile
+            if not self.skip_metadata:
+                milter.msginfo["vars"][f"{self.metavar}_METAFILE"] = metafile
 
     def get_metadata(self, storage_id):
         "Return metadata of email in storage."
         super(FileMailStorage, self).get_metadata(storage_id)
+
+        if self.skip_metadata:
+            return None
 
         metafile, _ = self._get_file_paths(storage_id)
         if not os.path.isfile(metafile):
@@ -211,7 +219,7 @@ class FileMailStorage(BaseMailStorage):
         "Delete email from storage."
         super(FileMailStorage, self).delete(storage_id, recipients)
 
-        if not recipients:
+        if not recipients or self.skip_metadata:
             self._remove(storage_id)
             return
 
@@ -238,9 +246,9 @@ class FileMailStorage(BaseMailStorage):
         super(FileMailStorage, self).get_mail(storage_id)
 
         metadata = self.get_metadata(storage_id)
-        datafile = os.path.join(self.directory, storage_id)
+        _, datafile = self._get_file_paths(storage_id)
         try:
-            fp = open(datafile, "rb")
+            data = open(datafile, "rb").read()
         except IOError as e:
             raise RuntimeError(f"unable to open email data file: {e}")
-        return (fp, metadata)
+        return (data, metadata)

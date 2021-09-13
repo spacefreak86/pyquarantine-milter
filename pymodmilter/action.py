@@ -20,7 +20,7 @@ import os
 
 from pymodmilter import CustomLogger, BaseConfig
 from pymodmilter.conditions import ConditionsConfig, Conditions
-from pymodmilter import modify, storage
+from pymodmilter import modify, notify, storage
 
 
 class ActionConfig(BaseConfig):
@@ -133,22 +133,26 @@ class ActionConfig(BaseConfig):
 
         elif self["type"] == "notify":
             self["headersonly"] = False
+            self["class"] = notify.EMailNotification
 
-            self.add_string_arg(
-                cfg, ["smtp_host", "envelope_from", "from", "subject",
-                      "template"])
+            args = ["smtp_host", "envelope_from", "from_header", "subject",
+                    "template"]
+            if "repl_img" in cfg:
+                args.append("repl_img")
+
+            self.add_string_arg(cfg, args)
             self.add_int_arg(cfg, "smtp_port")
 
-            if "embedded_imgs" in cfg:
-                assert isinstance(cfg["embedded_imgs"], list), \
-                    f"{self['name']}: embedded_imgs: invalid value, " \
+            if "embed_imgs" in cfg:
+                assert isinstance(cfg["embed_imgs"], list), \
+                    f"{self['name']}: embed_imgs: invalid value, " \
                     f"should be list"
-                for img in cfg["embedded_imgs"]:
+                for img in cfg["embed_imgs"]:
                     assert isinstance(img, str), \
-                        f"{self['name']}: embedded_imgs: invalid entry, " \
+                        f"{self['name']}: embed_imgs: invalid entry, " \
                         f"should be string"
 
-                self["args"]["embedded_imgs"] = cfg["embedded_imgs"]
+                self["args"]["embed_imgs"] = cfg["embed_imgs"]
 
         else:
             raise RuntimeError(f"{self['name']}: type: invalid action type")

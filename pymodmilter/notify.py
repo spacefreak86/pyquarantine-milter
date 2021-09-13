@@ -28,18 +28,14 @@ from urllib.parse import quote
 from pymodmilter import mailer
 
 
-class BaseNotification(object):
+class BaseNotification:
     "Notification base class"
 
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
         return
 
-    def notify(self, msg, qid, mailfrom, recipients,
-               template_vars=defaultdict(str), synchronous=False):
-        return
-
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+    def execute(self, milter, pretend=False, logger=None):
         return
 
 
@@ -233,9 +229,6 @@ class EMailNotification(BaseNotification):
                template_vars=defaultdict(str), synchronous=False,
                logger=None):
         "Notify recipients via email."
-        super().notify(
-            msg, qid, mailfrom, recipients, template_vars, synchronous, logger)
-
         if logger is None:
             logger = self.logger
 
@@ -274,7 +267,7 @@ class EMailNotification(BaseNotification):
                 "HTML_TEXT": sanitized_text,
                 "FROM": escape(msg["from"], quote=False),
                 "ENVELOPE_FROM": escape(mailfrom, quote=False),
-                "EMAIL_ENVELOPE_FROM_URL": escape(quote(mailfrom),
+                "ENVELOPE_FROM_URL": escape(quote(mailfrom),
                                                   quote=False),
                 "TO": escape(msg["to"], quote=False),
                 "ENVELOPE_TO": escape(recipient, quote=False),
@@ -284,40 +277,46 @@ class EMailNotification(BaseNotification):
             # parse template
             htmltext = self.template.format_map(variables)
 
-            msg = MIMEMultipart('related')
-            msg["From"] = self.from_header.format_map(
-                defaultdict(str, EMAIL_FROM=msg["from"]))
-            msg["To"] = msg["to"]
-            msg["Subject"] = self.subject.format_map(
-                defaultdict(str, EMAIL_SUBJECT=msg["subject"]))
-            msg["Date"] = email.utils.formatdate()
-            msg.attach(MIMEText(htmltext, "html", 'UTF-8'))
+            newmsg = MIMEMultipart('related')
+            newmsg["From"] = self.from_header.format_map(
+                defaultdict(str, FROM=msg["from"]))
+            newmsg["To"] = msg["to"]
+            newmsg["Subject"] = self.subject.format_map(
+                defaultdict(str, SUBJECT=msg["subject"]))
+            newmsg["Date"] = email.utils.formatdate()
+            newmsg.attach(MIMEText(htmltext, "html", 'UTF-8'))
 
             if image_replaced:
                 logger.debug("attaching notification_replacement_img")
-                msg.attach(self.replacement_img)
+                newmsg.attach(self.replacement_img)
 
             for img in self.embed_imgs:
                 logger.debug("attaching imgage")
-                msg.attach(img)
+                newmsg.attach(img)
 
             logger.debug(f"sending notification email to: {recipient}")
             if synchronous:
                 try:
                     mailer.smtp_send(self.smtp_host, self.smtp_port,
-                                     self.mailfrom, recipient, msg.as_string())
+                                     self.mailfrom, recipient,
+                                     newmsg.as_string())
                 except Exception as e:
                     raise RuntimeError(
                         f"error while sending email to '{recipient}': {e}")
             else:
                 mailer.sendmail(self.smtp_host, self.smtp_port, qid,
-                                self.mailfrom, recipient, msg.as_string(),
+                                self.mailfrom, recipient, newmsg.as_string(),
                                 "notification email")
 
     def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+                logger=None):
+        super().execute(milter, pretend, logger)
+
+        if logger is None:
+            logger = self.logger
+
         self.notify(msg=milter.msg, qid=milter.qid,
                     mailfrom=milter.msginfo["mailfrom"],
                     recipients=milter.msginfo["rcpts"],
-                    template_vars=milter["msginfo"]["vars"],
+                    template_vars=milter.msginfo["vars"],
                     logger=logger)

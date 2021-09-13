@@ -20,6 +20,7 @@ import logging
 import logging.handlers
 import sys
 
+from pymodmilter import mailer
 from pymodmilter import ModifyMilterConfig, ModifyMilter
 from pymodmilter import __version__ as version
 
@@ -140,11 +141,12 @@ def main():
     rc = 0
     try:
         Milter.runmilter("pymodmilter", socketname=socket, timeout=600)
-        logger.info("pymodmilter stopped")
     except Milter.milter.error as e:
         logger.error(e)
         rc = 255
 
+    mailer.queue.put(None)
+    logger.info("pymodmilter stopped")
     sys.exit(rc)
 
 

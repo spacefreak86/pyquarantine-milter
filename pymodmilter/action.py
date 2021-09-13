@@ -194,9 +194,6 @@ class Action:
         logger = CustomLogger(
             self.logger, {"qid": milter.qid, "name": self._name})
         if self.conditions is None or \
-                self.conditions.match(envfrom=milter.mailfrom,
-                                      envto=[*milter.rcpts],
-                                      headers=milter.msg.items(),
-                                      qid=milter.qid):
+                self.conditions.match(milter):
             return self._class.execute(
                 milter=milter, pretend=self.pretend, logger=logger)

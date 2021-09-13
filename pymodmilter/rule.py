@@ -86,10 +86,7 @@ class Rule:
     def execute(self, milter):
         """Execute all actions of this rule."""
         if self.conditions is None or \
-                self.conditions.match(envfrom=milter.mailfrom,
-                                      envto=[*milter.rcpts],
-                                      headers=milter.msg.items(),
-                                      qid=milter.qid):
+                self.conditions.match(milter):
             for action in self.actions:
                 milter_action = action.execute(milter)
                 if milter_action is not None:

@@ -81,49 +81,51 @@ class Conditions:
         self._args = cfg["args"]
         self.logger = cfg.logger
 
-    def match(self, host=None, envfrom=None, envto=None, headers=None,
-              qid=None):
-        if qid is None:
-            logger = self.logger
-        else:
-            logger = CustomLogger(
-                self.logger, {"qid": qid, "name": self._name})
+    def match_host(self, host):
+        logger = CustomLogger(
+            self.logger, {"name": self._name})
 
-        if host:
-            ip = IPAddress(host)
+        ip = IPAddress(host)
 
-            if "local" in self._args:
-                is_local = False
-                for addr in self._local_addrs:
-                    if ip in addr:
-                        is_local = True
-                        break
+        if "local" in self._args:
+            is_local = False
+            for addr in self._local_addrs:
+                if ip in addr:
+                    is_local = True
+                    break
 
-                if is_local != self._args["local"]:
-                    logger.debug(
-                        f"ignore host {host}, "
-                        f"condition local does not match")
-                    return False
-
+            if is_local != self._args["local"]:
                 logger.debug(
-                    f"condition local matches for host {host}")
+                    f"ignore host {host}, "
+                    f"condition local does not match")
+                return False
 
-            if "hosts" in self._args:
-                found = False
-                for addr in self._args["hosts"]:
-                    if ip in addr:
-                        found = True
-                        break
+            logger.debug(
+                f"condition local matches for host {host}")
 
-                if not found:
-                    logger.debug(
-                        f"ignore host {host}, "
-                        f"condition hosts does not match")
-                    return False
+        if "hosts" in self._args:
+            found = False
+            for addr in self._args["hosts"]:
+                if ip in addr:
+                    found = True
+                    break
 
+            if not found:
                 logger.debug(
-                    f"condition hosts matches for host {host}")
+                    f"ignore host {host}, "
+                    f"condition hosts does not match")
+                return False
 
+            logger.debug(
+                f"condition hosts matches for host {host}")
+
+        return True
+
+    def match(self, milter):
+        logger = CustomLogger(
+            self.logger, {"qid": milter.qid, "name": self._name})
+
+        envfrom = milter.msginfo["mailfrom"]
         if envfrom and "envfrom" in self._args:
             if not self._args["envfrom"].match(envfrom):
                 logger.debug(
@@ -135,6 +137,7 @@ class Conditions:
                 f"condition envfrom matches for "
                 f"envelope-from address {envfrom}")
 
+        envto = milter.msginfo["rcpts"]
         if envto and "envto" in self._args:
             if not isinstance(envto, list):
                 envto = [envto]
@@ -150,9 +153,9 @@ class Conditions:
                 f"condition envto matches for "
                 f"envelope-to address {envto}")
 
-        if headers and "header" in self._args:
+        if "header" in self._args:
             match = None
-            for field, value in headers:
+            for field, value in milter.msg.items():
                 header = f"{field}: {value}"
                 match = self._args["header"].search(header)
                 if match:

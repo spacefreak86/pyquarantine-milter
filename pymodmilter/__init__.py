@@ -199,6 +199,33 @@ class ModifyMilter(Milter.Base):
             self.logger.debug(
                 f"accepted milter connection from {self.IP} "
                 f"port {self.port}")
+
+            # pre-filter rules and actions by the host condition
+            # also check if the mail body is needed by any upcoming action.
+            self.rules = []
+            self._headersonly = True
+            for rule in ModifyMilter._rules:
+                if rule.conditions is None or \
+                        rule.conditions.match_host(self.IP):
+                    actions = []
+                    for action in rule.actions:
+                        if action.conditions is None or \
+                                action.conditions.match_host(self.IP):
+                            actions.append(action)
+                            if not action.headersonly():
+                                self._headersonly = False
+
+                    if actions:
+                        # copy needed rules to preserve configured actions
+                        rule = copy(rule)
+                        rule.actions = actions
+                        self.rules.append(rule)
+
+            if not self.rules:
+                self.logger.debug(
+                    "host is ignored by all rules, skip further processing")
+                return Milter.ACCEPT
+
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in connect method: {e}")
@@ -244,37 +271,6 @@ class ModifyMilter(Milter.Base):
             self.logger = CustomLogger(
                 self.logger, {"qid": self.qid, "name": "milter"})
             self.logger.debug("received queue-id from MTA")
-
-            # pre-filter rules and actions by the host condition, other
-            # conditions (headers, envelope-from, envelope-to) may get
-            # changed by executed actions later on.
-            # also check if the mail body is needed by any upcoming action.
-
-            self.rules = []
-            self._headersonly = True
-            for rule in ModifyMilter._rules:
-                if rule.conditions is None or \
-                        rule.conditions.match(host=self.IP, qid=self.qid):
-                    actions = []
-                    for action in rule.actions:
-                        if action.conditions is None or \
-                                action.conditions.match(host=self.IP,
-                                                        qid=self.qid):
-                            actions.append(action)
-                            if not action.headersonly():
-                                self._headersonly = False
-
-                    if actions:
-                        # copy needed rules to preserve configured actions
-                        rule = copy(rule)
-                        rule.actions = actions
-                        self.rules.append(rule)
-
-            if not self.rules:
-                self.logger.debug(
-                    "message is ignored by all rules, skip further processing")
-                return Milter.ACCEPT
-
             self.fp = BytesIO()
         except Exception as e:
             self.logger.exception(
@@ -341,7 +337,7 @@ class ModifyMilter(Milter.Base):
                     refold_source='none'))
             self.msginfo = {
                 "mailfrom": self.mailfrom,
-                "rcpts": self.rcpts,
+                "rcpts": [*self.rcpts],
                 "vars": {}}
 
             self._replacebody = False
@@ -356,7 +352,7 @@ class ModifyMilter(Milter.Base):
             if self._replacebody:
                 data = self.msg.as_bytes()
                 body_pos = data.find(b"\r\n\r\n") + 4
-                self.logger.debug("replacebody")
+                self.logger.debug("replace body")
                 super().replacebody(data[body_pos:])
                 del data
 

@@ -151,15 +151,15 @@ class ModifyMilter(Milter.Base):
 
     def addheader(self, field, value, idx=-1):
         value = replace_illegal_chars(Header(s=value).encode())
-        self.logger.debug(f"milter: addheader: {field}: {value}")
+        self.logger.debug(f"addheader: {field}: {value}")
         super().addheader(field, value, idx)
 
     def chgheader(self, field, value, idx=1):
         value = replace_illegal_chars(Header(s=value).encode())
         if value:
-            self.logger.debug(f"milter: chgheader: {field}[{idx}]: {value}")
+            self.logger.debug(f"chgheader: {field}[{idx}]: {value}")
         else:
-            self.logger.debug(f"milter: delheader: {field}[{idx}]")
+            self.logger.debug(f"delheader: {field}[{idx}]")
         super().chgheader(field, idx, value)
 
     def update_headers(self, old_headers):
@@ -241,7 +241,8 @@ class ModifyMilter(Milter.Base):
     def data(self):
         try:
             self.qid = self.getsymval('i')
-            self.logger = CustomLogger(self.logger, {"qid": self.qid})
+            self.logger = CustomLogger(
+                self.logger, {"qid": self.qid, "name": "milter"})
             self.logger.debug("received queue-id from MTA")
 
             # pre-filter rules and actions by the host condition, other
@@ -355,7 +356,7 @@ class ModifyMilter(Milter.Base):
             if self._replacebody:
                 data = self.msg.as_bytes()
                 body_pos = data.find(b"\r\n\r\n") + 4
-                self.logger.debug("milter: replacebody")
+                self.logger.debug("replacebody")
                 super().replacebody(data[body_pos:])
                 del data
 

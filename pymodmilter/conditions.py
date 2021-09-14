@@ -35,37 +35,22 @@ class ConditionsConfig(BaseConfig):
             self.add_bool_arg(cfg, "local")
 
         if "hosts" in cfg:
-            hosts = cfg["hosts"]
-            assert isinstance(hosts, list) and all(
-                [isinstance(host, str) for host in hosts]), \
+            assert isinstance(cfg["hosts"], list) and all(
+                [isinstance(host, str) for host in cfg["hosts"]]), \
                 f"{self['name']}: hosts: invalid value, " \
                 f"should be list of strings"
 
-            self["args"]["hosts"] = []
-            try:
-                for host in cfg["hosts"]:
-                    self["args"]["hosts"].append(IPNetwork(host))
-            except AddrFormatError as e:
-                raise ValueError(f"{self['name']}: hosts: {e}")
+            self["args"]["hosts"] = cfg["hosts"]
 
         for arg in ("envfrom", "envto"):
             if arg in cfg:
                 self.add_string_arg(cfg, arg)
-                try:
-                    self["args"][arg] = re.compile(
-                        self["args"][arg],
-                        re.IGNORECASE)
-                except re.error as e:
-                    raise ValueError(f"{self['name']}: {arg}: {e}")
 
         if "header" in cfg:
             self.add_string_arg(cfg, "header")
-            try:
-                self["args"]["header"] = re.compile(
-                    self["args"]["header"],
-                    re.IGNORECASE + re.DOTALL + re.MULTILINE)
-            except re.error as e:
-                raise ValueError(f"{self['name']}: header: {e}")
+
+        if "metavar" in cfg:
+            self.add_string_arg(cfg, "metavar")
 
         self.logger.debug(f"{self['name']}: "
                           f"loglevel={self['loglevel']}, "
@@ -78,7 +63,35 @@ class Conditions:
     def __init__(self, milter_cfg, cfg):
         self._local_addrs = milter_cfg["local_addrs"]
         self._name = cfg["name"]
-        self._args = cfg["args"]
+
+        for arg in ("local", "hosts", "envfrom", "envto", "header", "metavar"):
+            value = cfg["args"][arg] if arg in cfg["args"] else None
+            setattr(self, arg, value)
+            if value is None:
+                continue
+            elif arg == "hosts":
+                try:
+                    hosts = []
+                    for host in self.hosts:
+                        hosts.append(IPNetwork(host))
+                except AddrFormatError as e:
+                    raise RuntimeError(e)
+
+                self.hosts = hosts
+            elif arg in ("envfrom", "envto"):
+                try:
+                    setattr(self, arg, re.compile(
+                        getattr(self, arg), re.IGNORECASE))
+                except re.error as e:
+                    raise RuntimeError(e)
+
+            elif arg == "header":
+                try:
+                    self.header = re.compile(
+                        self.header, re.IGNORECASE + re.DOTALL + re.MULTILINE)
+                except re.error as e:
+                    raise RuntimeError(e)
+
         self.logger = cfg.logger
 
     def match_host(self, host):
@@ -87,14 +100,14 @@ class Conditions:
 
         ip = IPAddress(host)
 
-        if "local" in self._args:
+        if self.local is not None:
             is_local = False
             for addr in self._local_addrs:
                 if ip in addr:
                     is_local = True
                     break
 
-            if is_local != self._args["local"]:
+            if is_local != self.local:
                 logger.debug(
                     f"ignore host {host}, "
                     f"condition local does not match")
@@ -103,9 +116,9 @@ class Conditions:
             logger.debug(
                 f"condition local matches for host {host}")
 
-        if "hosts" in self._args:
+        if self.hosts is not None:
             found = False
-            for addr in self._args["hosts"]:
+            for addr in self.hosts:
                 if ip in addr:
                     found = True
                     break
@@ -125,9 +138,9 @@ class Conditions:
         logger = CustomLogger(
             self.logger, {"qid": milter.qid, "name": self._name})
 
-        envfrom = milter.msginfo["mailfrom"]
-        if envfrom and "envfrom" in self._args:
-            if not self._args["envfrom"].match(envfrom):
+        if self.envfrom is not None:
+            envfrom = milter.msginfo["mailfrom"]
+            if not self.envfrom.match(envfrom):
                 logger.debug(
                     f"ignore envelope-from address {envfrom}, "
                     f"condition envfrom does not match")
@@ -137,13 +150,13 @@ class Conditions:
                 f"condition envfrom matches for "
                 f"envelope-from address {envfrom}")
 
-        envto = milter.msginfo["rcpts"]
-        if envto and "envto" in self._args:
+        if self.envto is not None:
+            envto = milter.msginfo["rcpts"]
             if not isinstance(envto, list):
                 envto = [envto]
 
             for to in envto:
-                if not self._args["envto"].match(to):
+                if not self.envto.match(to):
                     logger.debug(
                         f"ignore envelope-to address {envto}, "
                         f"condition envto does not match")
@@ -153,15 +166,20 @@ class Conditions:
                 f"condition envto matches for "
                 f"envelope-to address {envto}")
 
-        if "header" in self._args:
+        if self.header is not None:
             match = None
             for field, value in milter.msg.items():
                 header = f"{field}: {value}"
-                match = self._args["header"].search(header)
+                match = self.header.search(header)
                 if match:
                     logger.debug(
                         f"condition header matches for "
                         f"header: {header}")
+                    if self.metavar is not None:
+                        named_subgroups = match.groupdict(default="")
+                        for group, value in named_subgroups.items():
+                            name = f"{self.metavar}_{group}"
+                            milter.msginfo["vars"][name] = value
                     break
 
             if not match:

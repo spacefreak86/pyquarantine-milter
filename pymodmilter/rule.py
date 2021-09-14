@@ -50,7 +50,7 @@ class RuleConfig(BaseConfig):
         assert isinstance(actions, list), \
             f"{self['name']}: actions: invalid value, should be list"
 
-        self.logger.debug(f"pretend={self['pretend']}, "
+        self.logger.debug(f"{self['name']}: pretend={self['pretend']}, "
                           f"loglevel={self['loglevel']}")
 
         if "conditions" in cfg:

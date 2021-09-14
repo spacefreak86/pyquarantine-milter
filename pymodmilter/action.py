@@ -164,7 +164,7 @@ class ActionConfig(BaseConfig):
                 f"{self['name']}: conditions: invalid value, should be dict"
             self["conditions"] = ConditionsConfig(self, conditions, debug)
 
-        self.logger.debug(f"pretend={self['pretend']}, "
+        self.logger.debug(f"{self['name']}: pretend={self['pretend']}, "
                           f"loglevel={self['loglevel']}, "
                           f"type={self['type']}, "
                           f"args={self['args']}")

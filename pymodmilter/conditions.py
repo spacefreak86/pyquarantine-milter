@@ -49,6 +49,9 @@ class ConditionsConfig(BaseConfig):
         if "header" in cfg:
             self.add_string_arg(cfg, "header")
 
+        if "var" in cfg:
+            self.add_string_arg(cfg, "var")
+
         if "metavar" in cfg:
             self.add_string_arg(cfg, "metavar")
 
@@ -64,7 +67,8 @@ class Conditions:
         self._local_addrs = milter_cfg["local_addrs"]
         self._name = cfg["name"]
 
-        for arg in ("local", "hosts", "envfrom", "envto", "header", "metavar"):
+        for arg in ("local", "hosts", "envfrom", "envto", "header", "metavar",
+                    "var"):
             value = cfg["args"][arg] if arg in cfg["args"] else None
             setattr(self, arg, value)
             if value is None:
@@ -176,8 +180,10 @@ class Conditions:
                         f"condition header matches for "
                         f"header: {header}")
                     if self.metavar is not None:
-                        named_subgroups = match.groupdict(default="")
+                        named_subgroups = match.groupdict(default=None)
                         for group, value in named_subgroups.items():
+                            if value is None:
+                                continue
                             name = f"{self.metavar}_{group}"
                             milter.msginfo["vars"][name] = value
                     break
@@ -186,6 +192,10 @@ class Conditions:
                 logger.debug(
                     "ignore message, "
                     "condition header does not match")
+                return False
+
+        if self.var is not None:
+            if self.var not in milter.msginfo["vars"]:
                 return False
 
         return True

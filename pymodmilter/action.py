@@ -41,7 +41,6 @@ class ActionConfig(BaseConfig):
 
         self["pretend"] = rule_cfg["pretend"]
         self["conditions"] = None
-        self["type"] = ""
 
         if "pretend" in cfg:
             pretend = cfg["pretend"]
@@ -53,13 +52,12 @@ class ActionConfig(BaseConfig):
             f"{self['name']}: mandatory parameter 'type' not found"
         assert isinstance(cfg["type"], str), \
             f"{self['name']}: type: invalid value, should be string"
-        self["type"] = cfg["type"]
 
-        if self["type"] == "add_header":
+        if cfg["type"] == "add_header":
             self["class"] = modify.AddHeader
             self["headersonly"] = True
             self.add_string_arg(cfg, ["field", "value"])
-        elif self["type"] == "mod_header":
+        elif cfg["type"] == "mod_header":
             self["class"] = modify.ModHeader
             self["headersonly"] = True
             args = ["field", "value"]
@@ -67,7 +65,7 @@ class ActionConfig(BaseConfig):
                 args.append("search")
 
             self.add_string_arg(cfg, args)
-        elif self["type"] == "del_header":
+        elif cfg["type"] == "del_header":
             self["class"] = modify.DelHeader
             self["headersonly"] = True
             args = ["field"]
@@ -75,7 +73,7 @@ class ActionConfig(BaseConfig):
                 args.append("value")
 
             self.add_string_arg(cfg, args)
-        elif self["type"] == "add_disclaimer":
+        elif cfg["type"] == "add_disclaimer":
             self["class"] = modify.AddDisclaimer
             self["headersonly"] = False
             if "error_policy" not in cfg:
@@ -93,17 +91,17 @@ class ActionConfig(BaseConfig):
                 f"{self['name']}: error_policy: invalid value, " \
                 f"should be 'wrap', 'ignore' or 'reject'"
 
-        elif self["type"] == "rewrite_links":
+        elif cfg["type"] == "rewrite_links":
             self["class"] = modify.RewriteLinks
             self["headersonly"] = False
             self.add_string_arg(cfg, "repl")
 
-        elif self["type"] == "store":
+        elif cfg["type"] == "store":
             self["headersonly"] = False
 
             assert "storage_type" in cfg, \
                 f"{self['name']}: mandatory parameter 'storage_type' not found"
-            assert isinstance(cfg["type"], str), \
+            assert isinstance(cfg["storage_type"], str), \
                 f"{self['name']}: storage_type: invalid value, " \
                 f"should be string"
             self["storage_type"] = cfg["storage_type"]
@@ -132,7 +130,7 @@ class ActionConfig(BaseConfig):
                 raise RuntimeError(
                     f"{self['name']}: storage_type: invalid storage type")
 
-        elif self["type"] == "notify":
+        elif cfg["type"] == "notify":
             self["headersonly"] = False
             self["class"] = notify.EMailNotification
 
@@ -166,7 +164,7 @@ class ActionConfig(BaseConfig):
 
         self.logger.debug(f"{self['name']}: pretend={self['pretend']}, "
                           f"loglevel={self['loglevel']}, "
-                          f"type={self['type']}, "
+                          f"type={cfg['type']}, "
                           f"args={self['args']}")
 
 

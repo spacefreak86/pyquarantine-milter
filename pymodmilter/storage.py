@@ -12,6 +12,11 @@
 # along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+__all__ = [
+    "BaseMailStorage",
+    "FileMailStorage",
+    "Quarantine"]
+
 import json
 import logging
 import os
@@ -24,7 +29,12 @@ from time import gmtime
 
 class BaseMailStorage:
     "Mail storage base class"
-    def __init__(self):
+    _headersonly = True
+
+    def __init__(self, original=False, metadata=False, metavar=None):
+        self.original = original
+        self.metadata = metadata
+        self.metavar = metavar
         return
 
     def add(self, data, qid, mailfrom="", recipients=[]):
@@ -54,9 +64,11 @@ class BaseMailStorage:
 
 class FileMailStorage(BaseMailStorage):
     "Storage class to store mails on filesystem."
-    def __init__(self, directory, original=False, skip_metadata=False,
+    _headersonly = False
+
+    def __init__(self, directory, original=False, metadata=False,
                  metavar=None):
-        super().__init__()
+        super().__init__(original, metadata, metavar)
         # check if directory exists and is writable
         if not os.path.isdir(directory) or \
                 not os.access(directory, os.W_OK):
@@ -64,9 +76,6 @@ class FileMailStorage(BaseMailStorage):
                 f"directory '{directory}' does not exist or is "
                 f"not writable")
         self.directory = directory
-        self.original = original
-        self.skip_metadata = skip_metadata
-        self.metavar = metavar
         self._metadata_suffix = ".metadata"
 
     def get_storageid(self, qid):
@@ -96,7 +105,7 @@ class FileMailStorage(BaseMailStorage):
         metafile, datafile = self._get_file_paths(storage_id)
 
         try:
-            if not self.skip_metadata:
+            if self.metadata:
                 os.remove(metafile)
 
             os.remove(datafile)
@@ -113,22 +122,22 @@ class FileMailStorage(BaseMailStorage):
         # save mail
         self._save_datafile(datafile, data)
 
-        if self.skip_metadata:
-            metafile = None
-        else:
-            # save metadata
-            metadata = {
-                "mailfrom": mailfrom,
-                "recipients": recipients,
-                "subject": subject,
-                "timestamp": timegm(gmtime()),
-                "queue_id": qid}
+        if not self.metadata:
+            return storage_id, None, datafile
 
-            try:
-                self._save_metafile(metafile, metadata)
-            except RuntimeError as e:
-                os.remove(datafile)
-                raise e
+        # save metadata
+        metadata = {
+            "mailfrom": mailfrom,
+            "recipients": recipients,
+            "subject": subject,
+            "timestamp": timegm(gmtime()),
+            "queue_id": qid}
+
+        try:
+            self._save_metafile(metafile, metadata)
+        except RuntimeError as e:
+            os.remove(datafile)
+            raise e
 
         return storage_id, metafile, datafile
 
@@ -157,14 +166,14 @@ class FileMailStorage(BaseMailStorage):
         if self.metavar:
             milter.msginfo["vars"][f"{self.metavar}_ID"] = storage_id
             milter.msginfo["vars"][f"{self.metavar}_DATAFILE"] = datafile
-            if not self.skip_metadata:
+            if self.metadata:
                 milter.msginfo["vars"][f"{self.metavar}_METAFILE"] = metafile
 
     def get_metadata(self, storage_id):
         "Return metadata of email in storage."
         super(FileMailStorage, self).get_metadata(storage_id)
 
-        if self.skip_metadata:
+        if not self.metadata:
             return None
 
         metafile, _ = self._get_file_paths(storage_id)
@@ -190,6 +199,9 @@ class FileMailStorage(BaseMailStorage):
             mailfrom = [mailfrom]
         if isinstance(recipients, str):
             recipients = [recipients]
+
+        if not self.metadata:
+            return {}
 
         emails = {}
         metafiles = glob(os.path.join(
@@ -225,7 +237,7 @@ class FileMailStorage(BaseMailStorage):
         "Delete email from storage."
         super(FileMailStorage, self).delete(storage_id, recipients)
 
-        if not recipients or self.skip_metadata:
+        if not recipients or not self.metadata:
             self._remove(storage_id)
             return
 
@@ -257,4 +269,28 @@ class FileMailStorage(BaseMailStorage):
             data = open(datafile, "rb").read()
         except IOError as e:
             raise RuntimeError(f"unable to open email data file: {e}")
-        return (data, metadata)
+        return (metadata, data)
+
+
+class Quarantine:
+    "Quarantine class."
+    _headersonly = False
+
+    def __init__(self, storage, notification=None, milter_action=None,
+                 reject_reason="Message rejected"):
+        self.storage = storage.action(**storage.args, metadata=True)
+        self.notification = notification
+        if self.notification is not None:
+            self.notification = notification.action(**notification.args)
+        self.milter_action = milter_action
+        self.reject_reason = reject_reason
+
+    def execute(self, milter, pretend=False,
+                logger=logging.getLogger(__name__)):
+        self.storage.execute(milter, pretend, logger)
+        if self.notification is not None:
+            self.notification.execute(milter, pretend, logger)
+        milter.msginfo["rcpts"] = []
+
+        if self.milter_action is not None:
+            return (self.milter_action, self.reject_reason)

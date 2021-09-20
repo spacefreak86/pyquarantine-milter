@@ -12,6 +12,10 @@
 # along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+__all__ = [
+    "BaseNotification",
+    "EMailNotification"]
+
 import email
 import logging
 import re
@@ -30,6 +34,7 @@ from pymodmilter import mailer
 
 class BaseNotification:
     "Notification base class"
+    _headersonly = True
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -41,7 +46,7 @@ class BaseNotification:
 
 class EMailNotification(BaseNotification):
     "Notification class to send notifications via mail."
-    notification_type = "email"
+    _headersonly = False
     _bad_tags = [
         "applet",
         "embed",

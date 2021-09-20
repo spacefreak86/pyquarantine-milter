@@ -132,7 +132,7 @@ class ModifyMilterConfig(BaseConfig):
                 rule_cfg["loglevel"] = self.loglevel
             if "pretend" not in rule_cfg:
                 rule_cfg["pretend"] = self.pretend
-            self.rules.append(RuleConfig(rule_cfg, debug))
+            self.rules.append(RuleConfig(rule_cfg, self.local_addrs, debug))
 
 
 class ModifyMilter(Milter.Base):
@@ -148,7 +148,7 @@ class ModifyMilter(Milter.Base):
         ModifyMilter._loglevel = cfg.loglevel
         for rule_cfg in cfg.rules:
             ModifyMilter._rules.append(
-                Rule(rule_cfg, cfg.local_addrs))
+                Rule(rule_cfg))
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -362,14 +362,15 @@ class ModifyMilter(Milter.Base):
                 del data
 
             if milter_action is not None:
-                if milter_action["action"] == "reject":
-                    self.setreply("554", "5.7.0", milter_action["reason"])
+                action, reason = milter_action
+                if action == "REJECT":
+                    self.setreply("554", "5.7.0", reason)
                     return Milter.REJECT
 
-                if milter_action["action"] == "accept":
+                if action == "ACCEPT":
                     return Milter.ACCEPT
 
-                if milter_action["action"] == "discard":
+                if action == "DISCARD":
                     return Milter.DISCARD
 
         except Exception as e:

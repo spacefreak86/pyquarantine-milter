@@ -22,7 +22,7 @@ from pymodmilter.conditions import ConditionsConfig, Conditions
 
 
 class RuleConfig(BaseConfig):
-    def __init__(self, cfg, debug=False):
+    def __init__(self, cfg, local_addrs, debug=False):
         super().__init__(cfg, debug)
 
         self.conditions = None
@@ -49,7 +49,8 @@ class RuleConfig(BaseConfig):
             cfg["conditions"]["name"] = f"{self.name}: condition"
             if "loglevel" not in cfg["conditions"]:
                 cfg["conditions"]["loglevel"] = self.loglevel
-            self.conditions = ConditionsConfig(cfg["conditions"], debug)
+            self.conditions = ConditionsConfig(
+                cfg["conditions"], local_addrs, debug)
         else:
             self.conditions = None
 
@@ -67,7 +68,7 @@ class RuleConfig(BaseConfig):
             if "pretend" not in action_cfg:
                 action_cfg["pretend"] = self.pretend
             self.actions.append(
-                ActionConfig(action_cfg, debug))
+                ActionConfig(action_cfg, local_addrs, debug))
 
 
 class Rule:
@@ -75,17 +76,17 @@ class Rule:
     Rule to implement multiple actions on emails.
     """
 
-    def __init__(self, cfg, local_addrs):
+    def __init__(self, cfg):
         self.logger = cfg.logger
 
         if cfg.conditions is None:
             self.conditions = None
         else:
-            self.conditions = Conditions(cfg.conditions, local_addrs)
+            self.conditions = Conditions(cfg.conditions)
 
         self.actions = []
         for action_cfg in cfg.actions:
-            self.actions.append(Action(action_cfg, local_addrs))
+            self.actions.append(Action(action_cfg))
 
         self.pretend = cfg.pretend
 

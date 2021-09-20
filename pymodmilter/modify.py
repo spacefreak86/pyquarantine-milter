@@ -34,6 +34,8 @@ from pymodmilter import replace_illegal_chars
 
 class AddHeader:
     """Add a mail header field."""
+    _headersonly = True
+
     def __init__(self, field, value):
         self.field = field
         self.value = value
@@ -54,6 +56,8 @@ class AddHeader:
 
 class ModHeader:
     """Change the value of a mail header field."""
+    _headersonly = True
+
     def __init__(self, field, value, search=None):
         self.value = value
 
@@ -110,6 +114,8 @@ class ModHeader:
 
 class DelHeader:
     """Delete a mail header field."""
+    _headersonly = True
+
     def __init__(self, field, value=None):
         try:
             self.field = re.compile(field, re.IGNORECASE)
@@ -212,6 +218,8 @@ def _wrap_message(milter):
 
 class AddDisclaimer:
     """Append or prepend a disclaimer to the mail body."""
+    _headersonly = False
+
     def __init__(self, text_template, html_template, action, error_policy):
         try:
             with open(text_template, "r") as f:
@@ -312,6 +320,8 @@ class AddDisclaimer:
 
 class RewriteLinks:
     """Rewrite link targets in the mail html body."""
+    _headersonly = False
+
     def __init__(self, repl):
         self.repl = repl
 

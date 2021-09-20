@@ -61,6 +61,7 @@ class BaseConfig:
             self.loglevel = logging.INFO
 
         self.logger.setLevel(self.loglevel)
+        self.debug = debug
 
         # the keys/values in args are used as parameters
         # to initialize action classes

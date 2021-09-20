@@ -23,8 +23,10 @@ from pymodmilter import BaseConfig, CustomLogger
 
 
 class ConditionsConfig(BaseConfig):
-    def __init__(self, cfg, debug):
+    def __init__(self, cfg, local_addrs, debug):
         super().__init__(cfg, debug)
+
+        self.local_addrs = local_addrs
 
         if "local" in cfg:
             self.add_bool_arg(cfg, "local")
@@ -58,10 +60,10 @@ class ConditionsConfig(BaseConfig):
 class Conditions:
     """Conditions to implement conditions for rules and actions."""
 
-    def __init__(self, cfg, local_addrs):
+    def __init__(self, cfg):
         self.logger = cfg.logger
         self.name = cfg.name
-        self.local_addrs = local_addrs
+        self.local_addrs = cfg.local_addrs
 
         for arg in ("local", "hosts", "envfrom", "envto", "header", "metavar",
                     "var"):

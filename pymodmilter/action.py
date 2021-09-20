@@ -29,10 +29,14 @@ class ActionConfig(BaseConfig):
              "add_disclaimer": "_add_disclaimer",
              "rewrite_links": "_rewrite_links",
              "store": "_store",
-             "notify": "_notify"}
+             "notify": "_notify",
+             "quarantine": "_quarantine"}
 
-    def __init__(self, cfg, debug):
+    def __init__(self, cfg, local_addrs, debug):
         super().__init__(cfg, debug)
+
+        self.local_addrs = local_addrs
+        self.debug = debug
 
         self.pretend = False
         if "pretend" in cfg:
@@ -47,7 +51,7 @@ class ActionConfig(BaseConfig):
         assert cfg["type"] in ActionConfig.TYPES, \
             f"{self.name}: type: invalid action type"
 
-        getattr(self, cfg["type"])(cfg)
+        getattr(self, ActionConfig.TYPES[cfg["type"]])(cfg)
 
         if "conditions" in cfg:
             assert isinstance(cfg["conditions"], dict), \
@@ -55,7 +59,8 @@ class ActionConfig(BaseConfig):
             cfg["conditions"]["name"] = f"{self.name}: condition"
             if "loglevel" not in cfg["conditions"]:
                 cfg["conditions"]["loglevel"] = self.loglevel
-            self.conditions = ConditionsConfig(cfg["conditions"], debug)
+            self.conditions = ConditionsConfig(
+                cfg["conditions"], local_addrs, debug)
         else:
             self.conditions = None
 
@@ -64,32 +69,28 @@ class ActionConfig(BaseConfig):
                           f"type={cfg['type']}, "
                           f"args={self.args}")
 
-    def add_header(self, cfg):
+    def _add_header(self, cfg):
         self.action = modify.AddHeader
-        self.headersonly = True
         self.add_string_arg(cfg, ["field", "value"])
 
-    def mod_header(self, cfg):
+    def _mod_header(self, cfg):
         self.action = modify.ModHeader
-        self.headersonly = True
         args = ["field", "value"]
         if "search" in cfg:
             args.append("search")
 
         self.add_string_arg(cfg, args)
 
-    def del_header(self, cfg):
+    def _del_header(self, cfg):
         self.action = modify.DelHeader
-        self.headersonly = True
         args = ["field"]
         if "value" in cfg:
             args.append("value")
 
         self.add_string_arg(cfg, args)
 
-    def add_disclaimer(self, cfg):
+    def _add_disclaimer(self, cfg):
         self.action = modify.AddDisclaimer
-        self.headersonly = False
         if "error_policy" not in cfg:
             cfg["error_policy"] = "wrap"
 
@@ -105,14 +106,11 @@ class ActionConfig(BaseConfig):
             f"{self.name}: error_policy: invalid value, " \
             f"should be 'wrap', 'ignore' or 'reject'"
 
-    def rewrite_links(self, cfg):
+    def _rewrite_links(self, cfg):
         self.action = modify.RewriteLinks
-        self.headersonly = False
         self.add_string_arg(cfg, "repl")
 
-    def store(self, cfg):
-        self.headersonly = False
-
+    def _store(self, cfg):
         assert "storage_type" in cfg, \
             f"{self.name}: mandatory parameter 'storage_type' not found"
         assert isinstance(cfg["storage_type"], str), \
@@ -126,9 +124,6 @@ class ActionConfig(BaseConfig):
             self.action = storage.FileMailStorage
             self.add_string_arg(cfg, "directory")
 
-            if "skip_metadata" in cfg:
-                self.add_bool_arg(cfg, "skip_metadata")
-
             if "metavar" in cfg:
                 self.add_string_arg(cfg, "metavar")
 
@@ -136,16 +131,15 @@ class ActionConfig(BaseConfig):
             raise RuntimeError(
                 f"{self.name}: storage_type: invalid storage type")
 
-    def notify(self, cfg):
-        self.headersonly = False
+    def _notify(self, cfg):
         self.action = notify.EMailNotification
 
         args = ["smtp_host", "envelope_from", "from_header", "subject",
                 "template"]
         if "repl_img" in cfg:
             args.append("repl_img")
-
         self.add_string_arg(cfg, args)
+
         self.add_int_arg(cfg, "smtp_port")
 
         if "embed_imgs" in cfg:
@@ -155,25 +149,63 @@ class ActionConfig(BaseConfig):
                 f"should be list of strings"
             self.args["embed_imgs"] = cfg["embed_imgs"]
 
+    def _quarantine(self, cfg):
+        self.action = storage.Quarantine
+        assert "storage" in cfg, \
+            f"{self.name}: mandatory parameter 'storage' not found"
+        assert isinstance(cfg["storage"], dict), \
+            f"{self.name}: storage: invalid value, " \
+            f"should be dict"
+        cfg["storage"]["type"] = "store"
+        cfg["storage"]["name"] = f"{self.name}: storage"
+
+        args = ["storage"]
+        if "notification" in cfg:
+            assert isinstance(cfg["notification"], dict), \
+                f"{self.name}: notification: invalid value, " \
+                f"should be dict"
+            cfg["notification"]["type"] = "notify"
+            cfg["notification"]["name"] = f"{self.name}: notification"
+            args.append("notification")
+
+        for arg in args:
+            if "loglevel" not in cfg[arg]:
+                cfg[arg]["loglevel"] = self.loglevel
+            if "pretend" not in cfg[arg]:
+                cfg[arg]["pretend"] = self.pretend
+
+            self.args[arg] = ActionConfig(
+                cfg[arg], self.local_addrs, self.debug)
+
+        if "milter_action" in cfg:
+            self.add_string_arg(cfg, "milter_action")
+            self.args["milter_action"] = self.args["milter_action"].upper()
+            assert self.args["milter_action"] in ["REJECT", "DISCARD",
+                                                  "ACCEPT"], \
+                f"{self.name}: milter_action: invalid value, " \
+                f"should be 'ACCEPT', 'REJECT' or 'DISCARD'"
+            if self.args["milter_action"] == "REJECT":
+                if "reject_reason" in cfg:
+                    self.add_string_arg(cfg, "reject_reason")
+
 
 class Action:
     """Action to implement a pre-configured action to perform on e-mails."""
 
-    def __init__(self, cfg, local_addrs):
+    def __init__(self, cfg):
         self.logger = cfg.logger
         if cfg.conditions is None:
             self.conditions = None
         else:
-            self.conditions = Conditions(cfg.conditions, local_addrs)
+            self.conditions = Conditions(cfg.conditions)
 
         self.pretend = cfg.pretend
         self.name = cfg.name
         self.action = cfg.action(**cfg.args)
-        self._headersonly = cfg.headersonly
 
     def headersonly(self):
         """Return the needs of this action."""
-        return self._headersonly
+        return self.action._headersonly
 
     def execute(self, milter):
         """Execute configured action."""

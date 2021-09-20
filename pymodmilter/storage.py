@@ -301,7 +301,8 @@ class Quarantine:
             custom_logger = CustomLogger(
                 self.notification_logger, {"name": self.notification_name})
             self.notification.execute(milter, pretend, custom_logger)
-        milter.msginfo["rcpts"] = []
+
+        milter.delrcpt(milter.msginfo["rcpts"].copy())
 
         if self.milter_action is not None:
             return (self.milter_action, self.reject_reason)

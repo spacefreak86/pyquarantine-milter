@@ -192,6 +192,15 @@ class ModifyMilter(Milter.Base):
     def replacebody(self):
         self._replacebody = True
 
+    def delrcpt(self, rcpts):
+        "Remove recipient. May be called from eom callback only."
+        if not isinstance(rcpts, list):
+            rcpts = [rcpts]
+        for rcpt in rcpts:
+            self.logger.debug(f"delrcpt: {rcpt}")
+            self.msginfo["rcpts"].remove(rcpt)
+            super().delrcpt(rcpt)
+
     def connect(self, IPname, family, hostaddr):
         try:
             if hostaddr is None:

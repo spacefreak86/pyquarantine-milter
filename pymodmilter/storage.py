@@ -26,6 +26,8 @@ from datetime import datetime
 from glob import glob
 from time import gmtime
 
+from pymodmilter.base import CustomLogger
+
 
 class BaseMailStorage:
     "Mail storage base class"
@@ -279,17 +281,26 @@ class Quarantine:
     def __init__(self, storage, notification=None, milter_action=None,
                  reject_reason="Message rejected"):
         self.storage = storage.action(**storage.args, metadata=True)
+        self.storage_name = storage.name
+        self.storage_logger = storage.logger
+
         self.notification = notification
         if self.notification is not None:
             self.notification = notification.action(**notification.args)
+            self.notification_name = notification.name
+            self.notification_logger = notification.logger
         self.milter_action = milter_action
         self.reject_reason = reject_reason
 
     def execute(self, milter, pretend=False,
                 logger=logging.getLogger(__name__)):
-        self.storage.execute(milter, pretend, logger)
+        custom_logger = CustomLogger(
+            self.storage_logger, {"name": self.storage_name})
+        self.storage.execute(milter, pretend, custom_logger)
         if self.notification is not None:
-            self.notification.execute(milter, pretend, logger)
+            custom_logger = CustomLogger(
+                self.notification_logger, {"name": self.notification_name})
+            self.notification.execute(milter, pretend, custom_logger)
         milter.msginfo["rcpts"] = []
 
         if self.milter_action is not None:

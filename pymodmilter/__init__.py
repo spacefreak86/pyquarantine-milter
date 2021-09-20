@@ -190,7 +190,16 @@ class ModifyMilter(Milter.Base):
                 self.addheader(field, value)
 
     def replacebody(self):
-        self._replacebody = True
+        self._body_changed = True
+
+    def _replacebody(self):
+        if not self._body_changed:
+            return
+        data = self.msg.as_bytes()
+        body_pos = data.find(b"\r\n\r\n") + 4
+        self.logger.debug("replace body")
+        super().replacebody(data[body_pos:])
+        del data
 
     def delrcpt(self, rcpts):
         "Remove recipient. May be called from eom callback only."
@@ -354,7 +363,7 @@ class ModifyMilter(Milter.Base):
                 "rcpts": [*self.rcpts],
                 "vars": {}}
 
-            self._replacebody = False
+            self._body_changed = False
             milter_action = None
             for rule in self.rules:
                 milter_action = rule.execute(self)
@@ -363,23 +372,16 @@ class ModifyMilter(Milter.Base):
                 if milter_action is not None:
                     break
 
-            if self._replacebody:
-                data = self.msg.as_bytes()
-                body_pos = data.find(b"\r\n\r\n") + 4
-                self.logger.debug("replace body")
-                super().replacebody(data[body_pos:])
-                del data
-
-            if milter_action is not None:
+            if milter_action is None:
+                self._replacebody()
+            else:
                 action, reason = milter_action
-                if action == "REJECT":
+                if action == "ACCEPT":
+                    self._replacebody()
+                elif action == "REJECT":
                     self.setreply("554", "5.7.0", reason)
                     return Milter.REJECT
-
-                if action == "ACCEPT":
-                    return Milter.ACCEPT
-
-                if action == "DISCARD":
+                elif action == "DISCARD":
                     return Milter.DISCARD
 
         except Exception as e:

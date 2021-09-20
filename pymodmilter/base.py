@@ -38,49 +38,33 @@ class CustomLogger(logging.LoggerAdapter):
 
 
 class BaseConfig:
-    def __init__(self, cfg={}, debug=False, logger=None):
-        self._cfg = {}
+    def __init__(self, cfg={}, debug=False):
         if "name" in cfg:
             assert isinstance(cfg["name"], str), \
-                "rule: name: invalid value, should be string"
-            self["name"] = cfg["name"]
+                "name: invalid value, should be string"
+            self.name = cfg["name"]
         else:
-            self["name"] = __name__
+            self.name = __name__
 
+        self.logger = logging.getLogger(self.name)
         if debug:
-            self["loglevel"] = logging.DEBUG
+            self.loglevel = logging.DEBUG
         elif "loglevel" in cfg:
             if isinstance(cfg["loglevel"], int):
-                self["loglevel"] = cfg["loglevel"]
+                self.loglevel = cfg["loglevel"]
             else:
                 level = getattr(logging, cfg["loglevel"].upper(), None)
                 assert isinstance(level, int), \
-                    f"{self['name']}: loglevel: invalid value"
-                self["loglevel"] = level
+                    f"{self.name}: loglevel: invalid value"
+                self.loglevel = level
         else:
-            self["loglevel"] = logging.INFO
+            self.loglevel = logging.INFO
 
-        if logger is None:
-            logger = logging.getLogger(self["name"])
-            logger.setLevel(self["loglevel"])
+        self.logger.setLevel(self.loglevel)
 
-        self.logger = logger
-
-        # the keys/values of args are used as parameters
-        # to functions
-        self["args"] = {}
-
-    def __setitem__(self, key, value):
-        self._cfg[key] = value
-
-    def __getitem__(self, key):
-        return self._cfg[key]
-
-    def __delitem__(self, key):
-        del self._cfg[key]
-
-    def __contains__(self, key):
-        return key in self._cfg
+        # the keys/values in args are used as parameters
+        # to initialize action classes
+        self.args = {}
 
     def add_string_arg(self, cfg, args):
         if isinstance(args, str):
@@ -88,10 +72,10 @@ class BaseConfig:
 
         for arg in args:
             assert arg in cfg, \
-                f"{self['name']}: mandatory parameter '{arg}' not found"
+                f"{self.name}: mandatory parameter '{arg}' not found"
             assert isinstance(cfg[arg], str), \
-                f"{self['name']}: {arg}: invalid value, should be string"
-            self["args"][arg] = cfg[arg]
+                f"{self.name}: {arg}: invalid value, should be string"
+            self.args[arg] = cfg[arg]
 
     def add_bool_arg(self, cfg, args):
         if isinstance(args, str):
@@ -99,10 +83,10 @@ class BaseConfig:
 
         for arg in args:
             assert arg in cfg, \
-                f"{self['name']}: mandatory parameter '{arg}' not found"
+                f"{self.name}: mandatory parameter '{arg}' not found"
             assert isinstance(cfg[arg], bool), \
-                f"{self['name']}: {arg}: invalid value, should be bool"
-            self["args"][arg] = cfg[arg]
+                f"{self.name}: {arg}: invalid value, should be bool"
+            self.args[arg] = cfg[arg]
 
     def add_int_arg(self, cfg, args):
         if isinstance(args, str):
@@ -110,10 +94,10 @@ class BaseConfig:
 
         for arg in args:
             assert arg in cfg, \
-                f"{self['name']}: mandatory parameter '{arg}' not found"
+                f"{self.name}: mandatory parameter '{arg}' not found"
             assert isinstance(cfg[arg], int), \
-                f"{self['name']}: {arg}: invalid value, should be integer"
-            self["args"][arg] = cfg[arg]
+                f"{self.name}: {arg}: invalid value, should be integer"
+            self.args[arg] = cfg[arg]
 
 
 class MilterMessage(MIMEPart):

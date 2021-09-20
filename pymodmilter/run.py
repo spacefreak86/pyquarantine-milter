@@ -84,24 +84,24 @@ def main():
         cfg = ModifyMilterConfig(args.config, args.debug)
 
         if not args.debug:
-            logger.setLevel(cfg["loglevel"])
+            logger.setLevel(cfg.loglevel)
 
         if args.socket:
             socket = args.socket
-        elif "socket" in cfg:
-            socket = cfg["socket"]
+        elif cfg.socket:
+            socket = cfg.socket
         else:
             raise RuntimeError(
                 "listening socket is neither specified on the command line "
                 "nor in the configuration file")
 
-        if not cfg["rules"]:
+        if not cfg.rules:
             raise RuntimeError("no rules configured")
 
-        for rule_cfg in cfg["rules"]:
-            if not rule_cfg["actions"]:
+        for rule_cfg in cfg.rules:
+            if not rule_cfg.actions:
                 raise RuntimeError(
-                    f"{rule_cfg['name']}: no actions configured")
+                    f"{rule_cfg.name}: no actions configured")
 
     except (RuntimeError, AssertionError) as e:
         logger.error(e)

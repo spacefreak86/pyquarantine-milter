@@ -57,6 +57,12 @@ class FileMailStorage(BaseMailStorage):
     def __init__(self, directory, original=False, skip_metadata=False,
                  metavar=None):
         super().__init__()
+        # check if directory exists and is writable
+        if not os.path.isdir(directory) or \
+                not os.access(directory, os.W_OK):
+            raise RuntimeError(
+                f"directory '{directory}' does not exist or is "
+                f"not writable")
         self.directory = directory
         self.original = original
         self.skip_metadata = skip_metadata

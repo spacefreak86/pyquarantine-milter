@@ -23,12 +23,7 @@ from pymodmilter import BaseConfig, CustomLogger
 
 
 class ConditionsConfig(BaseConfig):
-    def __init__(self, parent_cfg, cfg, debug):
-        if "loglevel" not in cfg:
-            cfg["loglevel"] = parent_cfg["loglevel"]
-
-        cfg["name"] = f"{parent_cfg['name']}: condition"
-
+    def __init__(self, cfg, debug):
         super().__init__(cfg, debug)
 
         if "local" in cfg:
@@ -37,10 +32,10 @@ class ConditionsConfig(BaseConfig):
         if "hosts" in cfg:
             assert isinstance(cfg["hosts"], list) and all(
                 [isinstance(host, str) for host in cfg["hosts"]]), \
-                f"{self['name']}: hosts: invalid value, " \
+                f"{self.name}: hosts: invalid value, " \
                 f"should be list of strings"
 
-            self["args"]["hosts"] = cfg["hosts"]
+            self.args["hosts"] = cfg["hosts"]
 
         for arg in ("envfrom", "envto"):
             if arg in cfg:
@@ -55,21 +50,22 @@ class ConditionsConfig(BaseConfig):
         if "metavar" in cfg:
             self.add_string_arg(cfg, "metavar")
 
-        self.logger.debug(f"{self['name']}: "
-                          f"loglevel={self['loglevel']}, "
-                          f"args={self['args']}")
+        self.logger.debug(f"{self.name}: "
+                          f"loglevel={self.loglevel}, "
+                          f"args={self.args}")
 
 
 class Conditions:
     """Conditions to implement conditions for rules and actions."""
 
-    def __init__(self, milter_cfg, cfg):
-        self._local_addrs = milter_cfg["local_addrs"]
-        self._name = cfg["name"]
+    def __init__(self, cfg, local_addrs):
+        self.logger = cfg.logger
+        self.name = cfg.name
+        self.local_addrs = local_addrs
 
         for arg in ("local", "hosts", "envfrom", "envto", "header", "metavar",
                     "var"):
-            value = cfg["args"][arg] if arg in cfg["args"] else None
+            value = cfg.args[arg] if arg in cfg.args else None
             setattr(self, arg, value)
             if value is None:
                 continue
@@ -96,17 +92,15 @@ class Conditions:
                 except re.error as e:
                     raise RuntimeError(e)
 
-        self.logger = cfg.logger
-
     def match_host(self, host):
         logger = CustomLogger(
-            self.logger, {"name": self._name})
+            self.logger, {"name": self.name})
 
         ip = IPAddress(host)
 
         if self.local is not None:
             is_local = False
-            for addr in self._local_addrs:
+            for addr in self.local_addrs:
                 if ip in addr:
                     is_local = True
                     break
@@ -140,7 +134,7 @@ class Conditions:
 
     def match(self, milter):
         logger = CustomLogger(
-            self.logger, {"qid": milter.qid, "name": self._name})
+            self.logger, {"qid": milter.qid, "name": self.name})
 
         if self.envfrom is not None:
             envfrom = milter.msginfo["mailfrom"]

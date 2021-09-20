@@ -22,46 +22,52 @@ from pymodmilter.conditions import ConditionsConfig, Conditions
 
 
 class RuleConfig(BaseConfig):
-    def __init__(self, idx, milter_cfg, cfg, debug=False):
-        if "name" in cfg:
-            assert isinstance(cfg["name"], str), \
-                f"Rule #{idx}: name: invalid value, should be string"
-        else:
-            cfg["name"] = f"Rule #{idx}"
-
-        if "loglevel" not in cfg:
-            cfg["loglevel"] = milter_cfg["loglevel"]
-
+    def __init__(self, cfg, debug=False):
         super().__init__(cfg, debug)
 
-        self["pretend"] = milter_cfg["pretend"]
-        self["conditions"] = None
-        self["actions"] = []
+        self.conditions = None
+        self.actions = []
 
+        self.pretend = False
         if "pretend" in cfg:
-            pretend = cfg["pretend"]
-            assert isinstance(pretend, bool), \
-                f"{self['name']}: pretend: invalid value, should be bool"
-            self["pretend"] = pretend
+            assert isinstance(cfg["pretend"], bool), \
+                f"{self.name}: pretend: invalid value, should be bool"
+            self.pretend = cfg["pretend"]
 
         assert "actions" in cfg, \
-            f"{self['name']}: mandatory parameter 'actions' not found"
+            f"{self.name}: mandatory parameter 'actions' not found"
         actions = cfg["actions"]
         assert isinstance(actions, list), \
-            f"{self['name']}: actions: invalid value, should be list"
+            f"{self.name}: actions: invalid value, should be list"
 
-        self.logger.debug(f"{self['name']}: pretend={self['pretend']}, "
-                          f"loglevel={self['loglevel']}")
+        self.logger.debug(f"{self.name}: pretend={self.pretend}, "
+                          f"loglevel={self.loglevel}")
 
         if "conditions" in cfg:
-            conditions = cfg["conditions"]
-            assert isinstance(conditions, dict), \
-                f"{self['name']}: conditions: invalid value, should be dict"
-            self["conditions"] = ConditionsConfig(self, conditions, debug)
+            assert isinstance(cfg["conditions"], dict), \
+                f"{self.name}: conditions: invalid value, should be dict"
+            cfg["conditions"]["name"] = f"{self.name}: condition"
+            if "loglevel" not in cfg["conditions"]:
+                cfg["conditions"]["loglevel"] = self.loglevel
+            self.conditions = ConditionsConfig(cfg["conditions"], debug)
+        else:
+            self.conditions = None
 
         for idx, action_cfg in enumerate(cfg["actions"]):
-            self["actions"].append(
-                ActionConfig(idx, self, action_cfg, debug))
+            if "name" in action_cfg:
+                assert isinstance(action_cfg["name"], str), \
+                    f"{self.name}: Action #{idx}: name: invalid value, " \
+                    f"should be string"
+                action_cfg["name"] = f"{self.name}: {action_cfg['name']}"
+            else:
+                action_cfg["name"] = f"{self.name}: Action #{idx}"
+
+            if "loglevel" not in action_cfg:
+                action_cfg["loglevel"] = self.loglevel
+            if "pretend" not in action_cfg:
+                action_cfg["pretend"] = self.pretend
+            self.actions.append(
+                ActionConfig(action_cfg, debug))
 
 
 class Rule:
@@ -69,19 +75,19 @@ class Rule:
     Rule to implement multiple actions on emails.
     """
 
-    def __init__(self, milter_cfg, cfg):
+    def __init__(self, cfg, local_addrs):
         self.logger = cfg.logger
 
-        if cfg["conditions"] is None:
+        if cfg.conditions is None:
             self.conditions = None
         else:
-            self.conditions = Conditions(milter_cfg, cfg["conditions"])
+            self.conditions = Conditions(cfg.conditions, local_addrs)
 
         self.actions = []
-        for action_cfg in cfg["actions"]:
-            self.actions.append(Action(milter_cfg, action_cfg))
+        for action_cfg in cfg.actions:
+            self.actions.append(Action(action_cfg, local_addrs))
 
-        self.pretend = cfg["pretend"]
+        self.pretend = cfg.pretend
 
     def execute(self, milter):
         """Execute all actions of this rule."""

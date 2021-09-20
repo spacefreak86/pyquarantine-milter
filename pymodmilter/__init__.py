@@ -79,17 +79,17 @@ class ModifyMilterConfig(BaseConfig):
                 pretend = cfg["global"]["pretend"]
                 assert isinstance(pretend, bool), \
                     "global: pretend: invalid value, should be bool"
-                self["pretend"] = pretend
+                self.pretend = pretend
             else:
-                self["pretend"] = False
+                self.pretend = False
 
             if "socket" in cfg["global"]:
                 socket = cfg["global"]["socket"]
                 assert isinstance(socket, str), \
                     "global: socket: invalid value, should be string"
-                self["socket"] = socket
+                self.socket = socket
             else:
-                self["socket"] = None
+                self.socket = None
 
             if "local_addrs" in cfg["global"]:
                 local_addrs = cfg["global"]["local_addrs"]
@@ -106,17 +106,17 @@ class ModifyMilterConfig(BaseConfig):
                     "172.16.0.0/12",
                     "192.168.0.0/16"]
 
-            self["local_addrs"] = []
+            self.local_addrs = []
             try:
                 for addr in local_addrs:
-                    self["local_addrs"].append(IPNetwork(addr))
+                    self.local_addrs.append(IPNetwork(addr))
             except AddrFormatError as e:
-                raise ValueError(f"{self['name']}: local_addrs: {e}")
+                raise ValueError(f"{self.name}: local_addrs: {e}")
 
-            self.logger.debug(f"socket={self['socket']}, "
-                              f"local_addrs={self['local_addrs']}, "
-                              f"pretend={self['pretend']}, "
-                              f"loglevel={self['loglevel']}")
+            self.logger.debug(f"socket={self.socket}, "
+                              f"local_addrs={self.local_addrs}, "
+                              f"pretend={self.pretend}, "
+                              f"loglevel={self.loglevel}")
 
         assert "rules" in cfg, \
             "mandatory parameter 'rules' not found"
@@ -124,10 +124,15 @@ class ModifyMilterConfig(BaseConfig):
             "rules: invalid value, should be list"
 
         self.logger.debug("initialize rules config")
-        self["rules"] = []
+        self.rules = []
         for idx, rule_cfg in enumerate(cfg["rules"]):
-            self["rules"].append(
-                RuleConfig(idx, self, rule_cfg, debug))
+            if "name" not in rule_cfg:
+                rule_cfg["name"] = "Rule #{idx}"
+            if "loglevel" not in rule_cfg:
+                rule_cfg["loglevel"] = self.loglevel
+            if "pretend" not in rule_cfg:
+                rule_cfg["pretend"] = self.pretend
+            self.rules.append(RuleConfig(rule_cfg, debug))
 
 
 class ModifyMilter(Milter.Base):
@@ -140,10 +145,10 @@ class ModifyMilter(Milter.Base):
 
     @staticmethod
     def set_config(cfg):
-        ModifyMilter._loglevel = cfg["loglevel"]
-        for rule_cfg in cfg["rules"]:
+        ModifyMilter._loglevel = cfg.loglevel
+        for rule_cfg in cfg.rules:
             ModifyMilter._rules.append(
-                Rule(cfg, rule_cfg))
+                Rule(rule_cfg, cfg.local_addrs))
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)

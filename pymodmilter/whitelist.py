@@ -32,7 +32,11 @@ class WhitelistBase:
         self.valid_entry_regex = re.compile(
             r"^[a-zA-Z0-9_.=+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
         self.batv_regex = re.compile(
-            r"^prvs=[0-9]{4}[0-9A-Fa-f]{6}=")
+            r"^prvs=[0-9]{4}[0-9A-Fa-f]{6}=(?P<LEFT_PART>.+?)@")
+
+    def remove_batv(self, addr):
+        return self.batv_regex.sub("\g<LEFT_PART>", addr, count=1)
+        
 
     def check(self, mailfrom, recipient):
         "Check if mailfrom/recipient combination is whitelisted."
@@ -146,8 +150,8 @@ class DatabaseWhitelist(WhitelistBase):
     def check(self, mailfrom, recipient):
         # check if mailfrom/recipient combination is whitelisted
         super().check(mailfrom, recipient)
-        mailfrom = self.batv_regex.sub("", mailfrom, count=1)
-        recipient = self.batv_regex.sub("", recipient, count=1)
+        mailfrom = self.remove_batv(mailfrom)
+        recipient = self.remove_batv(recipient)
 
         # generate list of possible mailfroms
         self.logger.debug(
@@ -231,8 +235,8 @@ class DatabaseWhitelist(WhitelistBase):
             comment,
             permanent)
 
-        mailfrom = self.batv_regex.sub("", mailfrom, count=1)
-        recipient = self.batv_regex.sub("", recipient, count=1)
+        mailfrom = self.remove_batv(mailfrom)
+        recipient = self.remove_batv(recipient)
 
         try:
             self.model.create(

@@ -4,13 +4,12 @@ def read_file(fname):
     with open(fname, 'r') as f:
         return f.read()
 
-
 setup(name = "pymodmilter",
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",
     license = "GPL 3",
-    keywords = "header milter",
+    keywords = "header quarantine milter",
     url = "https://github.com/spacefreak86/pymodmilter",
     packages = ["pymodmilter"],
     long_description = read_file("README.md"),
@@ -46,6 +45,6 @@ setup(name = "pymodmilter",
             ]
         )
     ],
-    install_requires = ["pymilter", "netaddr", "beautifulsoup4[lxml]"],
-    python_requires = ">=3.6"
+    install_requires = ["pymilter", "netaddr", "beautifulsoup4[lxml]", "peewee"],
+    python_requires = ">=3.8"
 )

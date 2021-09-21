@@ -13,8 +13,8 @@
 #
 
 __all__ = [
-    "WhitelistBase",
-    "DatabaseWhitelist"]
+    "DatabaseWhitelist",
+    "WhitelistBase"]
 
 import logging
 import peewee
@@ -249,28 +249,3 @@ class DatabaseWhitelist(WhitelistBase):
 
         if deleted == 0:
             raise RuntimeError("invalid whitelist id")
-
-
-class WhitelistCache:
-    def __init__(self):
-        self.cache = {}
-
-    def load(self, whitelist, mailfrom, recipients):
-        for recipient in recipients:
-            self.check(whitelist, mailfrom, recipient)
-
-    def check(self, whitelist, mailfrom, recipient):
-        if whitelist not in self.cache.keys():
-            self.cache[whitelist] = {}
-        if recipient not in self.cache[whitelist].keys():
-            self.cache[whitelist][recipient] = None
-        if self.cache[whitelist][recipient] is None:
-            self.cache[whitelist][recipient] = whitelist.check(
-                mailfrom, recipient)
-        return self.cache[whitelist][recipient]
-
-    def get_recipients(self, whitelist, mailfrom, recipients):
-        self.load(whitelist, mailfrom, recipients)
-        return list(filter(
-            lambda x: self.cache[whitelist][x],
-            self.cache[whitelist].keys()))

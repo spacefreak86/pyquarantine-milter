@@ -31,6 +31,8 @@ class WhitelistBase:
         self.logger = logging.getLogger(__name__)
         self.valid_entry_regex = re.compile(
             r"^[a-zA-Z0-9_.=+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
+        self.batv_regex = re.compile(
+            r"^prvs=[0-9]{4}[0-9A-Fa-f]{6}=")
 
     def check(self, mailfrom, recipient):
         "Check if mailfrom/recipient combination is whitelisted."
@@ -144,6 +146,8 @@ class DatabaseWhitelist(WhitelistBase):
     def check(self, mailfrom, recipient):
         # check if mailfrom/recipient combination is whitelisted
         super().check(mailfrom, recipient)
+        mailfrom = self.batv_regex.sub("", mailfrom, count=1)
+        recipient = self.batv_regex.sub("", recipient, count=1)
 
         # generate list of possible mailfroms
         self.logger.debug(
@@ -226,6 +230,9 @@ class DatabaseWhitelist(WhitelistBase):
             recipient,
             comment,
             permanent)
+
+        mailfrom = self.batv_regex.sub("", mailfrom, count=1)
+        recipient = self.batv_regex.sub("", recipient, count=1)
 
         try:
             self.model.create(

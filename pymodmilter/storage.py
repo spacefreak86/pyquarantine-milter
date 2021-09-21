@@ -27,6 +27,7 @@ from glob import glob
 from time import gmtime
 
 from pymodmilter.base import CustomLogger
+from pymodmilter.conditions import Conditions
 
 
 class BaseMailStorage:
@@ -278,8 +279,8 @@ class Quarantine:
     "Quarantine class."
     _headersonly = False
 
-    def __init__(self, storage, notification=None, milter_action=None,
-                 reject_reason="Message rejected"):
+    def __init__(self, storage, notification=None, whitelist=None,
+                 milter_action=None, reject_reason="Message rejected"):
         self.storage = storage.action(**storage.args, metadata=True)
         self.storage_name = storage.name
         self.storage_logger = storage.logger
@@ -289,20 +290,39 @@ class Quarantine:
             self.notification = notification.action(**notification.args)
             self.notification_name = notification.name
             self.notification_logger = notification.logger
+        self.whitelist = Conditions(whitelist)
         self.milter_action = milter_action
         self.reject_reason = reject_reason
 
     def execute(self, milter, pretend=False,
                 logger=logging.getLogger(__name__)):
+        wl_rcpts = []
+        if self.whitelist:
+            wl_rcpts = self.whitelist.get_wl_rcpts(
+                milter.msginfo["mailfrom"], milter.msginfo["rcpts"])
+            logger.info(f"whitelisted recipients: {wl_rcpts}")
+
+        rcpts = [
+            rcpt for rcpt in milter.msginfo["rcpts"] if rcpt not in wl_rcpts]
+
+        if not rcpts:
+            # all recipients whitelisted
+            return
+
+        logger.info(f"add to quarantine for recipients: {rcpts}")
+        milter.msginfo["rcpts"] = rcpts
+
         custom_logger = CustomLogger(
             self.storage_logger, {"name": self.storage_name})
         self.storage.execute(milter, pretend, custom_logger)
+
         if self.notification is not None:
             custom_logger = CustomLogger(
                 self.notification_logger, {"name": self.notification_name})
             self.notification.execute(milter, pretend, custom_logger)
 
-        milter.delrcpt(milter.msginfo["rcpts"].copy())
+        milter.msginfo["rcpts"].extend(wl_rcpts)
+        milter.delrcpt(rcpts)
 
         if self.milter_action is not None:
             return (self.milter_action, self.reject_reason)

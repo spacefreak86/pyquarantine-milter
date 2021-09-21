@@ -22,6 +22,7 @@ __all__ = [
     "rule",
     "run",
     "storage",
+    "whitelist",
     "ModifyMilterConfig",
     "ModifyMilter"]
 

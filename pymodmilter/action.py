@@ -188,6 +188,14 @@ class ActionConfig(BaseConfig):
                 if "reject_reason" in cfg:
                     self.add_string_arg(cfg, "reject_reason")
 
+        if "whitelist" in cfg:
+            wl = {"whitelist": cfg["whitelist"]}
+            wl["name"] = f"{self.name}: whitelist"
+            if "loglevel" not in wl:
+                wl["loglevel"] = self.loglevel
+            self.args["whitelist"] = ConditionsConfig(
+                wl, self.local_addrs, self.debug)
+
 
 class Action:
     """Action to implement a pre-configured action to perform on e-mails."""

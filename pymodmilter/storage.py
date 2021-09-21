@@ -324,5 +324,5 @@ class Quarantine:
         milter.msginfo["rcpts"].extend(wl_rcpts)
         milter.delrcpt(rcpts)
 
-        if self.milter_action is not None:
+        if self.milter_action is not None and not milter.msginfo["rcpts"]:
             return (self.milter_action, self.reject_reason)

@@ -17,7 +17,6 @@ __all__ = ["Action"]
 import logging
 
 from pymodmilter import modify, notify, storage
-from pymodmilter.base import CustomLogger
 from pymodmilter.conditions import Conditions
 
 
@@ -64,8 +63,6 @@ class Action:
 
     def execute(self, milter):
         """Execute configured action."""
-        logger = CustomLogger(
-            self.logger, {"qid": milter.qid, "name": self.cfg["name"]})
         if self.conditions is None or \
                 self.conditions.match(milter):
             return self.action.execute(milter)

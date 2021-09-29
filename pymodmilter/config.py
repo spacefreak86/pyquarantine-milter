@@ -85,6 +85,7 @@ class BaseConfig:
     def get_config(self):
         return self._config
 
+
 class WhitelistConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",

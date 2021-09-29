@@ -26,8 +26,6 @@ class Rule:
     """
     def __init__(self, cfg, local_addrs, debug):
         self.cfg = cfg
-        self.logger = logging.getLogger(cfg["name"])
-        self.logger.setLevel(cfg.get_loglevel(debug))
 
         self.conditions = cfg["conditions"] if "conditions" in cfg else None
         if self.conditions is not None:

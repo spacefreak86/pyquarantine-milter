@@ -45,6 +45,6 @@ setup(name = "pymodmilter",
             ]
         )
     ],
-    install_requires = ["pymilter", "netaddr", "beautifulsoup4[lxml]", "peewee"],
+    install_requires = ["pymilter", "jsonschema", "netaddr", "beautifulsoup4[lxml]", "peewee"],
     python_requires = ">=3.8"
 )

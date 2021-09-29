@@ -16,13 +16,17 @@ __all__ = ["main"]
 
 import Milter
 import argparse
+import json
 import logging
 import logging.handlers
+import os
+import re
 import sys
 
 from pymodmilter import mailer
-from pymodmilter import ModifyMilterConfig, ModifyMilter
+from pymodmilter import ModifyMilter
 from pymodmilter import __version__ as version
+from pymodmilter.config import MilterConfig
 
 
 def main():
@@ -80,36 +84,52 @@ def main():
         logger.setLevel(logging.INFO)
 
     try:
-        logger.debug("prepare milter configuration")
-        cfg = ModifyMilterConfig(args.config, args.debug)
+        logger.debug("read milter configuration")
+
+        try:
+            with open(args.config, "r") as fh:
+                # remove lines with leading # (comments), they
+                # are not allowed in json
+                cfg = re.sub(r"(?m)^\s*#.*\n?", "", fh.read())
+        except IOError as e:
+            raise RuntimeError(f"unable to open/read config file: {e}")
+
+        try:
+            cfg = json.loads(cfg)
+        except json.JSONDecodeError as e:
+            cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
+            msg = "\n".join(cfg_text)
+            raise RuntimeError(f"{e}\n{msg}")
+
+        cfg = MilterConfig(cfg)
 
         if not args.debug:
-            logger.setLevel(cfg.loglevel)
+            logger.setLevel(cfg.get_loglevel(args.debug))
 
         if args.socket:
             socket = args.socket
-        elif cfg.socket:
-            socket = cfg.socket
+        elif cfg["socket"]:
+            socket = cfg["socket"]
         else:
             raise RuntimeError(
                 "listening socket is neither specified on the command line "
                 "nor in the configuration file")
 
-        if not cfg.rules:
+        if not cfg["rules"]:
             raise RuntimeError("no rules configured")
 
-        for rule_cfg in cfg.rules:
-            if not rule_cfg.actions:
+        for rule in cfg["rules"]:
+            if not rule["actions"]:
                 raise RuntimeError(
-                    f"{rule_cfg.name}: no actions configured")
+                    f"{rule['name']}: no actions configured")
 
     except (RuntimeError, AssertionError) as e:
-        logger.error(e)
+        logger.error(f"error in config file: {e}")
         sys.exit(255)
 
     try:
-        ModifyMilter.set_config(cfg)
-    except (RuntimeError, ValueError) as e:
+        ModifyMilter.set_config(cfg, args.debug)
+    except RuntimeError as e:
         logger.error(e)
         sys.exit(254)
 
@@ -147,6 +167,7 @@ def main():
 
     mailer.queue.put(None)
     logger.info("pymodmilter stopped")
+
     sys.exit(rc)
 
 

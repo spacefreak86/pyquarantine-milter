@@ -28,24 +28,26 @@ from time import gmtime
 
 from pymodmilter.base import CustomLogger
 from pymodmilter.conditions import Conditions
+from pymodmilter.config import ActionConfig
+from pymodmilter.notify import Notify
 
 
 class BaseMailStorage:
     "Mail storage base class"
     _headersonly = True
 
-    def __init__(self, original=False, metadata=False, metavar=None):
+    def __init__(self, original=False, metadata=False, metavar=None,
+                 pretend=False):
         self.original = original
         self.metadata = metadata
         self.metavar = metavar
-        return
+        self.pretend = False
 
     def add(self, data, qid, mailfrom="", recipients=[]):
         "Add email to storage."
         return ("", "")
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+    def execute(self, milter, logger):
         return
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
@@ -69,9 +71,9 @@ class FileMailStorage(BaseMailStorage):
     "Storage class to store mails on filesystem."
     _headersonly = False
 
-    def __init__(self, directory, original=False, metadata=False,
-                 metavar=None):
-        super().__init__(original, metadata, metavar)
+    def __init__(self, directory, original=False, metadata=False, metavar=None,
+                 pretend=False):
+        super().__init__(original, metadata, metavar, pretend)
         # check if directory exists and is writable
         if not os.path.isdir(directory) or \
                 not os.access(directory, os.W_OK):
@@ -80,6 +82,15 @@ class FileMailStorage(BaseMailStorage):
                 f"not writable")
         self.directory = directory
         self._metadata_suffix = ".metadata"
+
+    def __str__(self):
+        cfg = []
+        cfg.append(f"metadata={self.metadata}")
+        cfg.append(f"metavar={self.metavar}")
+        cfg.append(f"pretend={self.pretend}")
+        cfg.append(f"directory={self.directory}")
+        cfg.append(f"original={self.original}")
+        return "FileMailStorage(" + ", ".join(cfg) + ")"
 
     def get_storageid(self, qid):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -144,8 +155,7 @@ class FileMailStorage(BaseMailStorage):
 
         return storage_id, metafile, datafile
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+    def execute(self, milter, logger):
         if self.original:
             milter.fp.seek(0)
             data = milter.fp.read
@@ -158,7 +168,7 @@ class FileMailStorage(BaseMailStorage):
             recipients = list(milter.msginfo["rcpts"])
             subject = milter.msg["subject"] or ""
 
-        if not pretend:
+        if not self.pretend:
             storage_id, metafile, datafile = self.add(
                 data(), milter.qid, mailfrom, recipients, subject)
             logger.info(f"stored message in file {datafile}")
@@ -174,7 +184,7 @@ class FileMailStorage(BaseMailStorage):
 
     def get_metadata(self, storage_id):
         "Return metadata of email in storage."
-        super(FileMailStorage, self).get_metadata(storage_id)
+        super().get_metadata(storage_id)
 
         if not self.metadata:
             return None
@@ -197,7 +207,7 @@ class FileMailStorage(BaseMailStorage):
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
         "Find emails in storage."
-        super(FileMailStorage, self).find(mailfrom, recipients, older_than)
+        super().find(mailfrom, recipients, older_than)
         if isinstance(mailfrom, str):
             mailfrom = [mailfrom]
         if isinstance(recipients, str):
@@ -238,7 +248,7 @@ class FileMailStorage(BaseMailStorage):
 
     def delete(self, storage_id, recipients=None):
         "Delete email from storage."
-        super(FileMailStorage, self).delete(storage_id, recipients)
+        super().delete(storage_id, recipients)
 
         if not recipients or not self.metadata:
             self._remove(storage_id)
@@ -264,7 +274,7 @@ class FileMailStorage(BaseMailStorage):
                 self._save_metafile(metafile, metadata)
 
     def get_mail(self, storage_id):
-        super(FileMailStorage, self).get_mail(storage_id)
+        super().get_mail(storage_id)
 
         metadata = self.get_metadata(storage_id)
         _, datafile = self._get_file_paths(storage_id)
@@ -275,31 +285,101 @@ class FileMailStorage(BaseMailStorage):
         return (metadata, data)
 
 
+class Store:
+    STORAGE_TYPES = {
+        "file": FileMailStorage}
+
+    def __init__(self, cfg, local_addrs, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
+
+        storage_type = cfg["args"]["type"]
+        del cfg["args"]["type"]
+        cfg["args"]["pretend"] = cfg["pretend"]
+        self._storage = self.STORAGE_TYPES[storage_type](
+            **cfg["args"])
+        self._headersonly = self._storage._headersonly
+
+    def __str__(self):
+        cfg = []
+        for key, value in self.cfg["args"].items():
+            cfg.append(f"{key}={value}")
+        class_name = type(self._storage).__name__
+        return f"{class_name}(" + ", ".join(cfg) + ")"
+
+    def execute(self, milter):
+        logger = CustomLogger(
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+        self._storage.execute(milter, logger)
+
+
 class Quarantine:
     "Quarantine class."
     _headersonly = False
 
-    def __init__(self, storage, notification=None, whitelist=None,
-                 milter_action=None, reject_reason="Message rejected"):
-        self.storage = storage.action(**storage.args, metadata=True)
-        self.storage_name = storage.name
-        self.storage_logger = storage.logger
+    def __init__(self, cfg, local_addrs, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
 
-        self.notification = notification
-        if self.notification is not None:
-            self.notification = notification.action(**notification.args)
-            self.notification_name = notification.name
-            self.notification_logger = notification.logger
-        self.whitelist = Conditions(whitelist)
-        self.milter_action = milter_action
-        self.reject_reason = reject_reason
+        store_cfg = ActionConfig({
+            "name": cfg["name"],
+            "loglevel": cfg["loglevel"],
+            "pretend": cfg["pretend"],
+            "type": "store",
+            "args": cfg["args"]["store"].get_config()})
+        self.store = Store(store_cfg, local_addrs, debug)
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+        self.notify = None
+        if "notify" in cfg["args"]:
+            notify_cfg = ActionConfig({
+                "name": cfg["name"],
+                "loglevel": cfg["loglevel"],
+                "pretend": cfg["pretend"],
+                "type": "notify",
+                "args": cfg["args"]["notify"].get_config()})
+            self.notify = Notify(notify_cfg, local_addrs, debug)
+
+        self.whitelist = None
+        if "whitelist" in cfg["args"]:
+            whitelist_cfg = cfg["args"]["whitelist"]
+            whitelist_cfg["name"] = cfg["name"]
+            whitelist_cfg["loglevel"] = cfg["loglevel"]
+            self.whitelist = Conditions(
+                whitelist_cfg,
+                local_addrs=[],
+                debug=debug)
+
+        self.milter_action = None
+        if "milter_action" in cfg["args"]:
+            self.milter_action = cfg["args"]["milter_action"]
+        self.reject_reason = None
+        if "reject_reason" in cfg["args"]:
+            self.reject_reason = cfg["args"]["reject_reason"]
+
+    def __str__(self):
+        cfg = []
+        cfg.append(f"store={str(self.store)}")
+        if self.notify is not None:
+            cfg.append(f"notify={str(self.notify)}")
+        if self.whitelist is not None:
+            cfg.append(f"whitelist={str(self.whitelist)}")
+        for key in ["milter_action", "reject_reason"]:
+            if key not in self.cfg["args"]:
+                continue
+            value = self.cfg["args"][key]
+            cfg.append(f"{key}={value}")
+        class_name = type(self).__name__
+        return f"{class_name}(" + ", ".join(cfg) + ")"
+
+    def execute(self, milter):
+        logger = CustomLogger(
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
         wl_rcpts = []
         if self.whitelist:
             wl_rcpts = self.whitelist.get_wl_rcpts(
-                milter.msginfo["mailfrom"], milter.msginfo["rcpts"])
+                milter.msginfo["mailfrom"], milter.msginfo["rcpts"], logger)
             logger.info(f"whitelisted recipients: {wl_rcpts}")
 
         rcpts = [
@@ -312,14 +392,10 @@ class Quarantine:
         logger.info(f"add to quarantine for recipients: {rcpts}")
         milter.msginfo["rcpts"] = rcpts
 
-        custom_logger = CustomLogger(
-            self.storage_logger, {"name": self.storage_name})
-        self.storage.execute(milter, pretend, custom_logger)
+        self.store.execute(milter)
 
-        if self.notification is not None:
-            custom_logger = CustomLogger(
-                self.notification_logger, {"name": self.notification_name})
-            self.notification.execute(milter, pretend, custom_logger)
+        if self.notify is not None:
+            self.notify.execute(milter)
 
         milter.msginfo["rcpts"].extend(wl_rcpts)
         milter.delrcpt(rcpts)

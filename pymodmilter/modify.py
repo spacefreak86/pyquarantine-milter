@@ -30,18 +30,19 @@ from email.message import MIMEPart
 from email.policy import SMTPUTF8
 
 from pymodmilter import replace_illegal_chars
+from pymodmilter.base import CustomLogger
 
 
 class AddHeader:
     """Add a mail header field."""
     _headersonly = True
 
-    def __init__(self, field, value):
+    def __init__(self, field, value, pretend=False):
         self.field = field
         self.value = value
+        self.pretend = pretend
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+    def execute(self, milter, logger):
         header = f"{self.field}: {self.value}"
         if logger.getEffectiveLevel() == logging.DEBUG:
             logger.debug(f"add_header: {header}")
@@ -49,8 +50,7 @@ class AddHeader:
             logger.info(f"add_header: {header[0:70]}")
 
         milter.msg.add_header(self.field, self.value)
-
-        if not pretend:
+        if not self.pretend:
             milter.addheader(self.field, self.value)
 
 
@@ -58,21 +58,21 @@ class ModHeader:
     """Change the value of a mail header field."""
     _headersonly = True
 
-    def __init__(self, field, value, search=None):
-        self.value = value
-
+    def __init__(self, field, value, search=None, pretend=False):
         try:
             self.field = re.compile(field, re.IGNORECASE)
-            if search is not None:
+            self.search = search
+            if self.search is not None:
                 self.search = re.compile(
-                    search, re.MULTILINE + re.DOTALL + re.IGNORECASE)
-            else:
-                self.search = search
+                    self.search, re.MULTILINE + re.DOTALL + re.IGNORECASE)
+
         except re.error as e:
             raise RuntimeError(e)
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+        self.value = value
+        self.pretend = pretend
+
+    def execute(self, milter, logger):
         idx = defaultdict(int)
 
         for i, (field, value) in enumerate(milter.msg.items()):
@@ -103,12 +103,13 @@ class ModHeader:
             if logger.getEffectiveLevel() == logging.DEBUG:
                 logger.debug(f"mod_header: {header}: {new_header}")
             else:
-                logger.info(f"mod_header: {header[0:70]}: {new_header[0:70]}")
+                logger.info(
+                    f"mod_header: {header[0:70]}: {new_header[0:70]}")
 
             milter.msg.replace_header(
                 field, replace_illegal_chars(new_value), idx=idx[field_lower])
 
-            if not pretend:
+            if not self.pretend:
                 milter.chgheader(field, new_value, idx=idx[field_lower])
 
 
@@ -116,19 +117,19 @@ class DelHeader:
     """Delete a mail header field."""
     _headersonly = True
 
-    def __init__(self, field, value=None):
+    def __init__(self, field, value=None, pretend=False):
         try:
             self.field = re.compile(field, re.IGNORECASE)
-            if value is not None:
+            self.value = value
+            if self.value is not None:
                 self.value = re.compile(
                     value, re.MULTILINE + re.DOTALL + re.IGNORECASE)
-            else:
-                self.value = value
         except re.error as e:
             raise RuntimeError(e)
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+        self.pretend = pretend
+
+    def execute(self, milter, logger):
         idx = defaultdict(int)
 
         for field, value in milter.msg.items():
@@ -148,7 +149,7 @@ class DelHeader:
                 logger.info(f"del_header: {header[0:70]}")
             milter.msg.remove_header(field, idx=idx[field_lower])
 
-            if not pretend:
+            if not self.pretend:
                 milter.chgheader(field, "", idx=idx[field_lower])
 
             idx[field_lower] -= 1
@@ -220,7 +221,10 @@ class AddDisclaimer:
     """Append or prepend a disclaimer to the mail body."""
     _headersonly = False
 
-    def __init__(self, text_template, html_template, action, error_policy):
+    def __init__(self, text_template, html_template, action, error_policy,
+                 pretend=False):
+        self.text_template_path = text_template
+        self.html_template_path = html_template
         try:
             with open(text_template, "r") as f:
                 self.text_template = f.read()
@@ -230,11 +234,11 @@ class AddDisclaimer:
 
         except IOError as e:
             raise RuntimeError(e)
-
         body = html.find('body')
         self.html_template = body or html
         self.action = action
         self.error_policy = error_policy
+        self.pretend = pretend
 
     def patch_message_body(self, milter, logger):
         text_body, text_content = _get_body_content(milter.msg, "plain")
@@ -277,8 +281,7 @@ class AddDisclaimer:
             html_body.set_param("charset", "UTF-8", header="Content-Type")
             del html_body["MIME-Version"]
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+    def execute(self, milter, logger):
         old_headers = milter.msg.items()
 
         try:
@@ -313,7 +316,7 @@ class AddDisclaimer:
                     "unable to wrap message in a new message envelope, "
                     "give up ...")
 
-        if not pretend:
+        if not self.pretend:
             milter.update_headers(old_headers)
             milter.replacebody()
 
@@ -322,11 +325,11 @@ class RewriteLinks:
     """Rewrite link targets in the mail html body."""
     _headersonly = False
 
-    def __init__(self, repl):
+    def __init__(self, repl, pretend=False):
         self.repl = repl
+        self.pretend = pretend
 
-    def execute(self, milter, pretend=False,
-                logger=logging.getLogger(__name__)):
+    def execute(self, milter, logger):
         html_body, html_content = _get_body_content(milter.msg, "html")
         if html_content is not None:
             soup = BeautifulSoup(html_content, "html.parser")
@@ -353,5 +356,35 @@ class RewriteLinks:
                 html_body.set_param("charset", "UTF-8", header="Content-Type")
                 del html_body["MIME-Version"]
 
-                if not pretend:
+                if not self.pretend:
                     milter.replacebody()
+
+
+class Modify:
+    MODIFICATION_TYPES = {
+        "add_header": AddHeader,
+        "mod_header": ModHeader,
+        "del_header": DelHeader,
+        "add_disclaimer": AddDisclaimer,
+        "rewrite_links": RewriteLinks}
+
+    def __init__(self, cfg, local_addrs, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
+        cfg["args"]["pretend"] = cfg["pretend"]
+        self._modification = self.MODIFICATION_TYPES[cfg["type"]](
+            **cfg["args"])
+        self._headersonly = self._modification._headersonly
+
+    def __str__(self):
+        cfg = []
+        for key, value in self.cfg["args"].items():
+            cfg.append(f"{key}={value}")
+        class_name = type(self._modification).__name__
+        return f"{class_name}(" + ", ".join(cfg) + ")"
+
+    def execute(self, milter):
+        logger = CustomLogger(
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+        self._modification.execute(milter, logger)

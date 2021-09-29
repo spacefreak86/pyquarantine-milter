@@ -12,127 +12,77 @@
 # along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-__all__ = [
-    "ConditionsConfig",
-    "Conditions"]
+__all__ = ["Conditions"]
 
+import logging
 import re
 
 from netaddr import IPAddress, IPNetwork, AddrFormatError
-from pymodmilter import BaseConfig, CustomLogger
+from pymodmilter import CustomLogger
 from pymodmilter.whitelist import DatabaseWhitelist
-
-
-class ConditionsConfig(BaseConfig):
-    def __init__(self, cfg, local_addrs, debug):
-        super().__init__(cfg, debug)
-
-        self.local_addrs = local_addrs
-
-        if "local" in cfg:
-            self.add_bool_arg(cfg, "local")
-
-        if "hosts" in cfg:
-            assert isinstance(cfg["hosts"], list) and all(
-                [isinstance(host, str) for host in cfg["hosts"]]), \
-                f"{self.name}: hosts: invalid value, " \
-                f"should be list of strings"
-
-            self.args["hosts"] = cfg["hosts"]
-
-        for arg in ("envfrom", "envto"):
-            if arg in cfg:
-                self.add_string_arg(cfg, arg)
-
-        if "header" in cfg:
-            self.add_string_arg(cfg, "header")
-
-        if "var" in cfg:
-            self.add_string_arg(cfg, "var")
-
-        if "metavar" in cfg:
-            self.add_string_arg(cfg, "metavar")
-
-        if "whitelist" in cfg:
-            assert isinstance(cfg["whitelist"], dict), \
-                f"{self.name}: whitelist: invalid value, " \
-                f"should be dict"
-            whitelist = cfg["whitelist"]
-            assert "type" in whitelist, \
-                f"{self.name}: whitelist: mandatory parameter 'type' not found"
-            assert isinstance(whitelist["type"], str), \
-                f"{self.name}: whitelist: type: invalid value, " \
-                f"should be string"
-            self.args["whitelist"] = {
-                "type": whitelist["type"],
-                "name": f"{self.name}: whitelist"}
-            if whitelist["type"] == "db":
-                for arg in ["connection", "table"]:
-                    assert arg in whitelist, \
-                        f"{self.name}: whitelist: mandatory parameter " \
-                        f"'{arg}' not found"
-                    assert isinstance(whitelist[arg], str), \
-                        f"{self.name}: whitelist: {arg}: invalid value, " \
-                        f"should be string"
-                    self.args["whitelist"][arg] = whitelist[arg]
-
-            else:
-                raise RuntimeError(
-                    f"{self.name}: whitelist: type: invalid type")
-
-        self.logger.debug(f"{self.name}: "
-                          f"loglevel={self.loglevel}, "
-                          f"args={self.args}")
 
 
 class Conditions:
     """Conditions to implement conditions for rules and actions."""
 
-    def __init__(self, cfg):
-        self.logger = cfg.logger
-        self.name = cfg.name
-        self.local_addrs = cfg.local_addrs
+    def __init__(self, cfg, local_addrs, debug):
+        self.cfg = cfg
+        self.local_addrs = local_addrs
+
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
 
         for arg in ("local", "hosts", "envfrom", "envto", "header", "metavar",
                     "var"):
-            value = cfg.args[arg] if arg in cfg.args else None
-            setattr(self, arg, value)
-            if value is None:
+            if arg not in cfg:
+                setattr(self, arg, None)
                 continue
-            elif arg == "hosts":
+
+            if arg == "hosts":
                 try:
-                    hosts = []
-                    for host in self.hosts:
-                        hosts.append(IPNetwork(host))
+                    self.hosts = []
+                    for host in cfg["hosts"]:
+                        self.hosts.append(IPNetwork(host))
                 except AddrFormatError as e:
                     raise RuntimeError(e)
-
-                self.hosts = hosts
             elif arg in ("envfrom", "envto"):
                 try:
                     setattr(self, arg, re.compile(
-                        getattr(self, arg), re.IGNORECASE))
+                        cfg[arg], re.IGNORECASE))
                 except re.error as e:
                     raise RuntimeError(e)
-
             elif arg == "header":
                 try:
                     self.header = re.compile(
-                        self.header, re.IGNORECASE + re.DOTALL + re.MULTILINE)
+                        cfg["header"],
+                        re.IGNORECASE + re.DOTALL + re.MULTILINE)
                 except re.error as e:
                     raise RuntimeError(e)
-
-        if "whitelist" in cfg.args:
-            wl_cfg = cfg.args["whitelist"]
-            if wl_cfg["type"] == "db":
-                self.whitelist = DatabaseWhitelist(wl_cfg)
             else:
-                raise RuntimeError("invalid storage type")
+                setattr(self, arg, cfg[arg])
+
+        self.whitelist = cfg["whitelist"] if "whitelist" in cfg else None
+        if self.whitelist is not None:
+            self.whitelist["name"] = f"{cfg['name']}: whitelist"
+            self.whitelist["loglevel"] = cfg["loglevel"]
+            if self.whitelist["type"] == "db":
+                self.whitelist = DatabaseWhitelist(self.whitelist, debug)
+            else:
+                raise RuntimeError("invalid whitelist type")
+
+    def __str__(self):
+        cfg = []
+        for arg in ("local", "hosts", "envfrom", "envto", "header",
+                    "var", "metavar"):
+            if arg in self.cfg:
+                cfg.append(f"{arg}={self.cfg[arg]}")
+        if self.whitelist is not None:
+            cfg.append(f"whitelist={self.whitelist}")
+        return "Conditions(" + ", ".join(cfg) + ")"
 
     def match_host(self, host):
         logger = CustomLogger(
-            self.logger, {"name": self.name})
-
+            self.logger, {"name": self.cfg["name"]})
         ip = IPAddress(host)
 
         if self.local is not None:
@@ -145,11 +95,11 @@ class Conditions:
             if is_local != self.local:
                 logger.debug(
                     f"ignore host {host}, "
-                    f"condition local does not match")
+                    f"local does not match")
                 return False
 
             logger.debug(
-                f"condition local matches for host {host}")
+                f"local matches for host {host}")
 
         if self.hosts is not None:
             found = False
@@ -161,39 +111,39 @@ class Conditions:
             if not found:
                 logger.debug(
                     f"ignore host {host}, "
-                    f"condition hosts does not match")
+                    f"hosts does not match")
                 return False
 
             logger.debug(
-                f"condition hosts matches for host {host}")
+                f"hosts matches for host {host}")
 
         return True
 
-    def get_wl_rcpts(self, mailfrom, rcpts):
+    def get_wl_rcpts(self, mailfrom, rcpts, logger):
         if not self.whitelist:
             return {}
 
         wl_rcpts = []
         for rcpt in rcpts:
-            if self.whitelist.check(mailfrom, rcpt):
+            if self.whitelist.check(mailfrom, rcpt, logger):
                 wl_rcpts.append(rcpt)
 
         return wl_rcpts
 
     def match(self, milter):
         logger = CustomLogger(
-            self.logger, {"qid": milter.qid, "name": self.name})
+            self.logger, {"qid": milter.qid, "name": self.cfg["name"]})
 
         if self.envfrom is not None:
             envfrom = milter.msginfo["mailfrom"]
             if not self.envfrom.match(envfrom):
                 logger.debug(
                     f"ignore envelope-from address {envfrom}, "
-                    f"condition envfrom does not match")
+                    f"envfrom does not match")
                 return False
 
             logger.debug(
-                f"condition envfrom matches for "
+                f"envfrom matches for "
                 f"envelope-from address {envfrom}")
 
         if self.envto is not None:
@@ -205,11 +155,11 @@ class Conditions:
                 if not self.envto.match(to):
                     logger.debug(
                         f"ignore envelope-to address {envto}, "
-                        f"condition envto does not match")
+                        f"envto does not match")
                     return False
 
             logger.debug(
-                f"condition envto matches for "
+                f"envto matches for "
                 f"envelope-to address {envto}")
 
         if self.header is not None:
@@ -219,7 +169,7 @@ class Conditions:
                 match = self.header.search(header)
                 if match:
                     logger.debug(
-                        f"condition header matches for "
+                        f"header matches for "
                         f"header: {header}")
                     if self.metavar is not None:
                         named_subgroups = match.groupdict(default=None)
@@ -233,7 +183,7 @@ class Conditions:
             if not match:
                 logger.debug(
                     "ignore message, "
-                    "condition header does not match")
+                    "header does not match")
                 return False
 
         if self.var is not None:

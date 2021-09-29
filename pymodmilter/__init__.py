@@ -32,8 +32,6 @@ from pymodmilter import _runtime_patches
 
 import Milter
 import logging
-import re
-import json
 
 from Milter.utils import parse_addr
 from collections import defaultdict
@@ -45,95 +43,9 @@ from email.policy import SMTPUTF8
 from io import BytesIO
 from netaddr import IPNetwork, AddrFormatError
 
-from pymodmilter.base import CustomLogger, BaseConfig, MilterMessage
+from pymodmilter.base import CustomLogger, MilterMessage
 from pymodmilter.base import replace_illegal_chars
-from pymodmilter.rule import RuleConfig, Rule
-
-
-class ModifyMilterConfig(BaseConfig):
-    def __init__(self, cfgfile, debug=False):
-        try:
-            with open(cfgfile, "r") as fh:
-                # remove lines with leading # (comments), they
-                # are not allowed in json
-                cfg = re.sub(r"(?m)^\s*#.*\n?", "", fh.read())
-        except IOError as e:
-            raise RuntimeError(f"unable to open/read config file: {e}")
-
-        try:
-            cfg = json.loads(cfg)
-        except json.JSONDecodeError as e:
-            cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
-            msg = "\n".join(cfg_text)
-            raise RuntimeError(f"{e}\n{msg}")
-
-        if "global" in cfg:
-            assert isinstance(cfg["global"], dict), \
-                "global: invalid type, should be dict"
-
-            cfg["global"]["name"] = "global"
-            super().__init__(cfg["global"], debug)
-
-            self.logger.debug("initialize config")
-
-            if "pretend" in cfg["global"]:
-                pretend = cfg["global"]["pretend"]
-                assert isinstance(pretend, bool), \
-                    "global: pretend: invalid value, should be bool"
-                self.pretend = pretend
-            else:
-                self.pretend = False
-
-            if "socket" in cfg["global"]:
-                socket = cfg["global"]["socket"]
-                assert isinstance(socket, str), \
-                    "global: socket: invalid value, should be string"
-                self.socket = socket
-            else:
-                self.socket = None
-
-            if "local_addrs" in cfg["global"]:
-                local_addrs = cfg["global"]["local_addrs"]
-                assert isinstance(local_addrs, list) and all(
-                    [isinstance(addr, str) for addr in local_addrs]), \
-                    "global: local_addrs: invalid value, " \
-                    "should be list of strings"
-            else:
-                local_addrs = [
-                    "fe80::/64",
-                    "::1/128",
-                    "127.0.0.0/8",
-                    "10.0.0.0/8",
-                    "172.16.0.0/12",
-                    "192.168.0.0/16"]
-
-            self.local_addrs = []
-            try:
-                for addr in local_addrs:
-                    self.local_addrs.append(IPNetwork(addr))
-            except AddrFormatError as e:
-                raise ValueError(f"{self.name}: local_addrs: {e}")
-
-            self.logger.debug(f"socket={self.socket}, "
-                              f"local_addrs={self.local_addrs}, "
-                              f"pretend={self.pretend}, "
-                              f"loglevel={self.loglevel}")
-
-        assert "rules" in cfg, \
-            "mandatory parameter 'rules' not found"
-        assert isinstance(cfg["rules"], list), \
-            "rules: invalid value, should be list"
-
-        self.logger.debug("initialize rules config")
-        self.rules = []
-        for idx, rule_cfg in enumerate(cfg["rules"]):
-            if "name" not in rule_cfg:
-                rule_cfg["name"] = "Rule #{idx}"
-            if "loglevel" not in rule_cfg:
-                rule_cfg["loglevel"] = self.loglevel
-            if "pretend" not in rule_cfg:
-                rule_cfg["pretend"] = self.pretend
-            self.rules.append(RuleConfig(rule_cfg, self.local_addrs, debug))
+from pymodmilter.rule import Rule
 
 
 class ModifyMilter(Milter.Base):
@@ -145,11 +57,29 @@ class ModifyMilter(Milter.Base):
                     if issubclass(v, AddressHeader)]
 
     @staticmethod
-    def set_config(cfg):
-        ModifyMilter._loglevel = cfg.loglevel
-        for rule_cfg in cfg.rules:
-            ModifyMilter._rules.append(
-                Rule(rule_cfg))
+    def set_config(cfg, debug):
+        ModifyMilter._loglevel = cfg.get_loglevel(debug)
+
+        try:
+            local_addrs = []
+            for addr in cfg["local_addrs"]:
+                local_addrs.append(IPNetwork(addr))
+        except AddrFormatError as e:
+            raise RuntimeError(e)
+
+        logger = logging.getLogger(__name__)
+        logger.setLevel(ModifyMilter._loglevel)
+        for idx, rule_cfg in enumerate(cfg["rules"]):
+            if "name" not in rule_cfg:
+                rule_cfg["name"] = f"rule#{idx}"
+            if "loglevel" not in rule_cfg:
+                rule_cfg["loglevel"] = cfg["loglevel"]
+            if "pretend" not in rule_cfg:
+                rule_cfg["pretend"] = cfg["pretend"]
+            rule = Rule(rule_cfg, local_addrs, debug)
+
+            logger.debug(rule)
+            ModifyMilter._rules.append(rule)
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)

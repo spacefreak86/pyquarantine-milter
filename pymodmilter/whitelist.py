@@ -26,17 +26,21 @@ from playhouse.db_url import connect
 
 class WhitelistBase:
     "Whitelist base class"
-    def __init__(self, cfg):
-        self.name = cfg["name"]
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, cfg, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
+
+        peewee_logger = logging.getLogger("peewee")
+        peewee_logger.setLevel(cfg.get_loglevel(debug))
+
         self.valid_entry_regex = re.compile(
             r"^[a-zA-Z0-9_.=+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
         self.batv_regex = re.compile(
             r"^prvs=[0-9]{4}[0-9A-Fa-f]{6}=(?P<LEFT_PART>.+?)@")
 
     def remove_batv(self, addr):
-        return self.batv_regex.sub("\g<LEFT_PART>", addr, count=1)
-        
+        return self.batv_regex.sub(r"\g<LEFT_PART>", addr, count=1)
 
     def check(self, mailfrom, recipient):
         "Check if mailfrom/recipient combination is whitelisted."
@@ -82,8 +86,8 @@ class DatabaseWhitelist(WhitelistBase):
     _db_connections = {}
     _db_tables = {}
 
-    def __init__(self, cfg):
-        super().__init__(cfg)
+    def __init__(self, cfg, debug):
+        super().__init__(cfg, debug)
 
         tablename = cfg["table"]
         connection_string = cfg["connection"]
@@ -110,9 +114,10 @@ class DatabaseWhitelist(WhitelistBase):
         self.meta = Meta
         self.meta.database = db
         self.meta.table_name = tablename
-        self.model = type(f"WhitelistModel_{self.name}", (WhitelistModel,), {
-            "Meta": self.meta
-        })
+        self.model = type(
+            f"WhitelistModel_{self.cfg['name']}",
+            (WhitelistModel,),
+            {"Meta": self.meta})
 
         if connection_string not in DatabaseWhitelist._db_tables.keys():
             DatabaseWhitelist._db_tables[connection_string] = []
@@ -124,6 +129,13 @@ class DatabaseWhitelist(WhitelistBase):
             except Exception as e:
                 raise RuntimeError(
                     f"unable to initialize table '{tablename}': {e}")
+
+    def __str__(self):
+        cfg = []
+        for arg in ("connection", "table"):
+            if arg in self.cfg:
+                cfg.append(f"{arg}={self.cfg[arg]}")
+        return "DatabaseWhitelist(" + ", ".join(cfg) + ")"
 
     def _entry_to_dict(self, entry):
         result = {}
@@ -147,14 +159,14 @@ class DatabaseWhitelist(WhitelistBase):
                 value += 1
         return value
 
-    def check(self, mailfrom, recipient):
+    def check(self, mailfrom, recipient, logger):
         # check if mailfrom/recipient combination is whitelisted
         super().check(mailfrom, recipient)
         mailfrom = self.remove_batv(mailfrom)
         recipient = self.remove_batv(recipient)
 
         # generate list of possible mailfroms
-        self.logger.debug(
+        logger.debug(
             f"query database for whitelist entries from <{mailfrom}> "
             f"to <{recipient}>")
         mailfroms = [""]

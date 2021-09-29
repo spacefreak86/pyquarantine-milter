@@ -29,6 +29,7 @@ from html import escape
 from os.path import basename
 from urllib.parse import quote
 
+from pymodmilter.base import CustomLogger
 from pymodmilter import mailer
 
 
@@ -36,11 +37,10 @@ class BaseNotification:
     "Notification base class"
     _headersonly = True
 
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        return
+    def __init__(self, pretend=False):
+        self.pretend = pretend
 
-    def execute(self, milter, pretend=False, logger=None):
+    def execute(self, milter, logger):
         return
 
 
@@ -112,9 +112,8 @@ class EMailNotification(BaseNotification):
 
     def __init__(self, smtp_host, smtp_port, envelope_from, from_header,
                  subject, template, embed_imgs=[], repl_img=None,
-                 strip_imgs=False, parser_lib="lxml"):
-        super().__init__()
-
+                 strip_imgs=False, parser_lib="lxml", pretend=False):
+        super().__init__(pretend)
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
         self.mailfrom = envelope_from
@@ -143,11 +142,8 @@ class EMailNotification(BaseNotification):
 
         self.parser_lib = parser_lib
 
-    def get_email_body_soup(self, msg, logger=None):
+    def get_email_body_soup(self, msg, logger):
         "Extract and decode email body and return it as BeautifulSoup object."
-        if logger is None:
-            logger = self.logger
-
         # try to find the body part
         logger.debug("trying to find email body")
         try:
@@ -193,11 +189,8 @@ class EMailNotification(BaseNotification):
 
         return soup
 
-    def sanitize(self, soup, logger=None):
+    def sanitize(self, soup, logger):
         "Sanitize mail html text."
-        if logger is None:
-            logger = self.logger
-
         logger.debug("sanitizing email text")
 
         # completly remove bad elements
@@ -230,13 +223,9 @@ class EMailNotification(BaseNotification):
                         del(element.attrs[attribute])
         return soup
 
-    def notify(self, msg, qid, mailfrom, recipients,
-               template_vars=defaultdict(str), synchronous=False,
-               logger=None):
+    def notify(self, msg, qid, mailfrom, recipients, logger,
+               template_vars=defaultdict(str), synchronous=False):
         "Notify recipients via email."
-        if logger is None:
-            logger = self.logger
-
         # extract body from email
         soup = self.get_email_body_soup(msg, logger)
 
@@ -262,7 +251,8 @@ class EMailNotification(BaseNotification):
 
         # sending email notifications
         for recipient in recipients:
-            logger.debug(f"generating notification email for '{recipient}'")
+            logger.debug(
+                f"generating notification email for '{recipient}'")
             logger.debug("parsing email template")
 
             # generate dict containing all template variables
@@ -313,15 +303,40 @@ class EMailNotification(BaseNotification):
                                 self.mailfrom, recipient, newmsg.as_string(),
                                 "notification email")
 
-    def execute(self, milter, pretend=False,
-                logger=None):
-        super().execute(milter, pretend, logger)
-
-        if logger is None:
-            logger = self.logger
+    def execute(self, milter, logger):
+        super().execute(milter, logger)
 
         self.notify(msg=milter.msg, qid=milter.qid,
                     mailfrom=milter.msginfo["mailfrom"],
                     recipients=milter.msginfo["rcpts"],
                     template_vars=milter.msginfo["vars"],
                     logger=logger)
+
+
+class Notify:
+    NOTIFICATION_TYPES = {
+        "email": EMailNotification}
+
+    def __init__(self, cfg, local_addrs, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
+
+        nodification_type = cfg["args"]["type"]
+        del cfg["args"]["type"]
+        cfg["args"]["pretend"] = cfg["pretend"]
+        self._notification = self.NOTIFICATION_TYPES[nodification_type](
+            **cfg["args"])
+        self._headersonly = self._notification._headersonly
+
+    def __str__(self):
+        cfg = []
+        for key, value in self.cfg["args"].items():
+            cfg.append(f"{key}={value}")
+        class_name = type(self._notification).__name__
+        return f"{class_name}(" + ", ".join(cfg) + ")"
+
+    def execute(self, milter):
+        logger = CustomLogger(
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+        self._notification.execute(milter, logger)

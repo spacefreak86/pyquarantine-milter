@@ -29,7 +29,7 @@ setup(name = "pyquarantine",
     entry_points = {
         "console_scripts": [
             "pyquarantine-milter=pyquarantine.run:main",
-            "pyquarantine=pyquarantine.run:main",
+            "pyquarantine=pyquarantine.cli:main",
         ]
     },
     data_files = [

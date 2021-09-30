@@ -128,7 +128,7 @@ def main():
         logging.Formatter("pyquarantine: %(message)s"))
     root_logger.addHandler(sysloghandler)
 
-    logger.info("pyquarantine-milter starting")
+    logger.info("milter starting")
 
     # register milter factory class
     Milter.factory = ModifyMilter
@@ -145,7 +145,7 @@ def main():
         rc = 255
 
     mailer.queue.put(None)
-    logger.info("pyquarantine-milter stopped")
+    logger.info("milter stopped")
 
     sys.exit(rc)
 

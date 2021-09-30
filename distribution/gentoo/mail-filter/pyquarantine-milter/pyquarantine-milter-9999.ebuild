@@ -9,6 +9,7 @@ SCM=""
 if [ "${PV#9999}" != "${PV}" ] ; then
 	SCM="git-r3"
 	EGIT_REPO_URI="https://github.com/spacefreak86/${PN}"
+	EGIT_BRANCH="master"
 fi
 
 inherit ${SCM} distutils-r1 systemd
@@ -28,7 +29,7 @@ fi
 
 LICENSE="GPL-3"
 SLOT="0"
-IUSE="lxml systemd"
+IUSE="+lxml systemd"
 
 RDEPEND="
 	dev-python/beautifulsoup[${PYTHON_USEDEP}]
@@ -41,12 +42,12 @@ RDEPEND="
 python_install_all() {
 	distutils-r1_python_install_all
 
-	dodir /etc/${PN}
-	insinto /etc/${PN}
-	doins pyquarantine/docs/pyquarantine.conf.example
-	doins -r pyquarantine/docs/templates
+	dodir /etc/pyquarantine
+	insinto /etc/pyquarantine
+	doins pyquarantine/misc/pyquarantine.conf.example
+	doins -r pyquarantine/misc/templates
 
-	use systemd && systemd_dounit ${PN}/misc/${PN}-milter.service
-	newinitd ${PN}/misc/openrc/${PN}-milter.initd ${PN}-milter
-	newconfd ${PN}/misc/openrc/${PN}-milter.confd ${PN}-milter
+	use systemd && systemd_dounit pyquarantine/misc/${PN}.service
+	newinitd pyquarantine/misc/openrc/${PN}.initd ${PN}
+	newconfd pyquarantine/misc/openrc/${PN}.confd ${PN}
 }

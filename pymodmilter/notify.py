@@ -14,7 +14,8 @@
 
 __all__ = [
     "BaseNotification",
-    "EMailNotification"]
+    "EMailNotification",
+    "Notify"]
 
 import email
 import logging
@@ -256,7 +257,6 @@ class EMailNotification(BaseNotification):
             logger.debug("parsing email template")
 
             # generate dict containing all template variables
-
             variables = defaultdict(str, template_vars)
             variables.update({
                 "HTML_TEXT": sanitized_text,

@@ -14,8 +14,6 @@
 
 __all__ = ["Action"]
 
-import logging
-
 from pymodmilter import modify, notify, storage
 from pymodmilter.conditions import Conditions
 

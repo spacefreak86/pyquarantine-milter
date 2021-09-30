@@ -14,8 +14,6 @@
 
 __all__ = ["Rule"]
 
-import logging
-
 from pymodmilter.action import Action
 from pymodmilter.conditions import Conditions
 

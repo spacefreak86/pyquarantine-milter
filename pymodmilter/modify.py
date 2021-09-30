@@ -17,7 +17,8 @@ __all__ = [
     "ModHeader",
     "DelHeader",
     "AddDisclaimer",
-    "RewriteLinks"]
+    "RewriteLinks",
+    "Modify"]
 
 import logging
 import re

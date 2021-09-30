@@ -15,6 +15,7 @@
 __all__ = [
     "BaseMailStorage",
     "FileMailStorage",
+    "Store",
     "Quarantine"]
 
 import json

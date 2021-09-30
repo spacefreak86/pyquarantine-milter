@@ -26,10 +26,13 @@ __all__ = [
     "QuarantineConfig",
     "ActionConfig",
     "RuleConfig",
-    "MilterConfig"]
+    "MilterConfig",
+    "get_milter_config"]
 
+import json
 import jsonschema
 import logging
+import re
 
 
 class BaseConfig:
@@ -330,3 +333,22 @@ class MilterConfig(BaseConfig):
             for idx, rule in enumerate(self["rules"]):
                 rules.append(RuleConfig(rule, rec))
             self["rules"] = rules
+
+
+def get_milter_config(cfgfile):
+    try:
+        with open(cfgfile, "r") as fh:
+            # remove lines with leading # (comments), they
+            # are not allowed in json
+            cfg = re.sub(r"(?m)^\s*#.*\n?", "", fh.read())
+    except IOError as e:
+        raise RuntimeError(f"unable to open/read config file: {e}")
+
+    try:
+        cfg = json.loads(cfg)
+    except json.JSONDecodeError as e:
+        cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
+        msg = "\n".join(cfg_text)
+        raise RuntimeError(f"{e}\n{msg}")
+
+    return MilterConfig(cfg)

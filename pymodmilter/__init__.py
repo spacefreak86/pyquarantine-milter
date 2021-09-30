@@ -15,7 +15,9 @@
 __all__ = [
     "action",
     "base",
+    "cli",
     "conditions",
+    "config",
     "mailer",
     "modify",
     "notify",
@@ -23,7 +25,6 @@ __all__ = [
     "run",
     "storage",
     "whitelist",
-    "ModifyMilterConfig",
     "ModifyMilter"]
 
 __version__ = "1.2.0"

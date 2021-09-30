@@ -16,16 +16,14 @@ __all__ = ["main"]
 
 import Milter
 import argparse
-import json
 import logging
 import logging.handlers
-import re
 import sys
 
 from pymodmilter import mailer
 from pymodmilter import ModifyMilter
 from pymodmilter import __version__ as version
-from pymodmilter.config import MilterConfig
+from pymodmilter.config import get_milter_config
 
 
 def main():
@@ -84,30 +82,12 @@ def main():
 
     try:
         logger.debug("read milter configuration")
-
-        try:
-            with open(args.config, "r") as fh:
-                # remove lines with leading # (comments), they
-                # are not allowed in json
-                cfg = re.sub(r"(?m)^\s*#.*\n?", "", fh.read())
-        except IOError as e:
-            raise RuntimeError(f"unable to open/read config file: {e}")
-
-        try:
-            cfg = json.loads(cfg)
-        except json.JSONDecodeError as e:
-            cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
-            msg = "\n".join(cfg_text)
-            raise RuntimeError(f"{e}\n{msg}")
-
-        cfg = MilterConfig(cfg)
-
-        if not args.debug:
-            logger.setLevel(cfg.get_loglevel(args.debug))
+        cfg = get_milter_config(args.config)
+        logger.setLevel(cfg.get_loglevel(args.debug))
 
         if args.socket:
             socket = args.socket
-        elif cfg["socket"]:
+        elif "socket" in cfg:
             socket = cfg["socket"]
         else:
             raise RuntimeError(
@@ -123,7 +103,7 @@ def main():
                     f"{rule['name']}: no actions configured")
 
     except (RuntimeError, AssertionError) as e:
-        logger.error(f"error in config file: {e}")
+        logger.error(f"config error: {e}")
         sys.exit(255)
 
     try:

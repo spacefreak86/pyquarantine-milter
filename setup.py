@@ -36,15 +36,15 @@ setup(name = "pyquarantine",
         (
             "/etc/pyquarantine",
             [
-                "pyquarantine/docs/pyquarantine.conf.example"
+                "pyquarantine/misc/pyquarantine.conf.example"
             ]
         ), (
             "/etc/pyquarantine/templates",
             [
-                "pyquarantine/docs/templates/disclaimer_html.template",
-                "pyquarantine/docs/templates/disclaimer_text.template",
-                "pyquarantine/docs/templates/notification.template",
-                "pyquarantine/docs/templates/removed.png"
+                "pyquarantine/misc/templates/disclaimer_html.template",
+                "pyquarantine/misc/templates/disclaimer_text.template",
+                "pyquarantine/misc/templates/notification.template",
+                "pyquarantine/misc/templates/removed.png"
             ]
         )
     ],

@@ -1,0 +1,14 @@
+[Unit]
+Description=pyquarantine-milter
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/conf.d/pyquarantine-milter
+ExecStart=/usr/bin/pyquarantine-milter $MILTER_OPTS
+User=mail
+Group=mail
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

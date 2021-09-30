@@ -1,16 +1,15 @@
 #!/sbin/openrc-run
 
 user=${USER:-daemon}
-socket="${SOCKET:-}"
 milter_opts="${MILTER_OPTS:-}"
 
 pidfile="/run/${RC_SVCNAME}.pid"
 command="/usr/bin/pyquarantine-milter"
-command_args="-s ${socket} ${milter_opts}"
+command_args="${milter_opts}"
 command_background=true
-start_stop_daemon_args="--user ${user}"
-
+command_user="${user}"
 extra_commands="configtest"
+start_stop_daemon_args="--wait 500"
 
 depend() {
 	need net
@@ -18,9 +17,6 @@ depend() {
 }
 
 checkconfig() {
-	if [ -z "${socket}" ]; then
-		eerror "No socket specified in config!"
-	fi
 	OUTPUT=$( ${command} ${command_args} -t 2>&1 )
 	ret=$?
 	if [ $ret -ne 0 ]; then
@@ -44,7 +40,7 @@ start_pre() {
 }
 
 stop_pre() {
-	if [ "${RC_CMD}" != "restart" ]; then
+	if [ "${RC_CMD}" == "restart" ]; then
 		checkconfig || return $?
 	fi
 }

@@ -1,16 +1,20 @@
-# PyQuarantine-Milter is free software: you can redistribute it and/or modify
+# pyquarantine is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyQuarantine-Milter is distributed in the hope that it will be useful,
+# pyquarantine is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with PyQuarantineMilter.  If not, see <http://www.gnu.org/licenses/>.
+# along with pyquarantine.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+__all__ = [
+    "DatabaseWhitelist",
+    "WhitelistBase"]
 
 import logging
 import peewee
@@ -20,17 +24,23 @@ from datetime import datetime
 from playhouse.db_url import connect
 
 
-class WhitelistBase(object):
+class WhitelistBase:
     "Whitelist base class"
+    def __init__(self, cfg, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
 
-    whitelist_type = "base"
+        peewee_logger = logging.getLogger("peewee")
+        peewee_logger.setLevel(cfg.get_loglevel(debug))
 
-    def __init__(self, name, global_cfg, cfg, test=False):
-        self.name = name
-        self.test = test
-        self.logger = logging.getLogger(__name__)
         self.valid_entry_regex = re.compile(
             r"^[a-zA-Z0-9_.=+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
+        self.batv_regex = re.compile(
+            r"^prvs=[0-9]{4}[0-9A-Fa-f]{6}=(?P<LEFT_PART>.+?)@")
+
+    def remove_batv(self, addr):
+        return self.batv_regex.sub(r"\g<LEFT_PART>", addr, count=1)
 
     def check(self, mailfrom, recipient):
         "Check if mailfrom/recipient combination is whitelisted."
@@ -63,7 +73,7 @@ class WhitelistModel(peewee.Model):
     permanent = peewee.BooleanField(default=False)
 
 
-class Meta(object):
+class Meta:
     indexes = (
         # trailing comma is mandatory if only one index should be created
         (('mailfrom', 'recipient'), True),
@@ -76,32 +86,11 @@ class DatabaseWhitelist(WhitelistBase):
     _db_connections = {}
     _db_tables = {}
 
-    def __init__(self, name, global_cfg, cfg, test=False):
-        super(
-            DatabaseWhitelist,
-            self).__init__(
-            global_cfg,
-            cfg,
-            test)
+    def __init__(self, cfg, debug):
+        super().__init__(cfg, debug)
 
-        defaults = {}
-
-        # check config
-        for opt in ["whitelist_db_connection",
-                    "whitelist_db_table"] + list(defaults.keys()):
-            if opt in cfg:
-                continue
-            if opt in global_cfg:
-                cfg[opt] = global_cfg[opt]
-            elif opt in defaults:
-                cfg[opt] = defaults[opt]
-            else:
-                raise RuntimeError(
-                    f"mandatory option '{opt}' not present in config "
-                    f"section '{self.name}' or 'global'")
-
-        tablename = cfg["whitelist_db_table"]
-        connection_string = cfg["whitelist_db_connection"]
+        tablename = cfg["table"]
+        connection_string = cfg["connection"]
 
         if connection_string in DatabaseWhitelist._db_connections.keys():
             db = DatabaseWhitelist._db_connections[connection_string]
@@ -125,21 +114,28 @@ class DatabaseWhitelist(WhitelistBase):
         self.meta = Meta
         self.meta.database = db
         self.meta.table_name = tablename
-        self.model = type(f"WhitelistModel_{self.name}", (WhitelistModel,), {
-            "Meta": self.meta
-        })
+        self.model = type(
+            f"WhitelistModel_{self.cfg['name']}",
+            (WhitelistModel,),
+            {"Meta": self.meta})
 
         if connection_string not in DatabaseWhitelist._db_tables.keys():
             DatabaseWhitelist._db_tables[connection_string] = []
 
         if tablename not in DatabaseWhitelist._db_tables[connection_string]:
             DatabaseWhitelist._db_tables[connection_string].append(tablename)
-            if not self.test:
-                try:
-                    db.create_tables([self.model])
-                except Exception as e:
-                    raise RuntimeError(
-                        f"unable to initialize table '{tablename}': {e}")
+            try:
+                db.create_tables([self.model])
+            except Exception as e:
+                raise RuntimeError(
+                    f"unable to initialize table '{tablename}': {e}")
+
+    def __str__(self):
+        cfg = []
+        for arg in ("connection", "table"):
+            if arg in self.cfg:
+                cfg.append(f"{arg}={self.cfg[arg]}")
+        return "DatabaseWhitelist(" + ", ".join(cfg) + ")"
 
     def _entry_to_dict(self, entry):
         result = {}
@@ -163,12 +159,14 @@ class DatabaseWhitelist(WhitelistBase):
                 value += 1
         return value
 
-    def check(self, mailfrom, recipient):
+    def check(self, mailfrom, recipient, logger):
         # check if mailfrom/recipient combination is whitelisted
-        super(DatabaseWhitelist, self).check(mailfrom, recipient)
+        super().check(mailfrom, recipient)
+        mailfrom = self.remove_batv(mailfrom)
+        recipient = self.remove_batv(recipient)
 
         # generate list of possible mailfroms
-        self.logger.debug(
+        logger.debug(
             f"query database for whitelist entries from <{mailfrom}> "
             f"to <{recipient}>")
         mailfroms = [""]
@@ -212,7 +210,7 @@ class DatabaseWhitelist(WhitelistBase):
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
         "Find whitelist entries."
-        super(DatabaseWhitelist, self).find(mailfrom, recipients, older_than)
+        super().find(mailfrom, recipients, older_than)
 
         if isinstance(mailfrom, str):
             mailfrom = [mailfrom]
@@ -243,13 +241,14 @@ class DatabaseWhitelist(WhitelistBase):
 
     def add(self, mailfrom, recipient, comment, permanent):
         "Add entry to whitelist."
-        super(
-            DatabaseWhitelist,
-            self).add(
+        super().add(
             mailfrom,
             recipient,
             comment,
             permanent)
+
+        mailfrom = self.remove_batv(mailfrom)
+        recipient = self.remove_batv(recipient)
 
         try:
             self.model.create(
@@ -262,7 +261,7 @@ class DatabaseWhitelist(WhitelistBase):
 
     def delete(self, whitelist_id):
         "Delete entry from whitelist."
-        super(DatabaseWhitelist, self).delete(whitelist_id)
+        super().delete(whitelist_id)
 
         try:
             query = self.model.delete().where(self.model.id == whitelist_id)
@@ -273,32 +272,3 @@ class DatabaseWhitelist(WhitelistBase):
 
         if deleted == 0:
             raise RuntimeError("invalid whitelist id")
-
-
-class WhitelistCache(object):
-    def __init__(self):
-        self.cache = {}
-
-    def load(self, whitelist, mailfrom, recipients):
-        for recipient in recipients:
-            self.check(whitelist, mailfrom, recipient)
-
-    def check(self, whitelist, mailfrom, recipient):
-        if whitelist not in self.cache.keys():
-            self.cache[whitelist] = {}
-        if recipient not in self.cache[whitelist].keys():
-            self.cache[whitelist][recipient] = None
-        if self.cache[whitelist][recipient] is None:
-            self.cache[whitelist][recipient] = whitelist.check(
-                mailfrom, recipient)
-        return self.cache[whitelist][recipient]
-
-    def get_recipients(self, whitelist, mailfrom, recipients):
-        self.load(whitelist, mailfrom, recipients)
-        return list(filter(
-            lambda x: self.cache[whitelist][x],
-            self.cache[whitelist].keys()))
-
-
-# list of whitelist types and their related whitelist classes
-TYPES = {"db": DatabaseWhitelist}

@@ -20,7 +20,7 @@ import logging.handlers
 import sys
 import time
 
-from pyquarantine import QuarantineMilter, setup_milter
+from pyquarantine.config import get_milter_config
 from pyquarantine import __version__ as version
 
 
@@ -304,6 +304,9 @@ class StdOutFilter(logging.Filter):
 
 
 def main():
+    python_version = ".".join([str(v) for v in sys.version_info[0:3]])
+    python_version = f"{python_version}-{sys.version_info[3]}"
+
     "PyQuarantine command-line interface."
     # parse command line
     def formatter_class(prog): return argparse.HelpFormatter(
@@ -312,10 +315,8 @@ def main():
         description="PyQuarantine CLI",
         formatter_class=formatter_class)
     parser.add_argument(
-        "-c", "--config",
-        help="Config files to read.",
-        nargs="+", metavar="CFG",
-        default=QuarantineMilter.get_cfg_files())
+        "-c", "--config", help="Config file to read.",
+        default="/etc/pyquarantine/pyquarantine.conf")
     parser.add_argument(
         "-d", "--debug",
         help="Log debugging messages.",
@@ -324,7 +325,7 @@ def main():
         "-v", "--version",
         help="Print version.",
         action="version",
-        version=f"%(prog)s ({version})")
+        version=f"%(prog)s {version} (python {python_version})")
     parser.set_defaults(syslog=False)
     subparsers = parser.add_subparsers(
         dest="command",
@@ -578,13 +579,28 @@ def main():
     root_logger.addHandler(stderrhandler)
     logger = logging.getLogger(__name__)
 
-    # try to generate milter configs
     try:
-        setup_milter(
-            cfg_files=args.config, test=True)
-    except RuntimeError as e:
-        logger.error(e)
+        logger.debug("read milter configuration")
+        cfg = get_milter_config(args.config)
+        if not cfg["rules"]:
+            raise RuntimeError("no rules configured")
+
+        for rule in cfg["rules"]:
+            if not rule["actions"]:
+                raise RuntimeError(
+                    f"{rule['name']}: no actions configured")
+    except (RuntimeError, AssertionError) as e:
+        logger.error(f"config error: {e}")
         sys.exit(255)
+
+    quarantines = []
+    for rule in cfg["rules"]:
+        for action in rule["actions"]:
+            if action["type"] == "quarantine":
+                quarantines.append(action)
+
+    print(quarantines)
+    sys.exit(0)
 
     if args.syslog:
         # setup syslog
@@ -602,7 +618,7 @@ def main():
 
     # call the commands function
     try:
-        args.func(QuarantineMilter.quarantines, args)
+        args.func(cfg, args)
     except RuntimeError as e:
         logger.error(e)
         sys.exit(1)

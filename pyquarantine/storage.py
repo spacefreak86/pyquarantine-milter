@@ -1,16 +1,22 @@
-# PyQuarantine-Milter is free software: you can redistribute it and/or modify
+# pyquarantine is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyQuarantine-Milter is distributed in the hope that it will be useful,
+# pyquarantine is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with PyQuarantineMilter.  If not, see <http://www.gnu.org/licenses/>.
+# along with pyquarantine.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+__all__ = [
+    "BaseMailStorage",
+    "FileMailStorage",
+    "Store",
+    "Quarantine"]
 
 import json
 import logging
@@ -19,23 +25,31 @@ import os
 from calendar import timegm
 from datetime import datetime
 from glob import glob
-from shutil import copyfileobj
 from time import gmtime
 
+from pyquarantine.base import CustomLogger
+from pyquarantine.conditions import Conditions
+from pyquarantine.config import ActionConfig
+from pyquarantine.notify import Notify
 
-class BaseMailStorage(object):
+
+class BaseMailStorage:
     "Mail storage base class"
-    storage_type = "base"
+    _headersonly = True
 
-    def __init__(self, name, global_cfg, cfg, test=False):
-        self.name = name
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, original=False, metadata=False, metavar=None,
+                 pretend=False):
+        self.original = original
+        self.metadata = metadata
+        self.metavar = metavar
+        self.pretend = False
 
-    def add(self, qid, mailfrom, recipients, headers,
-            fp, subgroups=None, named_subgroups=None):
+    def add(self, data, qid, mailfrom="", recipients=[]):
         "Add email to storage."
-        fp.seek(0)
-        return ""
+        return ("", "")
+
+    def execute(self, milter, logger):
+        return
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
         "Find emails in storage."
@@ -50,116 +64,158 @@ class BaseMailStorage(object):
         return
 
     def get_mail(self, storage_id):
-        "Return a file pointer to the email and metadata."
+        "Return email and metadata."
         return
 
 
 class FileMailStorage(BaseMailStorage):
     "Storage class to store mails on filesystem."
-    storage_type = "file"
+    _headersonly = False
 
-    def __init__(self, name, global_cfg, cfg, test=False):
-        super(FileMailStorage, self).__init__(name, global_cfg, cfg, test)
-
-        defaults = {}
-        # check config
-
-        for opt in ["storage_directory"] + list(defaults.keys()):
-            if opt in cfg:
-                continue
-            if opt in global_cfg:
-                cfg[opt] = global_cfg[opt]
-            elif opt in defaults:
-                cfg[opt] = defaults[opt]
-            else:
-                raise RuntimeError(
-                    f"mandatory option '{opt}' not present in config "
-                    f"section '{self.name}' or 'global'")
-        self.directory = cfg["storage_directory"]
-
-        # check if quarantine directory exists and is writable
-        if not os.path.isdir(self.directory) or not os.access(
-                self.directory, os.W_OK):
+    def __init__(self, directory, original=False, metadata=False, metavar=None,
+                 mode=None, pretend=False):
+        super().__init__(original, metadata, metavar, pretend)
+        # check if directory exists and is writable
+        if not os.path.isdir(directory) or \
+                not os.access(directory, os.W_OK):
             raise RuntimeError(
-                f"file quarantine directory '{self.directory}' does "
-                f"not exist or is not writable")
+                f"directory '{directory}' does not exist or is "
+                f"not writable")
+        self.directory = directory
+        try:
+            self.mode = int(mode, 8) if mode is not None else None
+            if self.mode is not None and self.mode > 511:
+                raise ValueError
+        except ValueError:
+            raise RuntimeError(f"invalid mode '{mode}'")
+
         self._metadata_suffix = ".metadata"
 
-    def _save_datafile(self, storage_id, fp):
+    def __str__(self):
+        cfg = []
+        cfg.append(f"metadata={self.metadata}")
+        cfg.append(f"metavar={self.metavar}")
+        cfg.append(f"pretend={self.pretend}")
+        cfg.append(f"directory={self.directory}")
+        cfg.append(f"original={self.original}")
+        return "FileMailStorage(" + ", ".join(cfg) + ")"
+
+    def get_storageid(self, qid):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        return f"{timestamp}_{qid}"
+
+    def _get_file_paths(self, storage_id):
         datafile = os.path.join(self.directory, storage_id)
+        metafile = f"{datafile}{self._metadata_suffix}"
+        return metafile, datafile
+
+    def _save_datafile(self, datafile, data):
         try:
-            with open(datafile, "wb") as f:
-                copyfileobj(fp, f)
+            if self.mode is None:
+                with open(datafile, "wb") as f:
+                    f.write(data)
+            else:
+                umask = os.umask(0)
+                with open(
+                        os.open(datafile, os.O_CREAT | os.O_WRONLY, self.mode),
+                        "wb") as f:
+                    f.write(data)
+                os.umask(umask)
+
         except IOError as e:
             raise RuntimeError(f"unable save data file: {e}")
 
-    def _save_metafile(self, storage_id, metadata):
-        metafile = os.path.join(
-            self.directory, f"{storage_id}{self._metadata_suffix}")
+    def _save_metafile(self, metafile, metadata):
         try:
-            with open(metafile, "w") as f:
-                json.dump(metadata, f, indent=2)
+            if self.mode is None:
+                with open(metafile, "w") as f:
+                    json.dump(metadata, f, indent=2)
+            else:
+                umask = os.umask(0)
+                with open(
+                        os.open(metafile, os.O_CREAT | os.O_WRONLY, self.mode),
+                        "w") as f:
+                    json.dump(metadata, f, indent=2)
+                os.umask(umask)
+
         except IOError as e:
             raise RuntimeError(f"unable to save metadata file: {e}")
 
     def _remove(self, storage_id):
-        datafile = os.path.join(self.directory, storage_id)
-        metafile = f"{datafile}{self._metadata_suffix}"
+        metafile, datafile = self._get_file_paths(storage_id)
 
         try:
-            os.remove(metafile)
-        except IOError as e:
-            raise RuntimeError(f"unable to remove metadata file: {e}")
+            if self.metadata:
+                os.remove(metafile)
 
-        try:
             os.remove(datafile)
         except IOError as e:
-            raise RuntimeError(f"unable to remove data file: {e}")
+            raise RuntimeError(f"unable to remove file: {e}")
 
-    def add(self, qid, mailfrom, recipients, headers,
-            fp, subgroups=None, named_subgroups=None):
+    def add(self, data, qid, mailfrom="", recipients=[], subject=""):
         "Add email to file storage and return storage id."
-        super(
-            FileMailStorage,
-            self).add(
-            qid,
-            mailfrom,
-            recipients,
-            headers,
-            fp,
-            subgroups,
-            named_subgroups)
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        storage_id = f"{timestamp}_{qid}"
+        super().add(data, qid, mailfrom, recipients)
+
+        storage_id = self.get_storageid(qid)
+        metafile, datafile = self._get_file_paths(storage_id)
 
         # save mail
-        self._save_datafile(storage_id, fp)
+        self._save_datafile(datafile, data)
+
+        if not self.metadata:
+            return storage_id, None, datafile
 
         # save metadata
         metadata = {
             "mailfrom": mailfrom,
             "recipients": recipients,
-            "headers": headers,
-            "date": timegm(gmtime()),
-            "queue_id": qid,
-            "subgroups": subgroups,
-            "named_subgroups": named_subgroups
-        }
+            "subject": subject,
+            "timestamp": timegm(gmtime()),
+            "queue_id": qid}
+
         try:
-            self._save_metafile(storage_id, metadata)
+            self._save_metafile(metafile, metadata)
         except RuntimeError as e:
-            datafile = os.path.join(self.directory, storage_id)
             os.remove(datafile)
             raise e
 
-        return storage_id
+        return storage_id, metafile, datafile
+
+    def execute(self, milter, logger):
+        if self.original:
+            milter.fp.seek(0)
+            data = milter.fp.read
+            mailfrom = milter.mailfrom
+            recipients = list(milter.rcpts)
+            subject = ""
+        else:
+            data = milter.msg.as_bytes
+            mailfrom = milter.msginfo["mailfrom"]
+            recipients = list(milter.msginfo["rcpts"])
+            subject = milter.msg["subject"] or ""
+
+        if not self.pretend:
+            storage_id, metafile, datafile = self.add(
+                data(), milter.qid, mailfrom, recipients, subject)
+            logger.info(f"stored message in file {datafile}")
+        else:
+            storage_id = self.get_storageid(milter.qid)
+            metafile, datafile = self._get_file_paths(storage_id)
+
+        if self.metavar:
+            milter.msginfo["vars"][f"{self.metavar}_ID"] = storage_id
+            milter.msginfo["vars"][f"{self.metavar}_DATAFILE"] = datafile
+            if self.metadata:
+                milter.msginfo["vars"][f"{self.metavar}_METAFILE"] = metafile
 
     def get_metadata(self, storage_id):
         "Return metadata of email in storage."
-        super(FileMailStorage, self).get_metadata(storage_id)
+        super().get_metadata(storage_id)
 
-        metafile = os.path.join(
-            self.directory, f"{storage_id}{self._metadata_suffix}")
+        if not self.metadata:
+            return None
+
+        metafile, _ = self._get_file_paths(storage_id)
         if not os.path.isfile(metafile):
             raise RuntimeError(
                 f"invalid storage id '{storage_id}'")
@@ -177,11 +233,14 @@ class FileMailStorage(BaseMailStorage):
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
         "Find emails in storage."
-        super(FileMailStorage, self).find(mailfrom, recipients, older_than)
+        super().find(mailfrom, recipients, older_than)
         if isinstance(mailfrom, str):
             mailfrom = [mailfrom]
         if isinstance(recipients, str):
             recipients = [recipients]
+
+        if not self.metadata:
+            return {}
 
         emails = {}
         metafiles = glob(os.path.join(
@@ -215,38 +274,158 @@ class FileMailStorage(BaseMailStorage):
 
     def delete(self, storage_id, recipients=None):
         "Delete email from storage."
-        super(FileMailStorage, self).delete(storage_id, recipients)
+        super().delete(storage_id, recipients)
+
+        if not recipients or not self.metadata:
+            self._remove(storage_id)
+            return
 
         try:
             metadata = self.get_metadata(storage_id)
         except RuntimeError as e:
             raise RuntimeError(f"unable to delete email: {e}")
 
-        if not recipients:
-            self._remove(storage_id)
-        else:
-            if type(recipients) == str:
-                recipients = [recipients]
-            for recipient in recipients:
-                if recipient not in metadata["recipients"]:
-                    raise RuntimeError(f"invalid recipient '{recipient}'")
-                metadata["recipients"].remove(recipient)
-                if not metadata["recipients"]:
-                    self._remove(storage_id)
-                else:
-                    self._save_metafile(storage_id, metadata)
+        metafile, _ = self._get_file_paths(storage_id)
+
+        if type(recipients) == str:
+            recipients = [recipients]
+
+        for recipient in recipients:
+            if recipient not in metadata["recipients"]:
+                raise RuntimeError(f"invalid recipient '{recipient}'")
+            metadata["recipients"].remove(recipient)
+            if not metadata["recipients"]:
+                self._remove(storage_id)
+            else:
+                self._save_metafile(metafile, metadata)
 
     def get_mail(self, storage_id):
-        super(FileMailStorage, self).get_mail(storage_id)
+        super().get_mail(storage_id)
 
         metadata = self.get_metadata(storage_id)
-        datafile = os.path.join(self.directory, storage_id)
+        _, datafile = self._get_file_paths(storage_id)
         try:
-            fp = open(datafile, "rb")
+            data = open(datafile, "rb").read()
         except IOError as e:
             raise RuntimeError(f"unable to open email data file: {e}")
-        return (fp, metadata)
+        return (metadata, data)
 
 
-# list of storage types and their related storage classes
-TYPES = {"file": FileMailStorage}
+class Store:
+    STORAGE_TYPES = {
+        "file": FileMailStorage}
+
+    def __init__(self, cfg, local_addrs, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
+
+        storage_type = cfg["args"]["type"]
+        del cfg["args"]["type"]
+        cfg["args"]["pretend"] = cfg["pretend"]
+        self._storage = self.STORAGE_TYPES[storage_type](
+            **cfg["args"])
+        self._headersonly = self._storage._headersonly
+
+    def __str__(self):
+        cfg = []
+        for key, value in self.cfg["args"].items():
+            cfg.append(f"{key}={value}")
+        class_name = type(self._storage).__name__
+        return f"{class_name}(" + ", ".join(cfg) + ")"
+
+    def execute(self, milter):
+        logger = CustomLogger(
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+        self._storage.execute(milter, logger)
+
+
+class Quarantine:
+    "Quarantine class."
+    _headersonly = False
+
+    def __init__(self, cfg, local_addrs, debug):
+        self.cfg = cfg
+        self.logger = logging.getLogger(cfg["name"])
+        self.logger.setLevel(cfg.get_loglevel(debug))
+
+        store_cfg = ActionConfig({
+            "name": cfg["name"],
+            "loglevel": cfg["loglevel"],
+            "pretend": cfg["pretend"],
+            "type": "store",
+            "args": cfg["args"]["store"].get_config()})
+        store_cfg["args"]["metadata"] = True
+        self.store = Store(store_cfg, local_addrs, debug)
+
+        self.notify = None
+        if "notify" in cfg["args"]:
+            notify_cfg = ActionConfig({
+                "name": cfg["name"],
+                "loglevel": cfg["loglevel"],
+                "pretend": cfg["pretend"],
+                "type": "notify",
+                "args": cfg["args"]["notify"].get_config()})
+            self.notify = Notify(notify_cfg, local_addrs, debug)
+
+        self.whitelist = None
+        if "whitelist" in cfg["args"]:
+            whitelist_cfg = cfg["args"]["whitelist"]
+            whitelist_cfg["name"] = cfg["name"]
+            whitelist_cfg["loglevel"] = cfg["loglevel"]
+            self.whitelist = Conditions(
+                whitelist_cfg,
+                local_addrs=[],
+                debug=debug)
+
+        self.milter_action = None
+        if "milter_action" in cfg["args"]:
+            self.milter_action = cfg["args"]["milter_action"]
+        self.reject_reason = None
+        if "reject_reason" in cfg["args"]:
+            self.reject_reason = cfg["args"]["reject_reason"]
+
+    def __str__(self):
+        cfg = []
+        cfg.append(f"store={str(self.store)}")
+        if self.notify is not None:
+            cfg.append(f"notify={str(self.notify)}")
+        if self.whitelist is not None:
+            cfg.append(f"whitelist={str(self.whitelist)}")
+        for key in ["milter_action", "reject_reason"]:
+            if key not in self.cfg["args"]:
+                continue
+            value = self.cfg["args"][key]
+            cfg.append(f"{key}={value}")
+        class_name = type(self).__name__
+        return f"{class_name}(" + ", ".join(cfg) + ")"
+
+    def execute(self, milter):
+        logger = CustomLogger(
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+        wl_rcpts = []
+        if self.whitelist:
+            wl_rcpts = self.whitelist.get_wl_rcpts(
+                milter.msginfo["mailfrom"], milter.msginfo["rcpts"], logger)
+            logger.info(f"whitelisted recipients: {wl_rcpts}")
+
+        rcpts = [
+            rcpt for rcpt in milter.msginfo["rcpts"] if rcpt not in wl_rcpts]
+
+        if not rcpts:
+            # all recipients whitelisted
+            return
+
+        logger.info(f"add to quarantine for recipients: {rcpts}")
+        milter.msginfo["rcpts"] = rcpts
+
+        self.store.execute(milter)
+
+        if self.notify is not None:
+            self.notify.execute(milter)
+
+        milter.msginfo["rcpts"].extend(wl_rcpts)
+        milter.delrcpt(rcpts)
+
+        if self.milter_action is not None and not milter.msginfo["rcpts"]:
+            return (self.milter_action, self.reject_reason)

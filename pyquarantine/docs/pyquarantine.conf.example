@@ -1,180 +1,221 @@
 # This is an example /etc/pyquarantine/pyquarantine.conf file.
 # Copy it into place before use.
 #
-# Comments: use '#' for comment lines and ';' (following a space) for inline comments.
+# The file is in JSON format.
 #
-#           If an option is not present in a quarantine section, it will be read from
-#           the global section.
+# The global option 'log' can be overriden per rule or per modification.
 #
+{
+    # Section: global
+    # Notes:   Global options.
+    #
+    "global": {
+        # Option: socket
+        # Type:   String
+        # Notes:  The socket used to communicate with the MTA.
+        #
+        #         Examples:
+        #         unix:/path/to/socket             a named pipe
+        #         inet:8899                        listen on ANY interface
+        #         inet:8899@localhost              listen on a specific interface
+        #         inet6:8899                       listen on ANY interface
+        #         inet6:8899@[2001:db8:1234::1]    listen on a specific interface
+        # Value:  [ SOCKET ]
+        "socket": "inet:8898@127.0.0.1",
 
+        # Option: local_addrs
+        # Type:   List
+        # Notes:  A list of local hosts and networks.
+        # Value:  [ LIST ]
+        #
+        "local_addrs": ["fe80::/64", "::1/128", "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
 
-[global]
+        # Option: loglevel
+        # Type:   String
+        # Notes:  Set loglevel for rules and actions.
+        # Value:  [ error | warning | info | debug ]
+        #
+        "loglevel": "info",
 
-# Option: quarantines
-# Notes:  Set active quarantines (comma-separated).
-#         Each active quarantine must have a section with the same name below.
-#         The quarantine name 'global' is forbidden and will be ignored.
-#         Quarantine names must be unique.
-# Values: [ ACTIVE ]
-#
-quarantines = spam
+        # Option: pretend
+        # Type:   Bool
+        # Notes:  Just pretend to do the actions, for test purposes.
+        # Value:  [ true | false ]
+        #
+        "pretend": true
+    },
 
-# Option: quarantine_action_precedence
-# Notes:  Set if the action of the first or the last matching quarantine should
-#         be used if multiple recipients match multiple quarantines. If an original
-#         email is delivered to at least one recipient due to whitelisting, the
-#         email will always be accepted.
-# Values: [ first | last ]
-#
-preferred_quarantine_action = last
+    # Section: rules
+    # Notes:   Rules and related actions.
+    #
+    "rules": [
+        {
+            # Option: name
+            # Type:   String
+            # Notes:  Name of the rule.
+            # Value:  [ NAME ]
+            #
+            "name": "myrule",
 
+            # Section: conditions
+            # Notes:   Optional conditions to process the rule.
+            #          If multiple conditions are set, they all
+            #          have to be true to process the rule.
+            #
+            "conditions": {
+                # Option: local
+                # Type:   Bool
+                # Notes:  Condition wheter the senders host address is listed in local_addrs.
+                # Value:  [ true | false ]
+                #
+                "local": false,
 
-[spam]
-# Option: host_whitelist
-# Notes:  Set a list of host and network addresses to be ignored by this quarantine.
-#         All the common host/network notations are supported, including IPv6.
-# Value:  [ HOST ]
-#
-host_whitelist = 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+                # Option: hosts
+                # Type:   String
+                # Notes:  Condition wheter the senders host address is listed in this list.
+                # Value: [ LIST ]
+                #
+                "hosts": [ "127.0.0.1" ],
 
-# Option: regex
-# Notes:  Set the case insensitive regular expression to match against email headers.
-#         If the regex matches any of the email headers, the email
-#         will be processed by this quarantine.
-# Values: [ REGEX ]
-#
-regex = ^X-Spam-Flag: YES
+                # Option: envfrom
+                # Type:   String
+                # Notes:  Condition wheter the envelop-from address matches this regular expression.
+                # Value:  [ REGEX ]
+                #
+                "envfrom": "^.+@mypartner\\.com$",
 
-# Option: smtp_host
-# Notes:  Set the SMTP host. It will be used to (re-)inject emails.
-# Values: [ HOSTNAME | IP_ADDRESS ]
-#
-smtp_host = 127.0.0.1
+                # Option: envto
+                # Type:   String
+                # Notes:  Condition wheter the envelop-to address matches this regular expression.
+                # Value:  [ REGEX ]
+                #
+                "envto": "^postmaster@.+$"
+            },
 
-# Option: smtp_port
-# Notes:  Set the SMTP port.
-# Values: [ PORT ]
-#
-smtp_port = 25
+            # Section: actions
+            # Notes:   Actions of the rule.
+            #
+            "actions": [
+                {
+                    # Option: name
+                    # Type:   String
+                    # Notes:  Name of the modification.
+                    # Value:  [ NAME ]
+                    #
+                    "name": "add_test_header",
 
-# Option: storage_type
-# Notes:  Set the storage type.
-# Values: [ file | none ]
-#
-storage_type = file
+                    # Option: type
+                    # Type:   String
+                    # Notes:  Type of the modification.
+                    # Value:  [ add_header | del_header | mod_header ]
+                    #
+                    "type": "add_header",
 
-# Option: storage_directory
-# Notes:  Set the directory to store quarantined emails.
-#         This option is needed by quarantine type 'file'.
-# Values: [ DIRECTORY ]
-#
-storage_directory = /var/lib/pyquarantine/spam
+                    # Option: field
+                    # Type:   String
+                    # Notes:  Name of the header.
+                    # Value:  [ NAME ]
+                    #
+                    "field": "X-Test-Header",
 
-# Option: action
-# Notes:  Set the milter action to perform if email is processed by this quarantine.
-# Values: [ accept | discard | reject ]
-#
-action = discard
+                    # Option: value
+                    # Type:   String
+                    # Notes:  Value of the header.
+                    # Value:  [ VALUE ]
+                    #
+                    "value": "true"
+                }, {
+                    "name": "modify_subject",
 
-# Option: reject_reason
-# Notes:  Optionally set the reason to return if action is set to reject.
-# Values: [ REASON ]
-#
-reject_reason = Message rejected
+                    "type": "mod_header",
 
-# Option: notification
-# Notes:  Set the notification type.
-# Values: [ email | none ]
-#
-notification_type = email
+                    # Option: field
+                    # Type:   String
+                    # Notes:  Regular expression to match against header lines (e.g. Subject: Test-Subject).
+                    # Value:  [ REGEX ]
+                    #
+                    "field": "^Subject$",
 
-# Option: notification_email_smtp_host
-# Notes:  Set the SMTP host. It will be used to send notification e-mails.
-# Values: [ HOSTNAME | IP_ADDRESS ]
-#
-notification_email_smtp_host = 127.0.0.1
+                    # Option: search
+                    # Type:   String
+                    # Notes:  Regular expression to match against the headers value.
+                    # Values: [ VALUE ]
+                    #
+                    "search": "(?P<subject>.*)",
 
-# Option: notification_email_smtp_port
-# Notes:  Set the SMTP port.
-# Values: [ PORT ]
-#
-notification_email_smtp_port = 25
+                    # Option: value
+                    # Type:   String
+                    # Notes:  New value of the header.
+                    # Values: [ VALUE ]
+                    "value": "[EXTERNAL] \\g<subject>"
+                }, {
+                    "name": "delete_received_header",
 
-# Option: notification_email_envelope_from
-# Notes:  Set the envelope-from address used when sending notification emails.
-#         This option is needed by notification type 'email'.
-# Values: [ ENVELOPE_FROM_ADDRESS ]
-#
-notification_email_envelope_from = notification@domain.tld
+                    "type": "del_header",
 
-# Option: notification_email_from
-# Notes:  Set the from header used when sending notification emails.
-#         This option is needed by notification type 'email'.
-# Values: [ FROM_HEADER ]
-#
-notification_email_from = Notification <notification@domain.tld>
+                    # Option: field
+                    # Type:   String
+                    # Notes:  Regular expression to match against header lines (e.g. Subject: Test-Subject).
+                    # Value:  [ REGEX ]
+                    #
+                    "field": "^Received$"
+                }, {
+                    "name": "add_disclaimer",
 
-# Option: notification_email_usbject
-# Notes:  Set the subject used when sending notification emails.
-#         This option is needed by notification type 'email'.
-# Values: [ SUBJECT ]
-#
-notification_email_subject = Spam Quarantine Notification
+                    "type": "add_disclaimer",
 
-# Option: notification_email_template
-# Notes:  Set the template used when sending notification emails.
-#         A relative path to this config file can be used.
-#         This option is needed by notification type 'email'.
-# Values: [ TEMPLATE_PATH ]
-#
-notification_email_template = templates/notification.template
+                    # Option: action
+                    # Type:   String
+                    # Notes:  Action to perform with the disclaimer.
+                    # Value:  [ append | prepend ]
+                    #
+                    "action": "prepend",
 
-# Option: notification_email_strip_images
-# Notes:  Optionally enable this option to strip img tags from emails.
-# Values: [ TRUE | ON | YES | FALSE | OFF | NO ]
-#
-notification_email_strip_images = False
+                    # Option: html_template
+                    # Type:   String
+                    # Notes:  Path to a file which contains the html representation of the disclaimer.
+                    # Value:  [ FILE_PATH ]
+                    #
+                    "html_template": "/etc/pyquarantine/templates/disclaimer_html.template",
 
-# Option: notification_email_replacement_img
-# Notes:  Optionally set the path to a replacement image for img tags within emails.
-#         A relative path to this config file can be used.
-# Values: [ IMAGE_PATH ]
-#
-notification_email_replacement_img = templates/removed.png
+                    # Option: text_template
+                    # Type:   String
+                    # Notes:  Path to a file which contains the text representation of the disclaimer.
+                    # Value:  [ FILE_PATH ]
+                    #
+                    "text_template": "/etc/pyquarantine/templates/disclaimer_text.template",
 
-# Option: notification_email_embedded_imgs
-# Notes:  Set a list of paths to images to embed in e-mails (comma-separated).
-#         Relative paths to this config file can be used.
-#         This option is needed by notification type 'email'.
-# Values: [ IMAGE_PATH ]
-#
-notification_email_embedded_imgs = templates/logo.png
+                    # Option: error_policy
+                    # Type:   String
+                    # Notes:  Set what should be done if the modification fails (e.g. no message body present).
+                    # Value:  [ wrap | ignore | reject ]
+                    #
+                    "error_policy": "wrap"
+                }, {
+                    "name": "store_message",
 
-# Option: notification_email_parser_lib
-# Notes:  Optionally set the parser library used to parse
-#         the text part of emails.
-# Values: [ lxml | html.parser ]
-#
-notification_email_parser_lib = lxml
+                    "type": "store",
 
-# Option: whitelist_type
-# Notes:  Set the whitelist type.
-# Values: [ db | none ]
-#
-whitelist_type = db
+                    # Option: storage_type
+                    # Type:   String
+                    # Notes:  The storage type used to store e-mails.
+                    # Value: [ file ]
+                    "storage_type": "file",
 
-# Option: whitelist_db_connection
-# Notes:  Set the connection string to connect to the database.
-#         The configured user must have read/write access to
-#         the whitelist_db_table configured below.
-#         This option is needed by whitelist type 'db'.
-# Values: [ DB_CONNECTION_STRING | none ]
-#
-whitelist_db_connection = mysql://user:password@localhost/database
+                    # Option: directory
+                    # Type:   String
+                    # Notes:  Directory used to store e-mails.
+                    # Value: [ file ]
+                    "directory": "/mnt/messages",
 
-# Option: whitelist_db_table
-# Notes:  Set the database table name.
-#         This option is needed by whitelist type 'db'.
-# Values: [ DATABASE_TABLE]
-#
-whitelist_db_table = whitelist
+                    # Option: original
+                    # Type:   Bool
+                    # Notes:  If set to true, store the message as received by the MTA instead of storing the current state
+                    #         of the message, that may was modified already by other actions.
+                    # Value: [ true | false ]
+                    "original": true
+                }
+            ]
+        }
+    ]
+}

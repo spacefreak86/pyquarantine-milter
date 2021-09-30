@@ -20,8 +20,8 @@ import logging.handlers
 import sys
 import time
 
-from pymodmilter.config import get_milter_config
-from pymodmilter import __version__ as version
+from pyquarantine.config import get_milter_config
+from pyquarantine import __version__ as version
 
 
 def _get_quarantine(quarantines, name):
@@ -316,7 +316,7 @@ def main():
         formatter_class=formatter_class)
     parser.add_argument(
         "-c", "--config", help="Config file to read.",
-        default="/etc/pymodmilter/pymodmilter.conf")
+        default="/etc/pyquarantine/pyquarantine.conf")
     parser.add_argument(
         "-d", "--debug",
         help="Log debugging messages.",

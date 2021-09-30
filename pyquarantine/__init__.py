@@ -1,15 +1,15 @@
-# PyMod-Milter is free software: you can redistribute it and/or modify
+# pyquarantine is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyMod-Milter is distributed in the hope that it will be useful,
+# pyquarantine is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
+# along with pyquarantine.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 __all__ = [
@@ -27,9 +27,9 @@ __all__ = [
     "whitelist",
     "ModifyMilter"]
 
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 
-from pymodmilter import _runtime_patches
+from pyquarantine import _runtime_patches
 
 import Milter
 import logging
@@ -44,9 +44,9 @@ from email.policy import SMTPUTF8
 from io import BytesIO
 from netaddr import IPNetwork, AddrFormatError
 
-from pymodmilter.base import CustomLogger, MilterMessage
-from pymodmilter.base import replace_illegal_chars
-from pymodmilter.rule import Rule
+from pyquarantine.base import CustomLogger, MilterMessage
+from pyquarantine.base import replace_illegal_chars
+from pyquarantine.rule import Rule
 
 
 class ModifyMilter(Milter.Base):

@@ -1,25 +1,27 @@
-# pymodmilter
+# pyquarantine
 A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.  
 The project is currently in beta status, but it is already used in a productive enterprise environment that processes about a million e-mails per month.  
 
 The basic idea is to define rules with conditions and actions which are processed when all conditions are true.
 
 ## Dependencies
-Pymodmilter is depending on these python packages, but they are installed automatically if you are working with pip.
-* [pymilter](https://pythonhosted.org/pymilter/)
-* [netaddr](https://github.com/drkjam/netaddr/)
+pyquarantine is depending on these python packages, but they are installed automatically if you are working with pip.
+* [jsonschema](https://github.com/Julian/jsonschema)
+* [pymilter](https://github.com/sdgathman/pymilter)
+* [netaddr](https://github.com/drkjam/netaddr)
+* [peewee](https://github.com/coleifer/peewee)
 * [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/)
 
 ## Installation
-* Install pymodmilter with pip and copy the example config file.
+* Install pyquarantine with pip and copy the example config file.
 ```sh
-pip install pymodmilter
-cp /etc/pymodmilter/pymodmilter.conf.example /etc/pymodmilter/pymodmilter.conf
+pip install pyquarantine
+cp /etc/pyquarantine/pyquarantine.conf.example /etc/pyquarantine/pyquarantine.conf
 ```
-* Modify /etc/pymodmilter/pymodmilter.conf according to your needs.
+* Modify /etc/pyquarantine/pyquarantine.conf according to your needs.
 
 ## Configuration options
-Pymodmilter uses a config file in JSON format. The config file has to be JSON valid with the exception of allowed comment lines starting with **#**. The options are described below.  
+pyquarantine uses a config file in JSON format. The config file has to be JSON valid with the exception of allowed comment lines starting with **#**. The options are described below.  
 Rules and actions are processed in the given order.
 
 ### Global

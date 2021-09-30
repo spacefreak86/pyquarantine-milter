@@ -1,21 +1,21 @@
-# PyMod-Milter is free software: you can redistribute it and/or modify
+# pyquarantine is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyMod-Milter is distributed in the hope that it will be useful,
+# pyquarantine is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
+# along with pyquarantine.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 __all__ = ["Rule"]
 
-from pymodmilter.action import Action
-from pymodmilter.conditions import Conditions
+from pyquarantine.action import Action
+from pyquarantine.conditions import Conditions
 
 
 class Rule:

@@ -4,14 +4,14 @@ def read_file(fname):
     with open(fname, 'r') as f:
         return f.read()
 
-setup(name = "pymodmilter",
+setup(name = "pyquarantine",
     author = "Thomas Oettli",
     author_email = "spacefreak@noop.ch",
     description = "A pymilter based sendmail/postfix pre-queue filter.",
     license = "GPL 3",
     keywords = "header quarantine milter",
-    url = "https://github.com/spacefreak86/pymodmilter",
-    packages = ["pymodmilter"],
+    url = "https://github.com/spacefreak86/pyquarantine",
+    packages = ["pyquarantine"],
     long_description = read_file("README.md"),
     long_description_content_type = "text/markdown",
     classifiers = [
@@ -28,20 +28,23 @@ setup(name = "pymodmilter",
     include_package_data = True,
     entry_points = {
         "console_scripts": [
-            "pymodmilter=pymodmilter.run:main"
+            "pyquarantine-milter=pyquarantine.run:main",
+            "pyquarantine=pyquarantine.run:main",
         ]
     },
     data_files = [
         (
-            "/etc/pymodmilter",
+            "/etc/pyquarantine",
             [
-                "pymodmilter/docs/pymodmilter.conf.example"
+                "pyquarantine/docs/pyquarantine.conf.example"
             ]
         ), (
-            "/etc/pymodmilter/templates",
+            "/etc/pyquarantine/templates",
             [
-                "pymodmilter/docs/templates/disclaimer_html.template",
-                "pymodmilter/docs/templates/disclaimer_text.template"
+                "pyquarantine/docs/templates/disclaimer_html.template",
+                "pyquarantine/docs/templates/disclaimer_text.template",
+                "pyquarantine/docs/templates/notification.template",
+                "pyquarantine/docs/templates/removed.png"
             ]
         )
     ],

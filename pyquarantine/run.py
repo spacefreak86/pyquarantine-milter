@@ -1,15 +1,15 @@
-# PyMod-Milter is free software: you can redistribute it and/or modify
+# pyquarantine is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyMod-Milter is distributed in the hope that it will be useful,
+# pyquarantine is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with PyMod-Milter.  If not, see <http://www.gnu.org/licenses/>.
+# along with pyquarantine.  If not, see <http://www.gnu.org/licenses/>.
 #
 
 __all__ = ["main"]
@@ -20,25 +20,25 @@ import logging
 import logging.handlers
 import sys
 
-from pymodmilter import mailer
-from pymodmilter import ModifyMilter
-from pymodmilter import __version__ as version
-from pymodmilter.config import get_milter_config
+from pyquarantine import mailer
+from pyquarantine import ModifyMilter
+from pyquarantine import __version__ as version
+from pyquarantine.config import get_milter_config
 
 
 def main():
     python_version = ".".join([str(v) for v in sys.version_info[0:3]])
     python_version = f"{python_version}-{sys.version_info[3]}"
 
-    "Run PyMod-Milter."
+    "Run pyquarantine."
     parser = argparse.ArgumentParser(
-        description="PyMod milter daemon",
+        description="pyquarantine-milter daemon",
         formatter_class=lambda prog: argparse.HelpFormatter(
             prog, max_help_position=45, width=140))
 
     parser.add_argument(
         "-c", "--config", help="Config file to read.",
-        default="/etc/pymodmilter/pymodmilter.conf")
+        default="/etc/pyquarantine/pyquarantine.conf")
 
     parser.add_argument(
         "-s",
@@ -125,10 +125,10 @@ def main():
     sysloghandler = logging.handlers.SysLogHandler(
         address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
     sysloghandler.setFormatter(
-        logging.Formatter("pymodmilter: %(message)s"))
+        logging.Formatter("pyquarantine: %(message)s"))
     root_logger.addHandler(sysloghandler)
 
-    logger.info("pymodmilter starting")
+    logger.info("pyquarantine-milter starting")
 
     # register milter factory class
     Milter.factory = ModifyMilter
@@ -139,13 +139,13 @@ def main():
 
     rc = 0
     try:
-        Milter.runmilter("pymodmilter", socketname=socket, timeout=600)
+        Milter.runmilter("pyquarantine", socketname=socket, timeout=600)
     except Milter.milter.error as e:
         logger.error(e)
         rc = 255
 
     mailer.queue.put(None)
-    logger.info("pymodmilter stopped")
+    logger.info("pyquarantine-milter stopped")
 
     sys.exit(rc)
 

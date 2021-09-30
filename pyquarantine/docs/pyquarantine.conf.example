@@ -1,4 +1,4 @@
-# This is an example /etc/pymodmilter.conf file.
+# This is an example /etc/pyquarantine/pyquarantine.conf file.
 # Copy it into place before use.
 #
 # The file is in JSON format.
@@ -176,14 +176,14 @@
                     # Notes:  Path to a file which contains the html representation of the disclaimer.
                     # Value:  [ FILE_PATH ]
                     #
-                    "html_template": "/etc/pymodmilter/templates/disclaimer_html.template",
+                    "html_template": "/etc/pyquarantine/templates/disclaimer_html.template",
 
                     # Option: text_template
                     # Type:   String
                     # Notes:  Path to a file which contains the text representation of the disclaimer.
                     # Value:  [ FILE_PATH ]
                     #
-                    "text_template": "/etc/pymodmilter/templates/disclaimer_text.template",
+                    "text_template": "/etc/pyquarantine/templates/disclaimer_text.template",
 
                     # Option: error_policy
                     # Type:   String

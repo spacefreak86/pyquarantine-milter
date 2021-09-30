@@ -360,5 +360,5 @@ def get_milter_config(cfgfile):
         cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
         msg = "\n".join(cfg_text)
         raise RuntimeError(f"{e}\n{msg}")
-
+ 
     return MilterConfig(cfg)

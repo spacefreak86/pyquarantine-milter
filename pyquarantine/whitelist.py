@@ -141,10 +141,6 @@ class DatabaseWhitelist(WhitelistBase):
                 cfg.append(f"{arg}={self.cfg[arg]}")
         return "DatabaseWhitelist(" + ", ".join(cfg) + ")"
 
-    @property
-    def type(self):
-        return "DB"
-
     def _entry_to_dict(self, entry):
         result = {}
         result[entry.id] = {

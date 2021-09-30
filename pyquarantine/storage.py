@@ -47,10 +47,6 @@ class BaseMailStorage:
         self.metavar = metavar
         self.pretend = False
 
-    @property
-    def type(self):
-        return "Base"
-
     def add(self, data, qid, mailfrom, recipients, subject, variables):
         "Add email to storage."
         return ("", "")
@@ -106,10 +102,6 @@ class FileMailStorage(BaseMailStorage):
         cfg.append(f"directory={self.directory}")
         cfg.append(f"original={self.original}")
         return "FileMailStorage(" + ", ".join(cfg) + ")"
-
-    @property
-    def type(self):
-        return "File"
 
     def get_storageid(self, qid):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")

@@ -101,16 +101,11 @@ def main():
             if not rule["actions"]:
                 raise RuntimeError(
                     f"{rule['name']}: no actions configured")
+        ModifyMilter.set_config(cfg, args.debug)
 
     except (RuntimeError, AssertionError) as e:
         logger.error(f"config error: {e}")
         sys.exit(255)
-
-    try:
-        ModifyMilter.set_config(cfg, args.debug)
-    except RuntimeError as e:
-        logger.error(e)
-        sys.exit(254)
 
     if args.test:
         print("Configuration OK")

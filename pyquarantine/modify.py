@@ -237,8 +237,12 @@ class AddDisclaimer:
             raise RuntimeError(e)
         body = html.find('body')
         self.html_template = body or html
-        self.action = action
-        self.error_policy = error_policy
+        self.action = action.lower()
+        assert self.action in ["prepend", "append"], \
+            f"invalid action '{action}'"
+        self.error_policy = error_policy.lower()
+        assert self.error_policy in ["ignore", "reject", "wrap"], \
+            f"invalid error_policy '{error_policy}'"
         self.pretend = pretend
 
     def patch_message_body(self, milter, logger):

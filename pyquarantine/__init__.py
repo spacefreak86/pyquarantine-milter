@@ -71,14 +71,7 @@ class ModifyMilter(Milter.Base):
         logger = logging.getLogger(__name__)
         logger.setLevel(ModifyMilter._loglevel)
         for idx, rule_cfg in enumerate(cfg["rules"]):
-            if "name" not in rule_cfg:
-                rule_cfg["name"] = f"rule#{idx}"
-            if "loglevel" not in rule_cfg:
-                rule_cfg["loglevel"] = cfg["loglevel"]
-            if "pretend" not in rule_cfg:
-                rule_cfg["pretend"] = cfg["pretend"]
             rule = Rule(rule_cfg, local_addrs, debug)
-
             logger.debug(rule)
             ModifyMilter._rules.append(rule)
 

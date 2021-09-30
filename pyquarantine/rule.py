@@ -33,14 +33,7 @@ class Rule:
 
         self.actions = []
         for idx, action_cfg in enumerate(cfg["actions"]):
-            if "name" in action_cfg:
-                action_cfg["name"] = f"{cfg['name']}: {action_cfg['name']}"
-            else:
-                action_cfg["name"] = f"action#{idx}"
-            if "loglevel" not in action_cfg:
-                action_cfg["loglevel"] = cfg["loglevel"]
-            if "pretend" not in action_cfg:
-                action_cfg["pretend"] = cfg["pretend"]
+            action_cfg["name"] = f"{cfg['name']}: {action_cfg['name']}"
             self.actions.append(Action(action_cfg, local_addrs, debug))
 
     def __str__(self):

@@ -230,7 +230,7 @@ class NotifyConfig(BaseConfig):
 class QuarantineConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
-        "required": ["store"],
+        "required": ["store", "smtp_host", "smtp_port"],
         "additionalProperties": False,
         "properties": {
             "name": {"type": "string"},
@@ -238,7 +238,9 @@ class QuarantineConfig(BaseConfig):
             "milter_action": {"type": "string"},
             "reject_reason": {"type": "string"},
             "whitelist": {"type": "object"},
-            "store": {"type": "object"}}}
+            "store": {"type": "object"},
+            "smtp_host": {"type": "string"},
+            "smtp_port": {"type": "number"}}}
 
     def __init__(self, config, rec=True):
         super().__init__(config)
@@ -264,10 +266,10 @@ class ActionConfig(BaseConfig):
 
     JSON_SCHEMA = {
         "type": "object",
-        "required": ["type", "args"],
+        "required": ["name", "type", "args"],
         "additionalProperties": False,
         "properties": {
-            "name": {"type": "string", "default": "action"},
+            "name": {"type": "string"},
             "loglevel": {"type": "string", "default": "info"},
             "pretend": {"type": "boolean", "default": False},
             "conditions": {"type": "object"},
@@ -285,10 +287,10 @@ class ActionConfig(BaseConfig):
 class RuleConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
-        "required": ["actions"],
+        "required": ["name", "actions"],
         "additionalProperties": False,
         "properties": {
-            "name": {"type": "string", "default": "rule"},
+            "name": {"type": "string"},
             "loglevel": {"type": "string", "default": "info"},
             "pretend": {"type": "boolean", "default": False},
             "conditions": {"type": "object"},
@@ -302,6 +304,10 @@ class RuleConfig(BaseConfig):
 
             actions = []
             for idx, action in enumerate(self["actions"]):
+                if "loglevel" not in action:
+                    action["loglevel"] = config["loglevel"]
+                if "pretend" not in action:
+                    action["pretend"] = config["pretend"]
                 actions.append(ActionConfig(action, rec))
             self["actions"] = actions
 
@@ -331,6 +337,10 @@ class MilterConfig(BaseConfig):
         if rec:
             rules = []
             for idx, rule in enumerate(self["rules"]):
+                if "loglevel" not in rule:
+                    rule["loglevel"] = config["loglevel"]
+                if "pretend" not in rule:
+                    rule["pretend"] = config["pretend"]
                 rules.append(RuleConfig(rule, rec))
             self["rules"] = rules
 

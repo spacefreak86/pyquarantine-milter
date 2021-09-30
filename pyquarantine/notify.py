@@ -225,7 +225,7 @@ class EMailNotification(BaseNotification):
         return soup
 
     def notify(self, msg, qid, mailfrom, recipients, logger,
-               template_vars=defaultdict(str), synchronous=False):
+               template_vars={}, synchronous=False):
         "Notify recipients via email."
         # extract body from email
         soup = self.get_email_body_soup(msg, logger)
@@ -335,6 +335,9 @@ class Notify:
             cfg.append(f"{key}={value}")
         class_name = type(self._notification).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"
+
+    def get_notification(self):
+        return self._notification
 
     def execute(self, milter):
         logger = CustomLogger(

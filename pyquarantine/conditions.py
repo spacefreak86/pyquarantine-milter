@@ -80,6 +80,9 @@ class Conditions:
             cfg.append(f"whitelist={self.whitelist}")
         return "Conditions(" + ", ".join(cfg) + ")"
 
+    def get_whitelist(self):
+        return self.whitelist
+
     def match_host(self, host):
         logger = CustomLogger(
             self.logger, {"name": self.cfg["name"]})

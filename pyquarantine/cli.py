@@ -21,6 +21,7 @@ import sys
 import time
 
 from pyquarantine.config import get_milter_config
+from pyquarantine.storage import Quarantine
 from pyquarantine import __version__ as version
 
 
@@ -28,22 +29,12 @@ def _get_quarantine(quarantines, name):
     try:
         quarantine = next((q for q in quarantines if q.name == name))
     except StopIteration:
-        raise RuntimeError("invalid quarantine 'name'")
+        raise RuntimeError(f"invalid quarantine '{name}'")
     return quarantine
 
 
-def _get_storage(quarantines, name):
-    quarantine = _get_quarantine(quarantines, name)
-    storage = quarantine.get_storage()
-    if not storage:
-        raise RuntimeError(
-                "storage type is set to NONE")
-    return storage
-
-
 def _get_notification(quarantines, name):
-    quarantine = _get_quarantine(quarantines, name)
-    notification = quarantine.get_notification()
+    notification = _get_quarantine(quarantines, name).notification
     if not notification:
         raise RuntimeError(
                 "notification type is set to NONE")
@@ -51,8 +42,7 @@ def _get_notification(quarantines, name):
 
 
 def _get_whitelist(quarantines, name):
-    quarantine = _get_quarantine(quarantines, name)
-    whitelist = quarantine.get_whitelist()
+    whitelist = _get_quarantine(quarantines, name).whitelist
     if not whitelist:
         raise RuntimeError(
                 "whitelist type is set to NONE")
@@ -106,21 +96,15 @@ def list_quarantines(quarantines, args):
     else:
         qlist = []
         for q in quarantines:
-            storage = q.get_storage()
-            if storage:
-                storage_type = q.get_storage().storage_type
-            else:
-                storage_type = "NONE"
+            storage_type = type(q.storage).__name__
 
-            notification = q.get_notification()
-            if notification:
-                notification_type = q.get_notification().notification_type
+            if q.notification:
+                notification_type = type(q.notification).__name__
             else:
                 notification_type = "NONE"
 
-            whitelist = q.get_whitelist()
-            if whitelist:
-                whitelist_type = q.get_whitelist().whitelist_type
+            if q.whitelist:
+                whitelist_type = type(q.whitelist).__name__
             else:
                 whitelist_type = "NONE"
 
@@ -129,7 +113,7 @@ def list_quarantines(quarantines, args):
                 "storage": storage_type,
                 "notification": notification_type,
                 "whitelist": whitelist_type,
-                "action": q.action})
+                "action": q.milter_action})
         print_table(
             [("Name", "name"),
              ("Storage", "storage"),
@@ -142,7 +126,8 @@ def list_quarantines(quarantines, args):
 
 def list_quarantine_emails(quarantines, args):
     logger = logging.getLogger(__name__)
-    storage = _get_storage(quarantines, args.quarantine)
+    storage = _get_quarantine(quarantines, args.quarantine).storage
+
     # find emails and transform some metadata values to strings
     rows = []
     emails = storage.find(
@@ -156,9 +141,9 @@ def list_quarantine_emails(quarantines, args):
                 metadata["date"]))
         row["mailfrom"] = metadata["mailfrom"]
         row["recipient"] = metadata["recipients"].pop(0)
-        if "subject" not in emails[storage_id]["headers"].keys():
-            emails[storage_id]["headers"]["subject"] = ""
-        row["subject"] = emails[storage_id]["headers"]["subject"][:60].strip()
+        if "subject" not in emails[storage_id]:
+            emails[storage_id]["subject"] = ""
+        row["subject"] = emails[storage_id]["subject"][:60].strip()
         rows.append(row)
 
         if metadata["recipients"]:
@@ -223,7 +208,7 @@ def add_whitelist_entry(quarantines, args):
     whitelist = _get_whitelist(quarantines, args.quarantine)
 
     # check existing entries
-    entries = whitelist.check(args.mailfrom, args.recipient)
+    entries = whitelist.check(args.mailfrom, args.recipient, logger)
     if entries:
         # check if the exact entry exists already
         for entry in entries.values():
@@ -281,16 +266,15 @@ def release(quarantines, args):
 
 def delete(quarantines, args):
     logger = logging.getLogger(__name__)
-    storage = _get_storage(quarantines, args.quarantine)
+    storage = _get_quarantine(quarantines, args.quarantine).storage
     storage.delete(args.quarantine_id, args.recipient)
     logger.info("quarantined email deleted successfully")
 
 
 def get(quarantines, args):
-    storage = _get_storage(quarantines, args.quarantine)
-    fp, _ = storage.get_mail(args.quarantine_id)
-    print(fp.read().decode())
-    fp.close()
+    storage = _get_quarantine(quarantines, args.quarantine).storage
+    _, msg = storage.get_mail(args.quarantine_id)
+    print(msg.as_string())
 
 
 class StdErrFilter(logging.Filter):
@@ -597,10 +581,8 @@ def main():
     for rule in cfg["rules"]:
         for action in rule["actions"]:
             if action["type"] == "quarantine":
-                quarantines.append(action)
-
-    print(quarantines)
-    sys.exit(0)
+                quarantines.append(
+                    Quarantine(action, [], args.debug))
 
     if args.syslog:
         # setup syslog
@@ -618,7 +600,7 @@ def main():
 
     # call the commands function
     try:
-        args.func(cfg, args)
+        args.func(quarantines, args)
     except RuntimeError as e:
         logger.error(e)
         sys.exit(1)

@@ -73,7 +73,7 @@ class FileMailStorage(BaseMailStorage):
     _headersonly = False
 
     def __init__(self, directory, original=False, metadata=False, metavar=None,
-                 pretend=False):
+                 mode=None, pretend=False):
         super().__init__(original, metadata, metavar, pretend)
         # check if directory exists and is writable
         if not os.path.isdir(directory) or \
@@ -82,6 +82,13 @@ class FileMailStorage(BaseMailStorage):
                 f"directory '{directory}' does not exist or is "
                 f"not writable")
         self.directory = directory
+        try:
+            self.mode = int(mode, 8) if mode is not None else None
+            if self.mode is not None and self.mode > 511:
+                raise ValueError
+        except ValueError:
+            raise RuntimeError(f"invalid mode '{mode}'")
+
         self._metadata_suffix = ".metadata"
 
     def __str__(self):
@@ -104,15 +111,33 @@ class FileMailStorage(BaseMailStorage):
 
     def _save_datafile(self, datafile, data):
         try:
-            with open(datafile, "wb") as f:
-                f.write(data)
+            if self.mode is None:
+                with open(datafile, "wb") as f:
+                    f.write(data)
+            else:
+                umask = os.umask(0)
+                with open(
+                        os.open(datafile, os.O_CREAT | os.O_WRONLY, self.mode),
+                        "wb") as f:
+                    f.write(data)
+                os.umask(umask)
+
         except IOError as e:
             raise RuntimeError(f"unable save data file: {e}")
 
     def _save_metafile(self, metafile, metadata):
         try:
-            with open(metafile, "w") as f:
-                json.dump(metadata, f, indent=2)
+            if self.mode is None:
+                with open(metafile, "w") as f:
+                    json.dump(metadata, f, indent=2)
+            else:
+                umask = os.umask(0)
+                with open(
+                        os.open(metafile, os.O_CREAT | os.O_WRONLY, self.mode),
+                        "w") as f:
+                    json.dump(metadata, f, indent=2)
+                os.umask(umask)
+
         except IOError as e:
             raise RuntimeError(f"unable to save metadata file: {e}")
 
@@ -330,6 +355,7 @@ class Quarantine:
             "pretend": cfg["pretend"],
             "type": "store",
             "args": cfg["args"]["store"].get_config()})
+        store_cfg["args"]["metadata"] = True
         self.store = Store(store_cfg, local_addrs, debug)
 
         self.notify = None

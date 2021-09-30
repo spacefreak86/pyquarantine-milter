@@ -192,6 +192,7 @@ class StoreConfig(BaseConfig):
             "properties": {
                 "type": {"type": "string"},
                 "directory": {"type": "string"},
+                "mode": {"type": "string"},
                 "metavar": {"type": "string"},
                 "original": {"type": "boolean", "default": True}}}}
 

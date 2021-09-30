@@ -96,15 +96,15 @@ def list_quarantines(quarantines, args):
     else:
         qlist = []
         for q in quarantines:
-            storage_type = type(q.storage).__name__
+            storage_type = q.storage.type
 
             if q.notification:
-                notification_type = type(q.notification).__name__
+                notification_type = q.notification.type
             else:
                 notification_type = "NONE"
 
             if q.whitelist:
-                whitelist_type = type(q.whitelist).__name__
+                whitelist_type = q.whitelist.type
             else:
                 whitelist_type = "NONE"
 

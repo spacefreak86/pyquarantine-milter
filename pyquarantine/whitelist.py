@@ -39,6 +39,10 @@ class WhitelistBase:
         self.batv_regex = re.compile(
             r"^prvs=[0-9]{4}[0-9A-Fa-f]{6}=(?P<LEFT_PART>.+?)@")
 
+    @property
+    def type(self):
+        return "Base"
+
     def remove_batv(self, addr):
         return self.batv_regex.sub(r"\g<LEFT_PART>", addr, count=1)
 
@@ -136,6 +140,10 @@ class DatabaseWhitelist(WhitelistBase):
             if arg in self.cfg:
                 cfg.append(f"{arg}={self.cfg[arg]}")
         return "DatabaseWhitelist(" + ", ".join(cfg) + ")"
+
+    @property
+    def type(self):
+        return "DB"
 
     def _entry_to_dict(self, entry):
         result = {}

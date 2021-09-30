@@ -41,6 +41,10 @@ class BaseNotification:
     def __init__(self, pretend=False):
         self.pretend = pretend
 
+    @property
+    def type(self):
+        return "Base"
+
     def execute(self, milter, logger):
         return
 
@@ -142,6 +146,10 @@ class EMailNotification(BaseNotification):
             raise RuntimeError(e)
 
         self.parser_lib = parser_lib
+
+    @property
+    def type(self):
+        return "E-Mail"
 
     def get_email_body_soup(self, msg, logger):
         "Extract and decode email body and return it as BeautifulSoup object."

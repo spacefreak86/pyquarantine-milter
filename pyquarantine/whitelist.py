@@ -44,7 +44,7 @@ class WhitelistBase:
         return "Base"
 
     def remove_batv(self, addr):
-        return self.batv_regex.sub(r"\g<LEFT_PART>", addr, count=1)
+        return self.batv_regex.sub(r"\g<LEFT_PART>@", addr, count=1)
 
     def check(self, mailfrom, recipient):
         "Check if mailfrom/recipient combination is whitelisted."

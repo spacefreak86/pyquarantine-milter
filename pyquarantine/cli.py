@@ -20,7 +20,7 @@ import logging.handlers
 import sys
 import time
 
-from pyquarantine.config import get_milter_config
+from pyquarantine.config import get_milter_config, ActionConfig
 from pyquarantine.storage import Quarantine
 from pyquarantine import __version__ as version
 
@@ -30,7 +30,7 @@ def _get_quarantine(quarantines, name, debug):
         quarantine = next((q for q in quarantines if q["name"] == name))
     except StopIteration:
         raise RuntimeError(f"invalid quarantine '{name}'")
-    return Quarantine(quarantine, [], debug)
+    return Quarantine(ActionConfig(quarantine), [], debug)
 
 
 def _get_notification(quarantines, name, debug):
@@ -105,7 +105,7 @@ def list_quarantines(quarantines, args):
                 notification_type = "NONE"
 
             if "whitelist" in cfg:
-                whitelist_type = cfg["whitelist"]["whitelist"]["type"]
+                whitelist_type = cfg["whitelist"]["type"]
             else:
                 whitelist_type = "NONE"
 
@@ -567,12 +567,12 @@ def main():
 
     try:
         logger.debug("read milter configuration")
-        cfg = get_milter_config(args.config)
-        if not cfg["rules"]:
+        cfg = get_milter_config(args.config, raw=True)
+        if "rules" not in cfg or not cfg["rules"]:
             raise RuntimeError("no rules configured")
 
         for rule in cfg["rules"]:
-            if not rule["actions"]:
+            if "actions" not in rule or not rule["actions"]:
                 raise RuntimeError(
                     f"{rule['name']}: no actions configured")
     except (RuntimeError, AssertionError) as e:

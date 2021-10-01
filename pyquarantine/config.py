@@ -345,7 +345,7 @@ class MilterConfig(BaseConfig):
             self["rules"] = rules
 
 
-def get_milter_config(cfgfile):
+def get_milter_config(cfgfile, raw=False):
     try:
         with open(cfgfile, "r") as fh:
             # remove lines with leading # (comments), they
@@ -360,5 +360,6 @@ def get_milter_config(cfgfile):
         cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
         msg = "\n".join(cfg_text)
         raise RuntimeError(f"{e}\n{msg}")
- 
+    if raw:
+        return cfg
     return MilterConfig(cfg)

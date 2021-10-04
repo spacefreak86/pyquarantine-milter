@@ -254,7 +254,7 @@ class EMailNotification(BaseNotification):
         # sending email notifications
         for recipient in recipients:
             logger.debug(
-                f"generating notification email for '{recipient}'")
+                f"generating email notification for '{recipient}'")
             logger.debug("parsing email template")
 
             # generate dict containing all template variables
@@ -291,7 +291,7 @@ class EMailNotification(BaseNotification):
                 logger.debug("attaching imgage")
                 newmsg.attach(img)
 
-            logger.debug(f"sending notification email to: {recipient}")
+            logger.debug(f"sending email notification to: {recipient}")
             if synchronous:
                 try:
                     mailer.smtp_send(self.smtp_host, self.smtp_port,
@@ -303,7 +303,7 @@ class EMailNotification(BaseNotification):
             else:
                 mailer.sendmail(self.smtp_host, self.smtp_port, qid,
                                 self.mailfrom, recipient, newmsg.as_string(),
-                                "notification email")
+                                "email notification")
 
     def execute(self, milter, logger):
         super().execute(milter, logger)

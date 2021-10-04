@@ -268,7 +268,9 @@ class AddDisclaimer:
                 content = f"{text_content}{text_template}"
 
             text_body.set_content(
-                content.encode(), maintype="text", subtype="plain")
+                content.encode(errors="replace"),
+                maintype="text",
+                subtype="plain")
             text_body.set_param("charset", "UTF-8", header="Content-Type")
             del text_body["MIME-Version"]
 
@@ -291,7 +293,9 @@ class AddDisclaimer:
                 body.append(html_template)
 
             html_body.set_content(
-                str(soup).encode(), maintype="text", subtype="html")
+                str(soup).encode(errors="replace"),
+                maintype="text",
+                subtype="html")
             html_body.set_param("charset", "UTF-8", header="Content-Type")
             del html_body["MIME-Version"]
 

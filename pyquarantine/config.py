@@ -197,7 +197,8 @@ class StoreConfig(BaseConfig):
                 "directory": {"type": "string"},
                 "mode": {"type": "string"},
                 "metavar": {"type": "string"},
-                "original": {"type": "boolean", "default": True}}}}
+                "metadata": {"type": "boolean", "default": False},
+                "original": {"type": "boolean", "default": False}}}}
 
 
 class NotifyConfig(BaseConfig):
@@ -245,6 +246,8 @@ class QuarantineConfig(BaseConfig):
     def __init__(self, config, rec=True):
         super().__init__(config)
         if rec:
+            if "metadata" not in self["store"]:
+                self["store"]["metadata"] = True
             self["store"] = StoreConfig(self["store"])
             if "notify" in self:
                 self["notify"] = NotifyConfig(self["notify"])

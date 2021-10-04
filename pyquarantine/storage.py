@@ -362,7 +362,6 @@ class Quarantine:
             "pretend": cfg["pretend"],
             "type": "store",
             "args": cfg["args"]["store"].get_config()})
-        storage_cfg["args"]["metadata"] = True
         self._storage = Store(storage_cfg, local_addrs, debug)
 
         self.smtp_host = cfg["args"]["smtp_host"]

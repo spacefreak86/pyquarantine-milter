@@ -266,7 +266,7 @@ class EMailNotification(BaseNotification):
             variables["ENVELOPE_TO_URL"] = escape(quote(recipient))
             for field in ["from", "to", "subject"]:
                 value = msg[field]
-                if not value:
+                if value is None:
                     continue
                 variables[field.upper()] = escape(value, quote=False)
 

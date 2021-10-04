@@ -142,10 +142,10 @@ def list_quarantine_emails(quarantines, args):
     for storage_id, metadata in emails.items():
         row = emails[storage_id]
         row["storage_id"] = storage_id
-        row["date"] = time.strftime(
+        row["timestamp"] = time.strftime(
             '%Y-%m-%d %H:%M:%S',
             time.localtime(
-                metadata["date"]))
+                metadata["timestamp"]))
         row["mailfrom"] = metadata["mailfrom"]
         row["recipient"] = metadata["recipients"].pop(0)
         if "subject" not in emails[storage_id]:
@@ -156,7 +156,7 @@ def list_quarantine_emails(quarantines, args):
         if metadata["recipients"]:
             row = {
                 "storage_id": "",
-                "date": "",
+                "timestamp": "",
                 "mailfrom": "",
                 "recipient": metadata["recipients"].pop(0),
                 "subject": ""
@@ -171,7 +171,7 @@ def list_quarantine_emails(quarantines, args):
     if not emails:
         logger.info(f"quarantine '{args.quarantine}' is empty")
     print_table(
-        [("Quarantine-ID", "storage_id"), ("Date", "date"),
+        [("Quarantine-ID", "storage_id"), ("When", "timestamp"),
          ("From", "mailfrom"), ("Recipient(s)", "recipient"),
          ("Subject", "subject")],
         rows

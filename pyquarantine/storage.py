@@ -187,7 +187,6 @@ class FileMailStorage(BaseMailStorage):
         metadata = {
             "mailfrom": mailfrom,
             "recipients": recipients,
-            "date": timegm(gmtime()),
             "subject": subject,
             "timestamp": timegm(gmtime()),
             "queue_id": qid,
@@ -210,7 +209,7 @@ class FileMailStorage(BaseMailStorage):
             # parsing of the message, catch all exceptions here
             try:
                 subject = milter.msg["subject"] or ""
-            except Exception as e:
+            except Exception:
                 subject = ""
         else:
             data = milter.msg.as_bytes
@@ -242,6 +241,41 @@ class FileMailStorage(BaseMailStorage):
             raise RuntimeError(
                 f"invalid metafile '{metafile}': {e}")
 
+        # convert metafile structure, this can be removed in the future
+        converted = False
+        if "subject" not in metadata:
+            try:
+                metadata["subject"] = metadata["headers"]["subject"]
+            except KeyError:
+                metadata["subject"] = ""
+            converted = True
+        if "timestamp" not in metadata:
+            try:
+                metadata["timestamp"] = metadata["date"]
+            except KeyError:
+                metadata["timestamp"] = 0
+            converted = True
+        if "vars" not in metadata:
+            try:
+                metadata["vars"] = metadata["named_subgroups"]
+            except KeyError:
+                metadata["vars"] = {}
+            converted = True
+        if "headers" in metadata:
+            del metadata["headers"]
+            converted = True
+        if "date" in metadata:
+            del metadata["date"]
+            converted = True
+        if "named_subgroups" in metadata:
+            del metadata["named_subgroups"]
+            converted = True
+        if "subgroups" in metadata:
+            del metadata["subgroups"]
+            converted = True
+        if converted:        
+            self._save_metafile(metafile, metadata)
+
         return metadata
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
@@ -266,7 +300,8 @@ class FileMailStorage(BaseMailStorage):
                 metafile[:-len(self._metadata_suffix)])
             metadata = self.get_metadata(storage_id)
             if older_than is not None:
-                if timegm(gmtime()) - metadata["date"] < (older_than * 86400):
+                age = timegm(gmtime()) - metadata["timestamp"]
+                if age < (older_than * 86400):
                     continue
 
             if mailfrom is not None:

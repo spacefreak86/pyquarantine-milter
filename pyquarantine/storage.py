@@ -395,7 +395,7 @@ class Quarantine:
         self._milter_action = None
         if "milter_action" in cfg["args"]:
             self._milter_action = cfg["args"]["milter_action"].upper()
-            assert self._milter_action in ["ACCEPT", "REJECT"], \
+            assert self._milter_action in ["ACCEPT", "REJECT", "DISCARD"], \
                 f"invalid milter_action '{cfg['args']['milter_action']}'"
 
         self._reason = None
@@ -513,5 +513,6 @@ class Quarantine:
 
         if self._milter_action is not None:
             milter.delrcpt(rcpts)
-            if not milter.msginfo["rcpts"]:
+            if self._milter_action in ["ACCEPT", "REJECT"] and \
+                    not milter.msginfo["rcpts"]:
                 return (self._milter_action, self._reason)

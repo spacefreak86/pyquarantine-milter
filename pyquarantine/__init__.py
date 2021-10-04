@@ -296,6 +296,9 @@ class ModifyMilter(Milter.Base):
                     f"current template variables: {self.msginfo['vars']}")
                 if milter_action is not None:
                     break
+                elif not self.msginfo["rcpts"]:
+                    milter_action = ("DISCARD", None)
+                    break
 
             if milter_action is None:
                 self._replacebody()
@@ -303,6 +306,7 @@ class ModifyMilter(Milter.Base):
                 action, reason = milter_action
                 if action == "ACCEPT":
                     self._replacebody()
+                    return Milter.ACCEPT
                 elif action == "REJECT":
                     self.setreply("554", "5.7.0", reason)
                     return Milter.REJECT

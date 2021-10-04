@@ -258,26 +258,27 @@ class EMailNotification(BaseNotification):
 
             # generate dict containing all template variables
             variables = defaultdict(str, template_vars)
-            variables.update({
-                "HTML_TEXT": sanitized_text,
-                "FROM": escape(msg["from"], quote=False),
-                "ENVELOPE_FROM": escape(mailfrom, quote=False),
-                "ENVELOPE_FROM_URL": escape(quote(mailfrom),
-                                            quote=False),
-                "TO": escape(msg["to"], quote=False),
-                "ENVELOPE_TO": escape(recipient, quote=False),
-                "ENVELOPE_TO_URL": escape(quote(recipient)),
-                "SUBJECT": escape(msg["subject"], quote=False)})
+            variables["HTML_TEXT"] = sanitized_text
+            variables["ENVELOPE_FROM"] = escape(mailfrom, quote=False)
+            variables["ENVELOPE_FROM_URL"] = escape(
+                quote(mailfrom), quote=False)
+            variables["ENVELOPE_TO"] = escape(recipient, quote=False)
+            variables["ENVELOPE_TO_URL"] = escape(quote(recipient))
+            for field in ["from", "to", "subject"]:
+                value = msg[field]
+                if not value:
+                    continue
+                variables[field.upper()] = escape(value, quote=False)
 
             # parse template
             htmltext = self.template.format_map(variables)
 
             newmsg = MIMEMultipart('related')
             newmsg["From"] = self.from_header.format_map(
-                defaultdict(str, FROM=msg["from"]))
-            newmsg["To"] = msg["to"]
+                defaultdict(str, FROM=variables["FROM"]))
+            newmsg["To"] = variables["TO"]
             newmsg["Subject"] = self.subject.format_map(
-                defaultdict(str, SUBJECT=msg["subject"]))
+                defaultdict(str, SUBJECT=variables["SUBJECT"]))
             newmsg["Date"] = email.utils.formatdate()
             newmsg.attach(MIMEText(htmltext, "html", 'UTF-8'))
 

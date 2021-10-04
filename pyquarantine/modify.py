@@ -29,6 +29,8 @@ from collections import defaultdict
 from copy import copy
 from email.message import MIMEPart
 from email.policy import SMTPUTF8
+from html import escape
+from urllib.parse import quote
 
 from pyquarantine import replace_illegal_chars
 from pyquarantine.base import CustomLogger
@@ -231,12 +233,10 @@ class AddDisclaimer:
                 self.text_template = f.read()
 
             with open(html_template, "r") as f:
-                html = BeautifulSoup(f.read(), "html.parser")
+                self.html_template = f.read()
 
         except IOError as e:
             raise RuntimeError(e)
-        body = html.find('body')
-        self.html_template = body or html
         self.action = action.lower()
         assert self.action in ["prepend", "append"], \
             f"invalid action '{action}'"
@@ -252,13 +252,20 @@ class AddDisclaimer:
         if text_content is None and html_content is None:
             raise RuntimeError("message does not contain any body part")
 
+        variables = defaultdict(str, milter.msginfo["vars"])
+        variables["ENVELOPE_FROM"] = escape(
+            milter.msginfo["mailfrom"], quote=False)
+        variables["ENVELOPE_FROM_URL"] = escape(
+            quote(milter.msginfo["mailfrom"]), quote=False)
+
         if text_content is not None:
             logger.info(f"{self.action} text disclaimer")
+            text_template = self.text_template.format_map(variables)
 
             if self.action == "prepend":
-                content = f"{self.text_template}{text_content}"
+                content = f"{text_template}{text_content}"
             else:
-                content = f"{text_content}{self.text_template}"
+                content = f"{text_content}{text_template}"
 
             text_body.set_content(
                 content.encode(), maintype="text", subtype="plain")
@@ -269,17 +276,19 @@ class AddDisclaimer:
             logger.info(f"{self.action} html disclaimer")
 
             soup = BeautifulSoup(html_content, "html.parser")
-
             body = soup.find('body')
             if not body:
                 body = soup
             elif _has_content_before_body_tag(soup):
                 body = soup
 
+            html_template = self.html_template.format_map(variables)
+            html_template = BeautifulSoup(html_template, "html.parser")
+            html_template = html_template.find("body") or html_template
             if self.action == "prepend":
-                body.insert(0, copy(self.html_template))
+                body.insert(0, html_template)
             else:
-                body.append(self.html_template)
+                body.append(html_template)
 
             html_body.set_content(
                 str(soup).encode(), maintype="text", subtype="html")

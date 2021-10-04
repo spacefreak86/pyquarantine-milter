@@ -176,8 +176,8 @@ class FileMailStorage(BaseMailStorage):
             return
 
         # save mail
+        logger.debug(f"save message to {datafile}")
         self._save_datafile(datafile, data)
-        logger.debug(f"stored message in file {datafile}")
         logger.info(f"stored message with id {storage_id}")
 
         if not self.metadata:
@@ -194,6 +194,7 @@ class FileMailStorage(BaseMailStorage):
             "vars": variables}
 
         try:
+            logger.debug(f"save metadata to {metafile}")
             self._save_metafile(metafile, metadata)
         except RuntimeError as e:
             os.remove(datafile)
@@ -501,8 +502,10 @@ class Quarantine:
             if not rcpts:
                 # all recipients whitelisted
                 return
-            logger.info(f"add to quarantine for recipients: {rcpts}")
             milter.msginfo["rcpts"] = rcpts
+
+        if self._milter_action in ["REJECT", "DISCARD"]:
+            logger.info(f"quarantine message for recipients: {rcpts}")
 
         self._storage.execute(milter)
 

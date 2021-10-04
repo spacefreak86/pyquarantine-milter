@@ -109,12 +109,17 @@ def list_quarantines(quarantines, args):
             else:
                 whitelist_type = "NONE"
 
+            if "milter_action" in cfg:
+                milter_action = cfg["milter_action"]
+            else:
+                milter_action = "NONE"
+
             qlist.append({
                 "name": q["name"],
                 "storage": storage_type,
                 "notification": notification_type,
                 "whitelist": whitelist_type,
-                "action": q["args"]["milter_action"]})
+                "action": milter_action})
 
         print_table(
             [("Name", "name"),

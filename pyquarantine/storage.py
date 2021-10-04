@@ -206,7 +206,12 @@ class FileMailStorage(BaseMailStorage):
             data = milter.fp.read
             mailfrom = milter.mailfrom
             recipients = list(milter.rcpts)
-            subject = ""
+            # getting the subject is the only operation that needs any
+            # parsing of the message, catch all exceptions here
+            try:
+                subject = milter.msg["subject"] or ""
+            except Exception as e:
+                subject = ""
         else:
             data = milter.msg.as_bytes
             mailfrom = milter.msginfo["mailfrom"]

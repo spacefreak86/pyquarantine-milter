@@ -177,7 +177,8 @@ class FileMailStorage(BaseMailStorage):
 
         # save mail
         self._save_datafile(datafile, data)
-        logger.info(f"stored message in file {datafile}")
+        logger.debug(f"stored message in file {datafile}")
+        logger.info(f"storaged message with id {storage_id}")
 
         if not self.metadata:
             return storage_id, None, datafile
@@ -393,10 +394,16 @@ class Quarantine:
 
         self._milter_action = None
         if "milter_action" in cfg["args"]:
-            self._milter_action = cfg["args"]["milter_action"]
+            self._milter_action = cfg["args"]["milter_action"].upper()
+            assert self._milter_action in ["ACCEPT", "REJECT"], \
+                f"invalid milter_action '{cfg['args']['milter_action']}'"
+
         self._reason = None
-        if "reject_reason" in cfg["args"]:
-            self._reason = cfg["args"]["reject_reason"]
+        if self._milter_action == "REJECT":
+            if "reject_reason" in cfg["args"]:
+                self._reason = cfg["args"]["reject_reason"]
+            else:
+                self._reason = "Message rejected"
 
     def __str__(self):
         cfg = []
@@ -483,21 +490,19 @@ class Quarantine:
     def execute(self, milter):
         logger = CustomLogger(
             self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+        rcpts = milter.msginfo["rcpts"]
         wl_rcpts = []
         if self._whitelist:
             wl_rcpts = self._whitelist.get_wl_rcpts(
-                milter.msginfo["mailfrom"], milter.msginfo["rcpts"], logger)
-            logger.info(f"whitelisted recipients: {wl_rcpts}")
-
-        rcpts = [
-            rcpt for rcpt in milter.msginfo["rcpts"] if rcpt not in wl_rcpts]
-
-        if not rcpts:
-            # all recipients whitelisted
-            return
-
-        logger.info(f"add to quarantine for recipients: {rcpts}")
-        milter.msginfo["rcpts"] = rcpts
+                milter.msginfo["mailfrom"], rcpts, logger)
+            if wl_rcpts:
+                logger.info(f"whitelisted recipients: {wl_rcpts}")
+            rcpts = [rcpt for rcpt in rcpts if rcpt not in wl_rcpts]
+            if not rcpts:
+                # all recipients whitelisted
+                return
+            logger.info(f"add to quarantine for recipients: {rcpts}")
+            milter.msginfo["rcpts"] = rcpts
 
         self._storage.execute(milter)
 
@@ -505,7 +510,8 @@ class Quarantine:
             self._notification.execute(milter)
 
         milter.msginfo["rcpts"].extend(wl_rcpts)
-        milter.delrcpt(rcpts)
 
-        if self._milter_action is not None and not milter.msginfo["rcpts"]:
-            return (self._milter_action, self._reason)
+        if self._milter_action is not None:
+            milter.delrcpt(rcpts)
+            if not milter.msginfo["rcpts"]:
+                return (self._milter_action, self._reason)

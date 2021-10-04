@@ -121,20 +121,21 @@ class EMailNotification(BaseNotification):
         self.from_header = from_header
         self.subject = subject
         try:
-            self.template = open(template, "r").read()
+            with open(template, "r") as fh:
+                self.template = fh.read()
             self.embed_imgs = []
             for img_path in embed_imgs:
-                img = MIMEImage(open(img_path, "rb").read())
+                with open(img_path, "rb") as fh:
+                    img = MIMEImage(fh.read())
                 filename = basename(img_path)
                 img.add_header("Content-ID", f"<{filename}>")
                 self.embed_imgs.append(img)
-
             self.replacement_img = repl_img
             self.strip_images = strip_imgs
 
             if not strip_imgs and repl_img:
-                self.replacement_img = MIMEImage(
-                    open(repl_img, "rb").read())
+                with open(repl_img, "rb") as fh:
+                    self.replacement_img = MIMEImage(fh.read())
                 self.replacement_img.add_header(
                     "Content-ID", "<removed_for_security_reasons>")
 

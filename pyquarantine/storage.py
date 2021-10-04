@@ -178,7 +178,7 @@ class FileMailStorage(BaseMailStorage):
         # save mail
         self._save_datafile(datafile, data)
         logger.debug(f"stored message in file {datafile}")
-        logger.info(f"storaged message with id {storage_id}")
+        logger.info(f"stored message with id {storage_id}")
 
         if not self.metadata:
             return storage_id, None, datafile

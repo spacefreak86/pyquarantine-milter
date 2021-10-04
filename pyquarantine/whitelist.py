@@ -37,7 +37,7 @@ class WhitelistBase:
         self.valid_entry_regex = re.compile(
             r"^[a-zA-Z0-9_.=+-]*?(@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)?$")
         self.batv_regex = re.compile(
-            r"^prvs=[0-9]{4}[0-9A-Fa-f]{6}=(?P<LEFT_PART>.+?)@")
+            r"^prvs=[0-9]{3}[0-9A-Fa-f]{6,7}=(?P<LEFT_PART>.+?)@")
 
     @property
     def type(self):

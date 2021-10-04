@@ -120,7 +120,9 @@ class FileMailStorage(BaseMailStorage):
             else:
                 umask = os.umask(0)
                 with open(
-                        os.open(datafile, os.O_CREAT | os.O_WRONLY, self.mode),
+                        os.open(datafile,
+                                os.O_CREAT | os.O_WRONLY | os.O_TRUNC,
+                                self.mode),
                         "wb") as f:
                     f.write(data)
                 os.umask(umask)
@@ -136,7 +138,9 @@ class FileMailStorage(BaseMailStorage):
             else:
                 umask = os.umask(0)
                 with open(
-                        os.open(metafile, os.O_CREAT | os.O_WRONLY, self.mode),
+                        os.open(metafile,
+                                os.O_CREAT | os.O_WRONLY | os.O_TRUNC,
+                                self.mode),
                         "w") as f:
                     json.dump(metadata, f, indent=2)
                 os.umask(umask)

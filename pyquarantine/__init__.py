@@ -25,7 +25,7 @@ __all__ = [
     "run",
     "storage",
     "whitelist",
-    "ModifyMilter"]
+    "QuarantineMilter"]
 
 __version__ = "2.0.0"
 
@@ -49,8 +49,9 @@ from pyquarantine.base import replace_illegal_chars
 from pyquarantine.rule import Rule
 
 
-class ModifyMilter(Milter.Base):
-    """ModifyMilter based on Milter.Base to implement milter communication"""
+class QuarantineMilter(Milter.Base):
+    """QuarantineMilter based on Milter.Base to implement
+       milter communication"""
 
     _rules = []
     _loglevel = logging.INFO
@@ -59,7 +60,7 @@ class ModifyMilter(Milter.Base):
 
     @staticmethod
     def set_config(cfg, debug):
-        ModifyMilter._loglevel = cfg.get_loglevel(debug)
+        QuarantineMilter._loglevel = cfg.get_loglevel(debug)
 
         try:
             local_addrs = []
@@ -69,15 +70,15 @@ class ModifyMilter(Milter.Base):
             raise RuntimeError(e)
 
         logger = logging.getLogger(__name__)
-        logger.setLevel(ModifyMilter._loglevel)
+        logger.setLevel(QuarantineMilter._loglevel)
         for idx, rule_cfg in enumerate(cfg["rules"]):
             rule = Rule(rule_cfg, local_addrs, debug)
             logger.debug(rule)
-            ModifyMilter._rules.append(rule)
+            QuarantineMilter._rules.append(rule)
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(ModifyMilter._loglevel)
+        self.logger.setLevel(QuarantineMilter._loglevel)
 
     def addheader(self, field, value, idx=-1):
         value = replace_illegal_chars(Header(s=value).encode())
@@ -152,7 +153,7 @@ class ModifyMilter(Milter.Base):
             # also check if the mail body is needed by any upcoming action.
             self.rules = []
             self._headersonly = True
-            for rule in ModifyMilter._rules:
+            for rule in QuarantineMilter._rules:
                 if rule.conditions is None or \
                         rule.conditions.match_host(self.IP):
                     actions = []
@@ -231,7 +232,7 @@ class ModifyMilter(Milter.Base):
         try:
             # remove CR and LF from address fields, otherwise pythons
             # email library throws an exception
-            if field.lower() in ModifyMilter._addr_fields:
+            if field.lower() in QuarantineMilter._addr_fields:
                 try:
                     v = str(make_header(decode_header(value)))
                 except Exception as e:

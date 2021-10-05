@@ -273,7 +273,7 @@ class FileMailStorage(BaseMailStorage):
         if "subgroups" in metadata:
             del metadata["subgroups"]
             converted = True
-        if converted:        
+        if converted:
             self._save_metafile(metafile, metadata)
 
         return metadata

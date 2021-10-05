@@ -21,7 +21,7 @@ import logging.handlers
 import sys
 
 from pyquarantine import mailer
-from pyquarantine import ModifyMilter
+from pyquarantine import QuarantineMilter
 from pyquarantine import __version__ as version
 from pyquarantine.config import get_milter_config
 
@@ -101,7 +101,7 @@ def main():
             if not rule["actions"]:
                 raise RuntimeError(
                     f"{rule['name']}: no actions configured")
-        ModifyMilter.set_config(cfg, args.debug)
+        QuarantineMilter.set_config(cfg, args.debug)
 
     except (RuntimeError, AssertionError) as e:
         logger.error(f"config error: {e}")
@@ -126,7 +126,7 @@ def main():
     logger.info("milter starting")
 
     # register milter factory class
-    Milter.factory = ModifyMilter
+    Milter.factory = QuarantineMilter
     Milter.set_exception_policy(Milter.TEMPFAIL)
 
     if args.debug:

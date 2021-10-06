@@ -55,7 +55,8 @@ class EMailNotification(BaseNotification):
         "frameset",
         "head",
         "iframe",
-        "script"
+        "script",
+        "style"
     ]
     _good_tags = [
         "a",

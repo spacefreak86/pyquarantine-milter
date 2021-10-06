@@ -96,15 +96,14 @@ class QuarantineMilter(Milter.Base):
     def msg_as_bytes(self):
         try:
             data = self.msg.as_bytes()
-        except Exception:
-            self.logger.warning(
-                "unable to serialize message as bytes, "
-                "try to serialize as str and encode")
+        except Exception as e:
+            self.logger.warning(f"unable to serialize message as bytes: {e}")
             try:
+                self.logger.warning("try to serialize as str and encode")
                 data = self.msg.as_string().encode("ascii", errors="replace")
             except Exception as e:
-                self.logger.exception(
-                    "unable to serialize message, giving up")
+                self.logger.error(
+                    f"unable to serialize message, giving up: {e}")
                 raise e
 
         return data

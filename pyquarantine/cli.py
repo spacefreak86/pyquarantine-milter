@@ -15,6 +15,7 @@
 #
 
 import argparse
+import json
 import logging
 import logging.handlers
 import sys
@@ -92,7 +93,7 @@ def print_table(columns, rows):
 
 def list_quarantines(quarantines, args):
     if args.batch:
-        print("\n".join([q.name for q in quarantines]))
+        print("\n".join([q["name"] for q in quarantines]))
     else:
         qlist = []
         for q in quarantines:
@@ -280,8 +281,14 @@ def delete(quarantines, args):
 
 def get(quarantines, args):
     storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
-    _, msg = storage.get_mail(args.quarantine_id)
-    print(msg.as_string())
+    data = storage.get_mail_bytes(args.quarantine_id)
+    sys.stdout.buffer.write(data)
+
+
+def metadata(quarantines, args):
+    storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
+    metadata = storage.get_metadata(args.quarantine_id)
+    print(json.dumps(metadata))
 
 
 class StdErrFilter(logging.Filter):
@@ -462,6 +469,17 @@ def main():
         metavar="ID",
         help="Quarantine ID.")
     quarantine_get_parser.set_defaults(func=get)
+    # quarantine metadata command
+    quarantine_metadata_parser = quarantine_subparsers.add_parser(
+        "metadata",
+        description="Get metadata of email from quarantine.",
+        help="Get metadata of email from quarantine",
+        formatter_class=formatter_class)
+    quarantine_metadata_parser.add_argument(
+        "quarantine_id",
+        metavar="ID",
+        help="Quarantine ID.")
+    quarantine_metadata_parser.set_defaults(func=metadata)
 
     # whitelist command group
     whitelist_parser = subparsers.add_parser(

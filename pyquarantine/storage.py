@@ -24,7 +24,7 @@ import os
 
 from calendar import timegm
 from datetime import datetime
-from email import message_from_binary_file
+from email import message_from_bytes
 from email.policy import SMTPUTF8
 from glob import glob
 from time import gmtime
@@ -80,10 +80,10 @@ class FileMailStorage(BaseMailStorage):
         super().__init__(original, metadata, metavar, pretend)
         # check if directory exists and is writable
         if not os.path.isdir(directory) or \
-                not os.access(directory, os.W_OK):
+                not os.access(directory, os.R_OK):
             raise RuntimeError(
                 f"directory '{directory}' does not exist or is "
-                f"not writable")
+                f"not readable")
         self.directory = directory
         try:
             self.mode = int(mode, 8) if mode is not None else None
@@ -346,18 +346,23 @@ class FileMailStorage(BaseMailStorage):
             else:
                 self._save_metafile(metafile, metadata)
 
+    def get_mail_bytes(self, storage_id):
+        _, datafile = self._get_file_paths(storage_id)
+        try:
+            with open(datafile, "rb") as fh:
+                data = fh.read()
+        except IOError as e:
+            raise RuntimeError(f"unable to open email data file: {e}")
+        return data
+
     def get_mail(self, storage_id):
         super().get_mail(storage_id)
 
         metadata = self.get_metadata(storage_id)
-        _, datafile = self._get_file_paths(storage_id)
-        try:
-            with open(datafile, "rb") as fh:
-                msg = message_from_binary_file(
-                    fh, _class=MilterMessage, policy=SMTPUTF8.clone(
-                        refold_source='none'))
-        except IOError as e:
-            raise RuntimeError(f"unable to open email data file: {e}")
+        msg = message_from_bytes(
+            self.get_mail_bytes(storage_id),
+            _class=MilterMessage,
+            policy=SMTPUTF8.clone(refold_source='none'))
         return (metadata, msg)
 
 

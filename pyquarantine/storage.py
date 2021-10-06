@@ -212,7 +212,7 @@ class FileMailStorage(BaseMailStorage):
             except Exception:
                 subject = ""
         else:
-            data = milter.msg.as_bytes
+            data = milter.msg_as_bytes
             mailfrom = milter.msginfo["mailfrom"]
             recipients = list(milter.msginfo["rcpts"])
             subject = milter.msg["subject"] or ""

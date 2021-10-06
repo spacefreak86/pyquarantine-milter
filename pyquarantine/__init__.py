@@ -93,12 +93,28 @@ class QuarantineMilter(Milter.Base):
             self.logger.debug(f"delheader: {field}[{idx}]")
         super().chgheader(field, idx, value)
 
+    def msg_as_bytes(self):
+        try:
+            data = self.msg.as_bytes()
+        except Exception:
+            self.logger.warning(
+                "unable to serialize message as bytes, "
+                "try to serialize as str and encode")
+            try:
+                data = self.msg.as_string().encode("ascii", errors="replace")
+            except Exception as e:
+                self.logger.exception(
+                    "unable to serialize message, giving up")
+                raise e
+
+        return data
+
     def update_headers(self, old_headers):
         if self.msg.is_multipart() and not self.msg["MIME-Version"]:
             self.msg.add_header("MIME-Version", "1.0")
 
         # serialize the message object so it updates its internal strucure
-        self.msg.as_bytes()
+        self.msg_as_bytes()
 
         old_headers = [(f, f.lower(), v) for f, v in old_headers]
         headers = [(f, f.lower(), v) for f, v in self.msg.items()]
@@ -121,7 +137,7 @@ class QuarantineMilter(Milter.Base):
     def _replacebody(self):
         if not self._body_changed:
             return
-        data = self.msg.as_bytes()
+        data = self.msg_as_bytes()
         body_pos = data.find(b"\r\n\r\n") + 4
         self.logger.debug("replace body")
         super().replacebody(data[body_pos:])

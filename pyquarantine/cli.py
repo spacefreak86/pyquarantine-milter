@@ -194,11 +194,11 @@ def list_whitelist(quarantines, args):
         return
 
     # transform some values to strings
-    for entry_id, entry in entries.items():
-        entries[entry_id]["permanent_str"] = str(entry["permanent"])
-        entries[entry_id]["created_str"] = entry["created"].strftime(
+    for eid, entry in entries.items():
+        entries[eid]["permanent_str"] = str(entry["permanent"])
+        entries[eid]["created_str"] = entry["created"].strftime(
             '%Y-%m-%d %H:%M:%S')
-        entries[entry_id]["last_used_str"] = entry["last_used"].strftime(
+        entries[eid]["last_used_str"] = entry["last_used"].strftime(
             '%Y-%m-%d %H:%M:%S')
 
     print_table(
@@ -227,11 +227,11 @@ def add_whitelist_entry(quarantines, args):
 
         if not args.force:
             # the entry is already covered by others
-            for entry_id, entry in entries.items():
-                entries[entry_id]["permanent_str"] = str(entry["permanent"])
-                entries[entry_id]["created_str"] = entry["created"].strftime(
+            for eid, entry in entries.items():
+                entries[eid]["permanent_str"] = str(entry["permanent"])
+                entries[eid]["created_str"] = entry["created"].strftime(
                     '%Y-%m-%d %H:%M:%S')
-                entries[entry_id]["last_used_str"] = entry["last_used"].strftime(
+                entries[eid]["last_used_str"] = entry["last_used"].strftime(
                     '%Y-%m-%d %H:%M:%S')
             print_table(
                 [
@@ -342,144 +342,145 @@ def main():
     list_parser.set_defaults(func=list_quarantines)
 
     # quarantine command group
-    quarantine_parser = subparsers.add_parser(
+    quar_parser = subparsers.add_parser(
         "quarantine",
         description="Manage quarantines.",
         help="Manage quarantines.",
         formatter_class=formatter_class)
-    quarantine_parser.add_argument(
+    quar_parser.add_argument(
         "quarantine",
         metavar="QUARANTINE",
         help="Quarantine name.")
-    quarantine_subparsers = quarantine_parser.add_subparsers(
+    quar_subparsers = quar_parser.add_subparsers(
         dest="command",
         title="Quarantine commands")
-    quarantine_subparsers.required = True
+    quar_subparsers.required = True
     # quarantine list command
-    quarantine_list_parser = quarantine_subparsers.add_parser(
+    quar_list_parser = quar_subparsers.add_parser(
         "list",
         description="List emails in quarantines.",
         help="List emails in quarantine.",
         formatter_class=formatter_class)
-    quarantine_list_parser.add_argument(
+    quar_list_parser.add_argument(
         "-f", "--from",
         dest="mailfrom",
         help="Filter emails by from address.",
         default=None,
         nargs="+")
-    quarantine_list_parser.add_argument(
+    quar_list_parser.add_argument(
         "-t", "--to",
         dest="recipients",
         help="Filter emails by recipient address.",
         default=None,
         nargs="+")
-    quarantine_list_parser.add_argument(
+    quar_list_parser.add_argument(
         "-o", "--older-than",
         dest="older_than",
         help="Filter emails by age (days).",
         default=None,
         type=float)
-    quarantine_list_parser.add_argument(
+    quar_list_parser.add_argument(
         "-b", "--batch",
-        help="Print results using only email quarantine IDs, each on a new line.",
+        help="Print results using only email quarantine IDs, "
+             "each on a new line.",
         action="store_true")
-    quarantine_list_parser.set_defaults(func=list_quarantine_emails)
+    quar_list_parser.set_defaults(func=list_quarantine_emails)
     # quarantine notify command
-    quarantine_notify_parser = quarantine_subparsers.add_parser(
+    quar_notify_parser = quar_subparsers.add_parser(
         "notify",
         description="Notify recipient about email in quarantine.",
         help="Notify recipient about email in quarantine.",
         formatter_class=formatter_class)
-    quarantine_notify_parser.add_argument(
+    quar_notify_parser.add_argument(
         "quarantine_id",
         metavar="ID",
         help="Quarantine ID.")
-    quarantine_notify_parser_group = quarantine_notify_parser.add_mutually_exclusive_group(
+    quar_notify_parser_grp = quar_notify_parser.add_mutually_exclusive_group(
         required=True)
-    quarantine_notify_parser_group.add_argument(
+    quar_notify_parser_grp.add_argument(
         "-t", "--to",
         dest="recipient",
         help="Release email for one recipient address.")
-    quarantine_notify_parser_group.add_argument(
+    quar_notify_parser_grp.add_argument(
         "-a", "--all",
         help="Release email for all recipients.",
         action="store_true")
-    quarantine_notify_parser.set_defaults(func=notify)
+    quar_notify_parser.set_defaults(func=notify)
     # quarantine release command
-    quarantine_release_parser = quarantine_subparsers.add_parser(
+    quar_release_parser = quar_subparsers.add_parser(
         "release",
         description="Release email from quarantine.",
         help="Release email from quarantine.",
         formatter_class=formatter_class)
-    quarantine_release_parser.add_argument(
+    quar_release_parser.add_argument(
         "quarantine_id",
         metavar="ID",
         help="Quarantine ID.")
-    quarantine_release_parser.add_argument(
+    quar_release_parser.add_argument(
         "-n",
         "--disable-syslog",
         dest="syslog",
         help="Disable syslog messages.",
         action="store_false")
-    quarantine_release_parser_group = quarantine_release_parser.add_mutually_exclusive_group(
+    quar_release_parser_grp = quar_release_parser.add_mutually_exclusive_group(
         required=True)
-    quarantine_release_parser_group.add_argument(
+    quar_release_parser_grp.add_argument(
         "-t", "--to",
         dest="recipient",
         help="Release email for one recipient address.")
-    quarantine_release_parser_group.add_argument(
+    quar_release_parser_grp.add_argument(
         "-a", "--all",
         help="Release email for all recipients.",
         action="store_true")
-    quarantine_release_parser.set_defaults(func=release)
+    quar_release_parser.set_defaults(func=release)
     # quarantine delete command
-    quarantine_delete_parser = quarantine_subparsers.add_parser(
+    quar_delete_parser = quar_subparsers.add_parser(
         "delete",
         description="Delete email from quarantine.",
         help="Delete email from quarantine.",
         formatter_class=formatter_class)
-    quarantine_delete_parser.add_argument(
+    quar_delete_parser.add_argument(
         "quarantine_id",
         metavar="ID",
         help="Quarantine ID.")
-    quarantine_delete_parser.add_argument(
+    quar_delete_parser.add_argument(
         "-n", "--disable-syslog",
         dest="syslog",
         help="Disable syslog messages.",
         action="store_false")
-    quarantine_delete_parser_group = quarantine_delete_parser.add_mutually_exclusive_group(
+    quar_delete_parser_grp = quar_delete_parser.add_mutually_exclusive_group(
         required=True)
-    quarantine_delete_parser_group.add_argument(
+    quar_delete_parser_grp.add_argument(
         "-t", "--to",
         dest="recipient",
         help="Delete email for one recipient address.")
-    quarantine_delete_parser_group.add_argument(
+    quar_delete_parser_grp.add_argument(
         "-a", "--all",
         help="Delete email for all recipients.",
         action="store_true")
-    quarantine_delete_parser.set_defaults(func=delete)
+    quar_delete_parser.set_defaults(func=delete)
     # quarantine get command
-    quarantine_get_parser = quarantine_subparsers.add_parser(
+    quar_get_parser = quar_subparsers.add_parser(
         "get",
         description="Get email from quarantine.",
         help="Get email from quarantine",
         formatter_class=formatter_class)
-    quarantine_get_parser.add_argument(
+    quar_get_parser.add_argument(
         "quarantine_id",
         metavar="ID",
         help="Quarantine ID.")
-    quarantine_get_parser.set_defaults(func=get)
+    quar_get_parser.set_defaults(func=get)
     # quarantine metadata command
-    quarantine_metadata_parser = quarantine_subparsers.add_parser(
+    quar_metadata_parser = quar_subparsers.add_parser(
         "metadata",
         description="Get metadata of email from quarantine.",
         help="Get metadata of email from quarantine",
         formatter_class=formatter_class)
-    quarantine_metadata_parser.add_argument(
+    quar_metadata_parser.add_argument(
         "quarantine_id",
         metavar="ID",
         help="Quarantine ID.")
-    quarantine_metadata_parser.set_defaults(func=metadata)
+    quar_metadata_parser.set_defaults(func=metadata)
 
     # whitelist command group
     whitelist_parser = subparsers.add_parser(
@@ -546,7 +547,8 @@ def main():
         action="store_true")
     whitelist_add_parser.add_argument(
         "--force",
-        help="Force adding an entry, even if already covered by another entry.",
+        help="Force adding an entry, "
+             "even if already covered by another entry.",
         action="store_true")
     whitelist_add_parser.set_defaults(func=add_whitelist_entry)
     # whitelist delete command

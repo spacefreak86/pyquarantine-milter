@@ -204,7 +204,7 @@ def _inject_body(milter):
 
 def _wrap_message(milter):
     attachment = MIMEPart(policy=SMTPUTF8)
-    attachment.set_content(milter.msg.as_bytes(),
+    attachment.set_content(milter.msg_as_bytes(),
                            maintype="plain", subtype="text",
                            disposition="attachment",
                            filename=f"{milter.qid}.eml",

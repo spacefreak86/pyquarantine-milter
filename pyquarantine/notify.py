@@ -258,7 +258,6 @@ class EMailNotification(BaseNotification):
                 f"generating email notification for '{recipient}'")
             logger.debug("parsing email template")
 
-            # generate dict containing all template variables
             variables = defaultdict(str, template_vars)
             variables["HTML_TEXT"] = sanitized_text
             variables["ENVELOPE_FROM"] = escape(mailfrom, quote=False)
@@ -266,22 +265,30 @@ class EMailNotification(BaseNotification):
                 quote(mailfrom), quote=False)
             variables["ENVELOPE_TO"] = escape(recipient, quote=False)
             variables["ENVELOPE_TO_URL"] = escape(quote(recipient))
-            for field in ["from", "to", "subject"]:
-                value = msg[field]
-                if value is None:
-                    continue
-                variables[field.upper()] = escape(value, quote=False)
+
+            newmsg = MIMEMultipart('related')
+            if msg["from"] is not None:
+                newmsg["From"] = self.from_header.format_map(
+                    defaultdict(str, FROM=msg["from"]))
+                variables["FROM"] = escape(msg["from"], quote=False)
+            else:
+                newmsg["From"] = self.from_header.format_map(defaultdict(str))
+
+            if msg["to"] is not None:
+                newmsg["To"] = msg["to"]
+                variables["TO"] = escape(msg["to"], quote=False)
+            else:
+                newmsg["To"] = recipient
+
+            if msg["subject"] is not None:
+                newmsg["Subject"] = self.subject.format_map(
+                    defaultdict(str, SUBJECT=msg["subject"]))
+                variables["SUBJECT"] = escape(msg["subject"], quote=False)
+
+            newmsg["Date"] = email.utils.formatdate()
 
             # parse template
             htmltext = self.template.format_map(variables)
-
-            newmsg = MIMEMultipart('related')
-            newmsg["From"] = self.from_header.format_map(
-                defaultdict(str, FROM=variables["FROM"]))
-            newmsg["To"] = variables["TO"]
-            newmsg["Subject"] = self.subject.format_map(
-                defaultdict(str, SUBJECT=variables["SUBJECT"]))
-            newmsg["Date"] = email.utils.formatdate()
             newmsg.attach(MIMEText(htmltext, "html", 'UTF-8'))
 
             if image_replaced:

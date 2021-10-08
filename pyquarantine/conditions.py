@@ -32,7 +32,7 @@ class Conditions:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        for arg in ("local", "hosts", "envfrom", "envto", "header", "metavar",
+        for arg in ("local", "hosts", "envfrom", "envto", "headers", "metavar",
                     "var"):
             if arg not in cfg:
                 setattr(self, arg, None)
@@ -51,11 +51,12 @@ class Conditions:
                         cfg[arg], re.IGNORECASE))
                 except re.error as e:
                     raise RuntimeError(e)
-            elif arg == "header":
+            elif arg == "headers":
                 try:
-                    self.header = re.compile(
-                        cfg["header"],
-                        re.IGNORECASE + re.DOTALL + re.MULTILINE)
+                    self.headers = []
+                    for header in cfg["headers"]:
+                        self.headers.append(re.compile(
+                            header, re.IGNORECASE + re.DOTALL + re.MULTILINE))
                 except re.error as e:
                     raise RuntimeError(e)
             else:
@@ -72,7 +73,7 @@ class Conditions:
 
     def __str__(self):
         cfg = []
-        for arg in ("local", "hosts", "envfrom", "envto", "header",
+        for arg in ("local", "hosts", "envfrom", "envto", "headers",
                     "var", "metavar"):
             if arg in self.cfg:
                 cfg.append(f"{arg}={self.cfg[arg]}")
@@ -133,21 +134,33 @@ class Conditions:
 
         return wl_rcpts
 
+    def update_msginfo_from_match(self, milter, match):
+        if self.metavar is None:
+            return
+
+        named_subgroups = match.groupdict(default=None)
+        for group, value in named_subgroups.items():
+            if value is None:
+                continue
+            name = f"{self.metavar}_{group}"
+            milter.msginfo["vars"][name] = value
+
     def match(self, milter):
         logger = CustomLogger(
             self.logger, {"qid": milter.qid, "name": self.cfg["name"]})
 
         if self.envfrom is not None:
             envfrom = milter.msginfo["mailfrom"]
-            if not self.envfrom.match(envfrom):
+            match = self.envfrom.match(envfrom)
+            if not match:
                 logger.debug(
                     f"ignore envelope-from address {envfrom}, "
                     f"envfrom does not match")
                 return False
-
             logger.debug(
                 f"envfrom matches for "
                 f"envelope-from address {envfrom}")
+            self.update_msginfo_from_match(milter, match)
 
         if self.envto is not None:
             envto = milter.msginfo["rcpts"]
@@ -155,7 +168,8 @@ class Conditions:
                 envto = [envto]
 
             for to in envto:
-                if not self.envto.match(to):
+                match = self.envto.match(to)
+                if not match:
                     logger.debug(
                         f"ignore envelope-to address {envto}, "
                         f"envto does not match")
@@ -164,29 +178,27 @@ class Conditions:
             logger.debug(
                 f"envto matches for "
                 f"envelope-to address {envto}")
+            self.update_msginfo_from_match(milter, match)
 
-        if self.header is not None:
-            match = None
+        if self.headers is not None:
+            headers = self.headers.copy()
             for field, value in milter.msg.items():
                 header = f"{field}: {value}"
-                match = self.header.search(header)
-                if match:
-                    logger.debug(
-                        f"header matches for "
-                        f"header: {header}")
-                    if self.metavar is not None:
-                        named_subgroups = match.groupdict(default=None)
-                        for group, value in named_subgroups.items():
-                            if value is None:
-                                continue
-                            name = f"{self.metavar}_{group}"
-                            milter.msginfo["vars"][name] = value
-                    break
+                for h in headers.copy():
+                    match = h.search(header)
+                    if match:
+                        logger.debug(
+                            f"headers matches for "
+                            f"header: {header}")
+                        self.update_msginfo_from_match(milter, match)
+                        headers.remove(h)
+                        if not headers:
+                            break
 
-            if not match:
+            if headers:
                 logger.debug(
                     "ignore message, "
-                    "header does not match")
+                    "headers does not match")
                 return False
 
         if self.var is not None:

@@ -118,7 +118,8 @@ class ConditionsConfig(BaseConfig):
                       "items": {"type": "string"}},
             "envfrom": {"type": "string"},
             "envto": {"type": "string"},
-            "header": {"type": "string"},
+            "headers": {"type": "array",
+                        "items": {"type": "string"}},
             "var": {"type": "string"},
             "whitelist": {"type": "object"}}}
 

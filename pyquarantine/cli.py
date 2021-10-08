@@ -97,7 +97,7 @@ def list_quarantines(quarantines, args):
     else:
         qlist = []
         for q in quarantines:
-            cfg = q["args"]
+            cfg = q["options"]
             storage_type = cfg["store"]["type"]
 
             if "notify" in cfg:

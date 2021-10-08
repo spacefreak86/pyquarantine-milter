@@ -269,7 +269,7 @@ class ActionConfig(BaseConfig):
 
     JSON_SCHEMA = {
         "type": "object",
-        "required": ["name", "type", "args"],
+        "required": ["name", "type", "options"],
         "additionalProperties": False,
         "properties": {
             "name": {"type": "string"},
@@ -277,14 +277,14 @@ class ActionConfig(BaseConfig):
             "pretend": {"type": "boolean", "default": False},
             "conditions": {"type": "object"},
             "type": {"enum": list(ACTION_TYPES.keys())},
-            "args": {"type": "object"}}}
+            "options": {"type": "object"}}}
 
     def __init__(self, config, rec=True):
         super().__init__(config)
         if rec:
             if "conditions" in self:
                 self["conditions"] = ConditionsConfig(self["conditions"])
-            self["action"] = self.ACTION_TYPES[self["type"]](self["args"])
+            self["action"] = self.ACTION_TYPES[self["type"]](self["options"])
 
 
 class RuleConfig(BaseConfig):

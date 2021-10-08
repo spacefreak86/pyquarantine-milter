@@ -332,16 +332,16 @@ class Notify:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        nodification_type = cfg["args"]["type"]
-        del cfg["args"]["type"]
-        cfg["args"]["pretend"] = cfg["pretend"]
+        nodification_type = cfg["options"]["type"]
+        del cfg["options"]["type"]
+        cfg["options"]["pretend"] = cfg["pretend"]
         self._notification = self.NOTIFICATION_TYPES[nodification_type](
-            **cfg["args"])
+            **cfg["options"])
         self._headersonly = self._notification._headersonly
 
     def __str__(self):
         cfg = []
-        for key, value in self.cfg["args"].items():
+        for key, value in self.cfg["options"].items():
             cfg.append(f"{key}={value}")
         class_name = type(self._notification).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"

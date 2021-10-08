@@ -375,16 +375,16 @@ class Store:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        storage_type = cfg["args"]["type"]
-        del cfg["args"]["type"]
-        cfg["args"]["pretend"] = cfg["pretend"]
+        storage_type = cfg["options"]["type"]
+        del cfg["options"]["type"]
+        cfg["options"]["pretend"] = cfg["pretend"]
         self._storage = self.STORAGE_TYPES[storage_type](
-            **cfg["args"])
+            **cfg["options"])
         self._headersonly = self._storage._headersonly
 
     def __str__(self):
         cfg = []
-        for key, value in self.cfg["args"].items():
+        for key, value in self.cfg["options"].items():
             cfg.append(f"{key}={value}")
         class_name = type(self._storage).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"
@@ -412,25 +412,25 @@ class Quarantine:
             "loglevel": cfg["loglevel"],
             "pretend": cfg["pretend"],
             "type": "store",
-            "args": cfg["args"]["store"].get_config()})
+            "options": cfg["options"]["store"].get_config()})
         self._storage = Store(storage_cfg, local_addrs, debug)
 
-        self.smtp_host = cfg["args"]["smtp_host"]
-        self.smtp_port = cfg["args"]["smtp_port"]
+        self.smtp_host = cfg["options"]["smtp_host"]
+        self.smtp_port = cfg["options"]["smtp_port"]
 
         self._notification = None
-        if "notify" in cfg["args"]:
+        if "notify" in cfg["options"]:
             notify_cfg = ActionConfig({
                 "name": cfg["name"],
                 "loglevel": cfg["loglevel"],
                 "pretend": cfg["pretend"],
                 "type": "notify",
-                "args": cfg["args"]["notify"].get_config()})
+                "options": cfg["options"]["notify"].get_config()})
             self._notification = Notify(notify_cfg, local_addrs, debug)
 
         self._whitelist = None
-        if "whitelist" in cfg["args"]:
-            whitelist_cfg = cfg["args"]["whitelist"]
+        if "whitelist" in cfg["options"]:
+            whitelist_cfg = cfg["options"]["whitelist"]
             whitelist_cfg["name"] = cfg["name"]
             whitelist_cfg["loglevel"] = cfg["loglevel"]
             self._whitelist = Conditions(
@@ -439,15 +439,15 @@ class Quarantine:
                 debug=debug)
 
         self._milter_action = None
-        if "milter_action" in cfg["args"]:
-            self._milter_action = cfg["args"]["milter_action"].upper()
+        if "milter_action" in cfg["options"]:
+            self._milter_action = cfg["options"]["milter_action"].upper()
             assert self._milter_action in ["ACCEPT", "REJECT", "DISCARD"], \
                 f"invalid milter_action '{cfg['args']['milter_action']}'"
 
         self._reason = None
         if self._milter_action == "REJECT":
-            if "reject_reason" in cfg["args"]:
-                self._reason = cfg["args"]["reject_reason"]
+            if "reject_reason" in cfg["options"]:
+                self._reason = cfg["options"]["reject_reason"]
             else:
                 self._reason = "Message rejected"
 
@@ -459,9 +459,9 @@ class Quarantine:
         if self._whitelist is not None:
             cfg.append(f"whitelist={str(self._whitelist)}")
         for key in ["milter_action", "reject_reason"]:
-            if key not in self.cfg["args"]:
+            if key not in self.cfg["options"]:
                 continue
-            value = self.cfg["args"][key]
+            value = self.cfg["options"][key]
             cfg.append(f"{key}={value}")
         class_name = type(self).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"

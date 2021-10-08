@@ -390,14 +390,14 @@ class Modify:
         self.cfg = cfg
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
-        cfg["args"]["pretend"] = cfg["pretend"]
+        cfg["options"]["pretend"] = cfg["pretend"]
         self._modification = self.MODIFICATION_TYPES[cfg["type"]](
-            **cfg["args"])
+            **cfg["options"])
         self._headersonly = self._modification._headersonly
 
     def __str__(self):
         cfg = []
-        for key, value in self.cfg["args"].items():
+        for key, value in self.cfg["options"].items():
             cfg.append(f"{key}={value}")
         class_name = type(self._modification).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"

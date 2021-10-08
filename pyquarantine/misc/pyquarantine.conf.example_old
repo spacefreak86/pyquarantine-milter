@@ -60,7 +60,7 @@
             # Section: conditions
             # Notes:   Optional conditions to process the rule.
             #          If multiple conditions are set, they all
-            #          have to be true for the rule to be processed.
+            #          have to be true to process the rule.
             #
             "conditions": {
                 # Option: local

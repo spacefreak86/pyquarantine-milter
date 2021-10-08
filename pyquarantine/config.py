@@ -26,7 +26,7 @@ __all__ = [
     "QuarantineConfig",
     "ActionConfig",
     "RuleConfig",
-    "MilterConfig",
+    "QuarantineMilterConfig",
     "get_milter_config"]
 
 import json
@@ -315,7 +315,7 @@ class RuleConfig(BaseConfig):
             self["actions"] = actions
 
 
-class MilterConfig(BaseConfig):
+class QuarantineMilterConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
         "required": ["rules"],
@@ -365,4 +365,4 @@ def get_milter_config(cfgfile, raw=False):
         raise RuntimeError(f"{e}\n{msg}")
     if raw:
         return cfg
-    return MilterConfig(cfg)
+    return QuarantineMilterConfig(cfg)

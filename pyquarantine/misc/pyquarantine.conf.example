@@ -1,9 +1,7 @@
 # This is an example /etc/pyquarantine/pyquarantine.conf file.
 # Copy it into place before use.
 #
-# The file is in JSON format.
-#
-# The global option 'log' can be overriden per rule or per modification.
+# The file is in JSON format, but comments are allowed.
 #
 {
     # Section: global

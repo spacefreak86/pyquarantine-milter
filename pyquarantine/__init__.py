@@ -115,20 +115,20 @@ class QuarantineMilter(Milter.Base):
         # serialize the message object so it updates its internal strucure
         self.msg_as_bytes()
 
-        old_headers = [(f, f.lower(), v) for f, v in old_headers]
-        headers = [(f, f.lower(), v) for f, v in self.msg.items()]
+        headers = set(self.msg.items())
+        to_remove = list(set(old_headers) - headers)
+        to_add = list(headers - set(old_headers))
 
         idx = defaultdict(int)
-        for field, field_lower, value in old_headers:
-            idx[field_lower] += 1
-            if (field, field_lower, value) not in headers:
-                self.chgheader(field, "", idx=idx[field_lower])
-                idx[field_lower] -= 1
-
-        for field, value in self.msg.items():
+        for field, value in old_headers:
             field_lower = field.lower()
-            if (field, field_lower, value) not in old_headers:
-                self.addheader(field, value)
+            if (field, value) in to_remove:
+                self.chgheader(field, "", idx=idx[field_lower] + 1)
+                continue
+            idx[field_lower] += 1
+
+        for field, value in to_add:
+            self.addheader(field, value)
 
     def replacebody(self):
         self._body_changed = True

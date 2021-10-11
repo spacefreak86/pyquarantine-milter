@@ -533,6 +533,8 @@ class Quarantine:
                     f"error while sending email to '{recipient}': {e}")
             self.storage.delete(storage_id, recipient)
 
+        return recipients
+
     def execute(self, milter):
         logger = CustomLogger(
             self.logger, {"name": self.cfg["name"], "qid": milter.qid})

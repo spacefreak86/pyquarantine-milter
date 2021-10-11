@@ -133,7 +133,6 @@ def list_quarantines(quarantines, args):
 
 
 def list_quarantine_emails(quarantines, args):
-    logger = logging.getLogger(__name__)
     storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
 
     # find emails and transform some metadata values to strings
@@ -170,7 +169,9 @@ def list_quarantine_emails(quarantines, args):
         return
 
     if not emails:
-        logger.info(f"quarantine '{args.quarantine}' is empty")
+        print(f"quarantine '{args.quarantine}' is empty")
+        return
+
     print_table(
         [("Quarantine-ID", "storage_id"), ("When", "timestamp"),
          ("From", "mailfrom"), ("Recipient(s)", "recipient"),
@@ -180,7 +181,6 @@ def list_quarantine_emails(quarantines, args):
 
 
 def list_whitelist(quarantines, args):
-    logger = logging.getLogger(__name__)
     whitelist = _get_whitelist(quarantines, args.quarantine, args.debug)
 
     # find whitelist entries
@@ -189,8 +189,7 @@ def list_whitelist(quarantines, args):
         recipients=args.recipients,
         older_than=args.older_than)
     if not entries:
-        logger.info(
-            f"whitelist of quarantine '{args.quarantine}' is empty")
+        print(f"whitelist of quarantine '{args.quarantine}' is empty")
         return
 
     # transform some values to strings
@@ -268,8 +267,10 @@ def notify(quarantines, args):
 def release(quarantines, args):
     logger = logging.getLogger(__name__)
     quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
-    quarantine.release(args.quarantine_id, args.recipient)
-    logger.info("quarantined email released successfully")
+    rcpts = quarantine.release(args.quarantine_id, args.recipient)
+    logger.info(
+        f"quarantined email {args.quarantine_id} released successfully "
+        f"for recipients {rcpts}")
 
 
 def delete(quarantines, args):

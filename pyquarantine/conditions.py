@@ -151,16 +151,16 @@ class Conditions:
 
         if self.envfrom is not None:
             envfrom = milter.msginfo["mailfrom"]
-            match = self.envfrom.match(envfrom)
-            if not match:
+            if match := self.envfrom.match(envfrom):
+                logger.debug(
+                    f"envfrom matches for "
+                    f"envelope-from address {envfrom}")
+                self.update_msginfo_from_match(milter, match)
+            else:
                 logger.debug(
                     f"ignore envelope-from address {envfrom}, "
                     f"envfrom does not match")
                 return False
-            logger.debug(
-                f"envfrom matches for "
-                f"envelope-from address {envfrom}")
-            self.update_msginfo_from_match(milter, match)
 
         if self.envto is not None:
             envto = milter.msginfo["rcpts"]
@@ -181,21 +181,16 @@ class Conditions:
             self.update_msginfo_from_match(milter, match)
 
         if self.headers is not None:
-            headers = self.headers.copy()
-            for field, value in milter.msg.items():
-                header = f"{field}: {value}"
-                for h in headers.copy():
-                    match = h.search(header)
-                    if match:
-                        logger.debug(
-                            f"headers matches for "
-                            f"header: {header}")
-                        self.update_msginfo_from_match(milter, match)
-                        headers.remove(h)
-                        if not headers:
-                            break
+            headers = map(lambda h: f"{h[0]}: {h[1]}", milter.msg.items())
+            for hdr in self.headers:
+                matches = filter(None, map(lambda h: hdr.search(h), headers))
+                if match := next(matches, None):
+                    logger.debug(
+                        f"headers matches for "
+                        f"header: {match.string}")
+                    self.update_msginfo_from_match(milter, match)
+                    continue
 
-            if headers:
                 logger.debug(
                     "ignore message, "
                     "headers does not match")

@@ -123,7 +123,7 @@ class QuarantineMilter(Milter.Base):
             idx[field_lower] += 1
             if (field, field_lower, value) not in headers:
                 self.chgheader(field, "", idx=idx[field_lower])
-                idx[field] -= 1
+                idx[field_lower] -= 1
 
         for field, value in self.msg.items():
             field_lower = field.lower()

@@ -48,26 +48,26 @@ class BaseMailStorage:
         self.pretend = False
 
     def add(self, data, qid, mailfrom, recipients, subject, variables):
-        "Add email to storage."
+        "Add message to storage."
         return ("", "")
 
     def execute(self, milter, logger):
         return
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
-        "Find emails in storage."
+        "Find messages in storage."
         return
 
     def get_metadata(self, storage_id):
-        "Return metadata of email in storage."
+        "Return metadata of message in storage."
         return
 
     def delete(self, storage_id, recipients=None):
-        "Delete email from storage."
+        "Delete message from storage."
         return
 
     def get_mail(self, storage_id):
-        "Return email and metadata."
+        "Return message and metadata."
         return
 
 
@@ -160,7 +160,7 @@ class FileMailStorage(BaseMailStorage):
             raise RuntimeError(f"unable to remove file: {e}")
 
     def add(self, data, qid, mailfrom, recipients, subject, variables, logger):
-        "Add email to file storage and return storage id."
+        "Add message to file storage and return storage id."
         super().add(data, qid, mailfrom, recipients, subject, variables)
 
         storage_id = self.get_storageid(qid)
@@ -221,7 +221,7 @@ class FileMailStorage(BaseMailStorage):
                  milter.msginfo["vars"], logger)
 
     def get_metadata(self, storage_id):
-        "Return metadata of email in storage."
+        "Return metadata of message in storage."
         super().get_metadata(storage_id)
 
         if not self.metadata:
@@ -279,7 +279,7 @@ class FileMailStorage(BaseMailStorage):
         return metadata
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
-        "Find emails in storage."
+        "Find messages in storage."
         super().find(mailfrom, recipients, older_than)
         if isinstance(mailfrom, str):
             mailfrom = [mailfrom]
@@ -289,7 +289,7 @@ class FileMailStorage(BaseMailStorage):
         if not self.metadata:
             return {}
 
-        emails = {}
+        msgs = {}
         metafiles = glob(os.path.join(
             self.directory, f"*{self._metadata_suffix}"))
         for metafile in metafiles:
@@ -316,12 +316,12 @@ class FileMailStorage(BaseMailStorage):
                         len(recipients + metadata["recipients"]):
                     continue
 
-            emails[storage_id] = metadata
+            msgs[storage_id] = metadata
 
-        return emails
+        return msgs
 
     def delete(self, storage_id, recipients=None):
-        "Delete email from storage."
+        "Delete message from storage."
         super().delete(storage_id, recipients)
         if not recipients or not self.metadata:
             self._remove(storage_id)
@@ -330,7 +330,7 @@ class FileMailStorage(BaseMailStorage):
         try:
             metadata = self.get_metadata(storage_id)
         except RuntimeError as e:
-            raise RuntimeError(f"unable to delete email: {e}")
+            raise RuntimeError(f"unable to delete message: {e}")
 
         metafile, _ = self._get_file_paths(storage_id)
 
@@ -352,7 +352,7 @@ class FileMailStorage(BaseMailStorage):
             with open(datafile, "rb") as fh:
                 data = fh.read()
         except IOError as e:
-            raise RuntimeError(f"unable to open email data file: {e}")
+            raise RuntimeError(f"unable to open data file: {e}")
         return data
 
     def get_mail(self, storage_id):
@@ -491,7 +491,7 @@ class Quarantine:
         return self._milter_action
 
     def notify(self, storage_id, recipient=None):
-        "Notify recipient about email in storage."
+        "Notify recipient about message in storage."
         if not self._notification:
             raise RuntimeError(
                 "notification not defined, "
@@ -530,7 +530,7 @@ class Quarantine:
 
             except Exception as e:
                 raise RuntimeError(
-                    f"error while sending email to '{recipient}': {e}")
+                    f"error while sending message to '{recipient}': {e}")
             self.storage.delete(storage_id, recipient)
 
         return recipients
@@ -552,7 +552,7 @@ class Quarantine:
             milter.msginfo["rcpts"] = rcpts
 
         if self._milter_action in ["REJECT", "DISCARD"]:
-            logger.info(f"quarantine message for recipients: {rcpts}")
+            logger.info(f"quarantine message for {rcpts}")
 
         self._storage.execute(milter)
 

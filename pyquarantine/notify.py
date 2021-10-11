@@ -145,10 +145,10 @@ class EMailNotification(BaseNotification):
 
         self.parser_lib = parser_lib
 
-    def get_email_body_soup(self, msg, logger):
-        "Extract and decode email body and return it as BeautifulSoup object."
+    def get_msg_body_soup(self, msg, logger):
+        "Extract and decode message body, return it as BeautifulSoup object."
         # try to find the body part
-        logger.debug("trying to find email body")
+        logger.debug("trying to find message body")
         try:
             body = msg.get_body(preferencelist=("html", "plain"))
         except Exception as e:
@@ -178,8 +178,8 @@ class EMailNotification(BaseNotification):
             else:
                 logger.debug(f"content type is {content_type}")
         else:
-            logger.error("unable to find email body")
-            content = "ERROR: unable to find email body"
+            logger.error("unable to find message body")
+            content = "ERROR: unable to find message body"
 
         # create BeautifulSoup object
         length = len(content)
@@ -194,7 +194,7 @@ class EMailNotification(BaseNotification):
 
     def sanitize(self, soup, logger):
         "Sanitize mail html text."
-        logger.debug("sanitizing email text")
+        logger.debug("sanitize message text")
 
         # completly remove bad elements
         for element in soup(EMailNotification._bad_tags):
@@ -230,7 +230,7 @@ class EMailNotification(BaseNotification):
                template_vars={}, synchronous=False):
         "Notify recipients via email."
         # extract body from email
-        soup = self.get_email_body_soup(msg, logger)
+        soup = self.get_msg_body_soup(msg, logger)
 
         # replace picture sources
         image_replaced = False
@@ -248,15 +248,15 @@ class EMailNotification(BaseNotification):
                 element["src"] = "cid:removed_for_security_reasons"
                 image_replaced = True
 
-        # sanitizing email text of original email
+        # sanitize message text
         sanitized_text = self.sanitize(soup, logger)
         del soup
 
-        # sending email notifications
+        # send email notifications
         for recipient in recipients:
             logger.debug(
                 f"generating email notification for '{recipient}'")
-            logger.debug("parsing email template")
+            logger.debug("parsing message template")
 
             variables = defaultdict(str, template_vars)
             variables["HTML_TEXT"] = sanitized_text
@@ -307,7 +307,8 @@ class EMailNotification(BaseNotification):
                                      newmsg.as_string())
                 except Exception as e:
                     raise RuntimeError(
-                        f"error while sending email to '{recipient}': {e}")
+                        f"error while sending email notification "
+                        f"to '{recipient}': {e}")
             else:
                 mailer.sendmail(self.smtp_host, self.smtp_port, qid,
                                 self.mailfrom, recipient, newmsg.as_string(),

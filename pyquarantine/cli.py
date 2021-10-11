@@ -247,37 +247,35 @@ def add_whitelist_entry(quarantines, args):
 
     # add entry to whitelist
     whitelist.add(args.mailfrom, args.recipient, args.comment, args.permanent)
-    logger.info("whitelist entry added successfully")
+    print("whitelist entry added successfully")
 
 
 def delete_whitelist_entry(quarantines, args):
-    logger = logging.getLogger(__name__)
     whitelist = _get_whitelist(quarantines, args.quarantine, args.debug)
     whitelist.delete(args.whitelist_id)
-    logger.info("whitelist entry deleted successfully")
+    print("whitelist entry deleted successfully")
 
 
 def notify(quarantines, args):
-    logger = logging.getLogger(__name__)
     quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
     quarantine.notify(args.quarantine_id, args.recipient)
-    logger.info("notification sent successfully")
+    print("notification sent successfully")
 
 
 def release(quarantines, args):
     logger = logging.getLogger(__name__)
     quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
     rcpts = quarantine.release(args.quarantine_id, args.recipient)
+    rcpts = ", ".join(rcpts)
     logger.info(
-        f"quarantined email {args.quarantine_id} released successfully "
-        f"for recipients {rcpts}")
+        f"{args.quarantine}: released message with id {args.quarantine_id} "
+        f"for {rcpts}")
 
 
 def delete(quarantines, args):
-    logger = logging.getLogger(__name__)
     storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
     storage.delete(args.quarantine_id, args.recipient)
-    logger.info("quarantined email deleted successfully")
+    print("quarantined message deleted successfully")
 
 
 def get(quarantines, args):

@@ -28,7 +28,7 @@ from bs4 import BeautifulSoup
 from collections import defaultdict
 from copy import copy
 from email.message import MIMEPart
-from email.policy import SMTPUTF8
+from email.policy import SMTP
 from html import escape
 from urllib.parse import quote
 
@@ -203,7 +203,7 @@ def _inject_body(milter):
 
 
 def _wrap_message(milter):
-    attachment = MIMEPart(policy=SMTPUTF8)
+    attachment = MIMEPart(policy=SMTP)
     attachment.set_content(milter.msg_as_bytes(),
                            maintype="plain", subtype="text",
                            disposition="attachment",

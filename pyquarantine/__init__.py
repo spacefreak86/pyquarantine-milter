@@ -40,7 +40,7 @@ from copy import copy
 from email import message_from_binary_file
 from email.header import Header, decode_header, make_header
 from email.headerregistry import AddressHeader, _default_header_map
-from email.policy import SMTPUTF8
+from email.policy import SMTP
 from io import BytesIO
 from netaddr import IPNetwork, AddrFormatError
 
@@ -297,7 +297,7 @@ class QuarantineMilter(Milter.Base):
             # is read/modified by actions
             self.fp.seek(0)
             self.msg = message_from_binary_file(
-                self.fp, _class=MilterMessage, policy=SMTPUTF8.clone(
+                self.fp, _class=MilterMessage, policy=SMTP.clone(
                     refold_source='none'))
             self.msginfo = {
                 "mailfrom": self.mailfrom,

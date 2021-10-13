@@ -25,7 +25,7 @@ import os
 from calendar import timegm
 from datetime import datetime
 from email import message_from_bytes
-from email.policy import SMTPUTF8
+from email.policy import SMTP
 from glob import glob
 from time import gmtime
 
@@ -362,7 +362,7 @@ class FileMailStorage(BaseMailStorage):
         msg = message_from_bytes(
             self.get_mail_bytes(storage_id),
             _class=MilterMessage,
-            policy=SMTPUTF8.clone(refold_source='none'))
+            policy=SMTP.clone(refold_source='none'))
         return (metadata, msg)
 
 

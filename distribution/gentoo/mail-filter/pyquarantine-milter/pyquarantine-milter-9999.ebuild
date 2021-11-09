@@ -32,7 +32,7 @@ SLOT="0"
 IUSE="+lxml systemd"
 
 RDEPEND="
-	dev-python/beautifulsoup[${PYTHON_USEDEP}]
+	dev-python/beautifulsoup4[${PYTHON_USEDEP}]
 	dev-python/jsonschema[${PYTHON_USEDEP}]
 	lxml? ( dev-python/lxml[${PYTHON_USEDEP}] )
 	dev-python/netaddr[${PYTHON_USEDEP}]

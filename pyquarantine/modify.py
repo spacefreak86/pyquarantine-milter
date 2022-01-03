@@ -250,7 +250,9 @@ class AddDisclaimer:
         html_body, html_content = _get_body_content(milter.msg, "html")
 
         if text_content is None and html_content is None:
-            raise RuntimeError("message does not contain any body part")
+            logger.info("message does not contain any body part, "
+                        "inject empty plain and html body")
+            _inject_body(milter)
 
         variables = defaultdict(str, milter.msginfo["vars"])
         variables["ENVELOPE_FROM"] = escape(
@@ -303,13 +305,7 @@ class AddDisclaimer:
         old_headers = milter.msg.items()
 
         try:
-            try:
-                self.patch_message_body(milter, logger)
-            except RuntimeError as e:
-                logger.info(f"{e}, inject empty plain and html body")
-                _inject_body(milter)
-                self.patch_message_body(milter, logger)
-
+            self.patch_message_body(milter, logger)
         except Exception as e:
             logger.warning(e)
             if self.error_policy == "ignore":

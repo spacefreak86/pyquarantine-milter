@@ -170,7 +170,7 @@ class AddDisclaimerConfig(BaseConfig):
             "action": {"type": "string"},
             "html_template": {"type": "string"},
             "text_template": {"type": "string"},
-            "error_policy": {"type": "string"}}}
+            "error_policy": {"type": "string", "default": "wrap"}}}
 
 
 class RewriteLinksConfig(BaseConfig):

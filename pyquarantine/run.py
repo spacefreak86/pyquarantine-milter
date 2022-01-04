@@ -132,6 +132,10 @@ def main():
     if args.debug:
         Milter.setdbg(1)
 
+    # increase the recursion limit so that BeautifulSoup can
+    # parse larger html content
+    sys.setrecursionlimit(2000)
+
     rc = 0
     try:
         Milter.runmilter("pyquarantine", socketname=socket, timeout=600)

@@ -125,9 +125,10 @@ class ConditionsConfig(BaseConfig):
 
     def __init__(self, config, rec=True):
         super().__init__(config)
-        if rec:
-            if "whitelist" in self:
-                self["whitelist"] = WhitelistConfig(self["whitelist"])
+        if not rec:
+            return
+        if "whitelist" in self:
+            self["whitelist"] = WhitelistConfig(self["whitelist"])
 
 
 class AddHeaderConfig(BaseConfig):
@@ -247,15 +248,16 @@ class QuarantineConfig(BaseConfig):
 
     def __init__(self, config, rec=True):
         super().__init__(config)
-        if rec:
-            if "metadata" not in self["store"]:
-                self["store"]["metadata"] = True
-            self["store"] = StoreConfig(self["store"])
-            if "notify" in self:
-                self["notify"] = NotifyConfig(self["notify"])
-            if "whitelist" in self:
-                self["whitelist"] = ConditionsConfig(
-                    {"whitelist": self["whitelist"]}, rec)
+        if not rec:
+            return
+        if "metadata" not in self["store"]:
+            self["store"]["metadata"] = True
+        self["store"] = StoreConfig(self["store"])
+        if "notify" in self:
+            self["notify"] = NotifyConfig(self["notify"])
+        if "whitelist" in self:
+            self["whitelist"] = ConditionsConfig(
+                {"whitelist": self["whitelist"]}, rec)
 
 
 class ActionConfig(BaseConfig):
@@ -283,10 +285,11 @@ class ActionConfig(BaseConfig):
 
     def __init__(self, config, rec=True):
         super().__init__(config)
-        if rec:
-            if "conditions" in self:
-                self["conditions"] = ConditionsConfig(self["conditions"])
-            self["action"] = self.ACTION_TYPES[self["type"]](self["options"])
+        if not rec:
+            return
+        if "conditions" in self:
+            self["conditions"] = ConditionsConfig(self["conditions"])
+        self["action"] = self.ACTION_TYPES[self["type"]](self["options"])
 
 
 class RuleConfig(BaseConfig):
@@ -303,18 +306,19 @@ class RuleConfig(BaseConfig):
 
     def __init__(self, config, rec=True):
         super().__init__(config)
-        if rec:
-            if "conditions" in self:
-                self["conditions"] = ConditionsConfig(self["conditions"])
+        if not rec:
+            return
+        if "conditions" in self:
+            self["conditions"] = ConditionsConfig(self["conditions"])
 
-            actions = []
-            for idx, action in enumerate(self["actions"]):
-                if "loglevel" not in action:
-                    action["loglevel"] = config["loglevel"]
-                if "pretend" not in action:
-                    action["pretend"] = config["pretend"]
-                actions.append(ActionConfig(action, rec))
-            self["actions"] = actions
+        actions = []
+        for idx, action in enumerate(self["actions"]):
+            if "loglevel" not in action:
+                action["loglevel"] = config["loglevel"]
+            if "pretend" not in action:
+                action["pretend"] = config["pretend"]
+            actions.append(ActionConfig(action, rec))
+        self["actions"] = actions
 
 
 class QuarantineMilterConfig(BaseConfig):
@@ -339,15 +343,16 @@ class QuarantineMilterConfig(BaseConfig):
 
     def __init__(self, config, rec=True):
         super().__init__(config)
-        if rec:
-            rules = []
-            for idx, rule in enumerate(self["rules"]):
-                if "loglevel" not in rule:
-                    rule["loglevel"] = config["loglevel"]
-                if "pretend" not in rule:
-                    rule["pretend"] = config["pretend"]
-                rules.append(RuleConfig(rule, rec))
-            self["rules"] = rules
+        if not rec:
+            return
+        rules = []
+        for idx, rule in enumerate(self["rules"]):
+            if "loglevel" not in rule:
+                rule["loglevel"] = config["loglevel"]
+            if "pretend" not in rule:
+                rule["pretend"] = config["pretend"]
+            rules.append(RuleConfig(rule, rec))
+        self["rules"] = rules
 
 
 def get_milter_config(cfgfile, raw=False):

@@ -47,9 +47,8 @@ Global config options:
 
 ### Rule
 Rule config options:
-* **name**  (optional)  
+* **name**  
   Name of the rule.  
-  Default: **Rule #n**
 * **actions**  
   A list of action objects which are processed in the given order.
 * **conditions** (optional)  
@@ -61,13 +60,12 @@ Rule config options:
 
 ### Action
 Action config options:
-* **name** (optional)  
+* **name**  
   Name of the action.
-  Default: **Action #n**
 * **type**  
   See section [Actions](#Actions).
 * **options**  
-  Options for the action according to action type (as described below).
+  Options for the action according to action type (see section [Actions](#Actions)).
 * **conditions** (optional)  
   A list of conditions which all have to be true to process the action.
 * **loglevel** (optional)  
@@ -76,7 +74,7 @@ Action config options:
   See section [Global](#Global).
 
 ### Actions
-The following action types are available.
+The following action types and options are available.
 * **add_header**  
   Add new header.
   * **field**  
@@ -126,12 +124,44 @@ The following action types are available.
 * **store**  
   Store e-mail.
   * **type**  
-    Storage type. Possible values are:
-    * **file**
+    See section [Storages](#Storages).
   * **original** (optional)  
     If set to true, store the message as received by the MTA instead of storing the current state of the message, that may was modified already by other actions.
     Default: **false**
+  * **metadata** (optional)  
+    Store metadata.
+    Default: **false**
+  * **metavar**  (optional)
+    If set, some information (e.g. storage id) is saved as meta variables for later use.
 
+* **notify**  
+  Send notification to receiver.
+  * **type**  
+    See section [Notifications](#Notifications).
+
+* **quarantine**  
+  Quarantine e-mail.
+  * **store**  
+  Options for e-mail storage (see action **store** in section [Actions](#Actions)).
+  * **smtp_host**  
+  SMTP host used to release e-mails from quarantine.
+  * **smtp_port**  
+  SMTP port used to release e-mails from quarantine.
+  * **notify** (optional)  
+  Options for e-mail notifications (see action **notify** in section [Actions](#Actions)).
+  * **milter_action** (optional)  
+  Milter action to perform. Possible values are:
+    * **ACCEPT**   (Tell MTA to accept the e-mail, skip following rules/actions.)
+    * **REJECT**   (Tell MTA to reject the e-mail.)
+    * **DISCARD**  (Tell MTA to discard the e-mail.)
+  * **reject_reason** (optional)  
+  Reject message if milter_action is set to reject.
+  Default: **Message rejected**
+  * **whitelist** (optional)  
+  Options for a whitelist (see **whitelist** in section [Conditions](#Conditions)).
+
+### Storages
+The following storage types are and options are available:
 * **file**  
   * **directory**  
   Directory used to store e-mails.
@@ -139,20 +169,28 @@ The following action types are available.
   Store metadata file.
   Default: **false**
   * **mode**  (optional)  
-  Set file mode.
-  Default: system default
-  * **metavar** (optional)  
-  If set, some information (e.g. storage id) is saved as meta variables for later use.
+  File mode when new files are created.
+  Default: mode set by the system
 
-* **notify**  
-  Send notification to receiver.
-
-* **quarantine**  
-  Quarantine message.
-
-* **rewrite_links**  
-  Rewrite links in html body part.
-
+### Notifications
+The following notification types and options are available:
+* **email**
+  * **smtp_host**  
+  SMTP host used to send notifications.
+  * **smtp_port**  
+  SMTP port used to send notifications.
+  * **envelope_from**  
+  Envelope-From address.
+  * **from_header**  
+  Value of the From header.
+  * **subject**  
+  Subject of the notification.
+  * **template**  
+  Notification template.
+  * **repl_img** (optional)  
+  Replacement image used to replace all images in the e-mail body.
+  * **embed_imgs** (optional)  
+  List of images to embed into the notification e-mail.
 
 ### Conditions
 Config options for **conditions** objects:
@@ -164,7 +202,10 @@ Config options for **conditions** objects:
   A regular expression to match against the evenlope-from addresses for which the rule should be executed.
 * **envto** (optional)  
   A regular expression to match against all evenlope-to addresses. All addresses must match to fulfill the condition.
-
+* **headers** (optional)  
+* **whitelist** (optional)  
+* **var** (optional)  
+* **metavar** (optional)  
 
 ## Developer information
 Everyone who wants to improve or extend this project is very welcome.

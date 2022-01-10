@@ -228,7 +228,7 @@ class NotifyConfig(BaseConfig):
                 "embed_imgs": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "default": True}}}}
+                    "default": []}}}}
 
 
 class QuarantineConfig(BaseConfig):

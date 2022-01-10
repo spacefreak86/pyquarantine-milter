@@ -1,8 +1,10 @@
-# pyquarantine
-A pymilter based sendmail/postfix pre-queue filter with the ability to add, remove and modify e-mail headers.  
+# pyquarantine-milter
+A pymilter based sendmail/postfix pre-queue filter with the ability to quarantine e-mails, send notifications and modify e-mail headers and/or bodies.  
 The project is currently in beta status, but it is already used in a productive enterprise environment that processes about a million e-mails per month.  
 
-The basic idea is to define rules with conditions and actions which are processed when all conditions are true.
+It is useful in many cases due to its flexible configuration and the ability to handle any number of quarantines and/or modifications sequential.
+
+The basic idea is to configure rules with optional conditions. If all conditions match, the configured actions (e.g. quarantine, modify, ...) within the rule are performed on the e-mail. Each action can have its own conditions as well.  
 
 ## Dependencies
 pyquarantine is depending on these python packages, but they are installed automatically if you are working with pip.
@@ -21,15 +23,15 @@ cp /etc/pyquarantine/pyquarantine.conf.example /etc/pyquarantine/pyquarantine.co
 * Modify /etc/pyquarantine/pyquarantine.conf according to your needs.
 
 ## Configuration options
-pyquarantine uses a config file in JSON format. The config file has to be JSON valid with the exception of allowed comment lines starting with **#**. The options are described below.  
+pyquarantine uses a config file in JSON format. The config file has to be JSON valid with the exception of allowed comment lines starting with **#**.  
 Rules and actions are processed in the given order.
 
 ### Global
-Config options in **global** section:
+Global config options:
 * **socket** (optional)  
   The socket used to communicate with the MTA. If it is not specified in the config, it has to be set as command line option.
 * **local_addrs** (optional)  
-  A list of hosts and network addresses which are considered local. It is used to for the condition option [local](#Conditions).  
+  A list of hosts and network addresses which are considered local. It is used for the condition option [local](#Conditions).  
   Default: **fe80::/64, ::1/128, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16**
 * **loglevel**  (optional)
   Set the log level. This option may be overriden by any rule or action object. Possible values are:
@@ -40,53 +42,57 @@ Config options in **global** section:
   Default: **info**
 * **pretend** (optional)
   Pretend actions, for test purposes. This option may be overriden by any rule or action object.
+* **rules**
+  List of rule objects.
 
-### Rules
-Config options for **rule** objects:
+### Rule
+Rule config options:
 * **name**  (optional)  
   Name of the rule.  
   Default: **Rule #n**
 * **actions**  
   A list of action objects which are processed in the given order.
 * **conditions** (optional)  
-  A list of conditions which all have to be true to process the actions.
+  A list of conditions which all have to be true to process the rule.
 * **loglevel** (optional)  
-  As described above in the [Global](#Global) section.
+  See section [Global](#Global).
 * **pretend** (optional)  
-  As described above in the [Global](#Global) section.
+  See section [Global](#Global).
 
-### Actions
-Config options for **action** objects:
+### Action
+Action config options:
 * **name** (optional)  
   Name of the action.
   Default: **Action #n**
 * **type**  
-  Action type. Possible values are:
-  * **add_header**
-  * **del_header**
-  * **mod_header**
-  * **add_disclaimer**
-  * **store**
+  See section [Actions](#Actions).
+* **options**  
+  Options for the action according to action type (as described below).
 * **conditions** (optional)  
   A list of conditions which all have to be true to process the action.
 * **loglevel** (optional)  
-  As described above in the [Global](#Global) section.
+  See section [Global](#Global).
 * **pretend** (optional)  
-  As described above in the [Global](#Global) section.
+  See section [Global](#Global).
 
-Config options for **add_header** actions:
+### Actions
+The following action types are available.
+* **add_header**  
+  Add new header.
   * **field**  
     Name of the header.
   * **value**  
     Value of the header.
 
-Config options for **del_header** actions:
+* **del_header**  
+  Delete header(s).
   * **field**  
     Regular expression to match against header names.
   * **value** (optional)
     Regular expression to match against the headers value.
 
-Config options for **mod_header** actions:
+* **mod_header**  
+  Modify header(s).
   * **field**  
     Regular expression to match against header names.
   * **search** (optional)  
@@ -94,7 +100,8 @@ Config options for **mod_header** actions:
   * **value**  
     New value of the header.
 
-Config options for **add_disclaimer** actions:
+* **add_disclaimer**  
+  Append or prepend disclaimer to text and/or html body parts.
   * **action**  
     Action to perform with the disclaimer. Possible values are:
     * append
@@ -104,7 +111,7 @@ Config options for **add_disclaimer** actions:
   * **text_template**  
     Path to a file which contains the text representation of the disclaimer.
   * **error_policy** (optional)  
-    Set the error policy in case the disclaimer cannot be added (e.g. if no body part is present in the e-mail). Possible values are:
+    Set the error policy in case the disclaimer cannot be added (e.g. if the html part cannot be parsed). Possible values are:
     * **wrap**  
       A new e-mail body is generated with the disclaimer as body and the original e-mail attached.
     * **ignore**  
@@ -112,18 +119,40 @@ Config options for **add_disclaimer** actions:
     * **reject**  
       Reject the e-mail.
     Default: **wrap**
+  * **add_html_body** (optional)  
+    Generate a html body with the content of the text body if no html body is present.
+    Default: **false**
 
-Config options for **store** actions:
-  * **storage_type**  
+* **store**  
+  Store e-mail.
+  * **type**  
     Storage type. Possible values are:
     * **file**
   * **original** (optional)  
-    Default: **false**
     If set to true, store the message as received by the MTA instead of storing the current state of the message, that may was modified already by other actions.
+    Default: **false**
 
-Config options for **file** storage:
+* **file**  
   * **directory**  
   Directory used to store e-mails.
+  * **metadata** (optional)  
+  Store metadata file.
+  Default: **false**
+  * **mode**  (optional)  
+  Set file mode.
+  Default: system default
+  * **metavar** (optional)  
+  If set, some information (e.g. storage id) is saved as meta variables for later use.
+
+* **notify**  
+  Send notification to receiver.
+
+* **quarantine**  
+  Quarantine message.
+
+* **rewrite_links**  
+  Rewrite links in html body part.
+
 
 ### Conditions
 Config options for **conditions** objects:
@@ -135,6 +164,7 @@ Config options for **conditions** objects:
   A regular expression to match against the evenlope-from addresses for which the rule should be executed.
 * **envto** (optional)  
   A regular expression to match against all evenlope-to addresses. All addresses must match to fulfill the condition.
+
 
 ## Developer information
 Everyone who wants to improve or extend this project is very welcome.

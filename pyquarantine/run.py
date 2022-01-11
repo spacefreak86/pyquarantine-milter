@@ -20,6 +20,7 @@ import logging
 import logging.handlers
 import sys
 
+from pyquarantine._install import install, uninstall
 from pyquarantine import mailer
 from pyquarantine import QuarantineMilter
 from pyquarantine import __version__ as version
@@ -35,36 +36,50 @@ def main():
         description="pyquarantine-milter daemon",
         formatter_class=lambda prog: argparse.HelpFormatter(
             prog, max_help_position=45, width=140))
-
     parser.add_argument(
         "-c", "--config", help="Config file to read.",
         default="/etc/pyquarantine/pyquarantine.conf")
-
     parser.add_argument(
         "-s",
         "--socket",
         help="Socket used to communicate with the MTA.",
         default="")
-
     parser.add_argument(
         "-d",
         "--debug",
         help="Log debugging messages.",
         action="store_true")
 
-    parser.add_argument(
+    exclusive = parser.add_mutually_exclusive_group()
+    exclusive.add_argument(
+        "-v", "--version",
+        help="Print version.",
+        action="version",
+        version=f"%(prog)s {version} (python {python_version})")
+    exclusive.add_argument(
+        "-i",
+        "--install",
+        help="install service files and config",
+        action="store_true")
+    exclusive.add_argument(
+        "-u",
+        "--uninstall",
+        help="uninstall service files and unmodified config",
+        action="store_true")
+    exclusive.add_argument(
         "-t",
         "--test",
         help="Check configuration.",
         action="store_true")
 
-    parser.add_argument(
-        "-v", "--version",
-        help="Print version.",
-        action="version",
-        version=f"%(prog)s {version} (python {python_version})")
-
     args = parser.parse_args()
+
+    name = "pyquarantine"
+    if args.install:
+        sys.exit(install(name))
+
+    if args.uninstall:
+        sys.exit(uninstall(name))
 
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)

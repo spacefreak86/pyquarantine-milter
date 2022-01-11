@@ -1,8 +1,8 @@
 # pyquarantine-milter
 A pymilter based sendmail/postfix pre-queue filter with the ability to quarantine e-mails, send notifications and modify e-mail headers and/or bodies.  
-The project is currently in beta status, but it is already used in a productive enterprise environment that processes about a million e-mails per month.  
+It is useful in many cases due to its flexible configuration and the ability to handle any number of quarantines and/or modifications sequential and conditional.  
 
-It is useful in many cases due to its flexible configuration and the ability to handle any number of quarantines and/or modifications sequential and conditional.
+The project is currently in beta status, but it is already used in a productive enterprise environment that processes about a million e-mails per month.
 
 ## Dependencies
 pyquarantine is depending on these python packages, they are installed automatically if you are working with pip.
@@ -101,7 +101,7 @@ Config options for whitelist objects:
   See section [Whitelists](#Whitelists).
 
 ### Actions
-The following action types and options are available.
+Available action types:
 * **add_header**  
   Add new header.  
   Options:
@@ -197,7 +197,7 @@ The following action types and options are available.
   Options for a whitelist, see **whitelist** in section [Conditions](#Conditions).
 
 ### Storages
-The following storage types are and options are available:
+Available storage types:
 * **file**  
   File storage.  
   Options:
@@ -209,7 +209,7 @@ The following storage types are and options are available:
   File mode when new files are created.
 
 ### Notifications
-The following notification types and options are available:
+Available notification types:
 * **email**  
   E-Mail notification.  
   Options:
@@ -231,7 +231,7 @@ The following notification types and options are available:
   List of images to embed into the notification e-mail.
 
 ### Whitelists
-The following whitelist types and options are available.
+Available whitelist types:
 * **db**  
   Whitelist stored in database. The table is created automatically if it does not exist yet.  
   Options:

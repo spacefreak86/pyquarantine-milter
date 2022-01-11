@@ -33,21 +33,17 @@ The basic idea is to configure rules that contain actions. Both rules and action
 Global config options:
 * **socket** (optional)  
   Socket used to communicate with the MTA. If it is not specified in the config, it has to be set as command line option.
-* **local_addrs** (optional)  
+* **local_addrs** (optional, default: **[fe80::/64, ::1/128, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]**)  
   List of hosts and network addresses which are considered local. It is used for the condition option [local](#Conditions).  
-  Default: **[fe80::/64, ::1/128, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]**
-* **loglevel**  (optional)  
+* **loglevel**  (optional, default: **info**)  
   Set the log level. This option may be overriden by any rule or action object.  
   Possible values:
   * **error**  
   * **warning**  
   * **info**  
   * **debug**  
-
-  Default: **info**
-* **pretend** (optional)  
+* **pretend** (optional, default: **false**)  
   Pretend actions, for test purposes. This option may be overriden by any rule or action object.  
-  Default: **false**
 * **rules**  
   List of rule objects.
 
@@ -140,7 +136,7 @@ The following action types and options are available.
     Path to a file which contains the html representation of the disclaimer.
   * **text_template**  
     Path to a file which contains the text representation of the disclaimer.
-  * **error_policy** (optional)  
+  * **error_policy** (optional, default: **wrap**)  
     Set the error policy in case the disclaimer cannot be added (e.g. if the html part cannot be parsed).  
     Possible values:
     * **wrap**  
@@ -149,29 +145,23 @@ The following action types and options are available.
       Ignore the error and do nothing.
     * **reject**  
       Reject the e-mail.
-
-    Default: **wrap**
-  * **add_html_body** (optional)  
+  * **add_html_body** (optional, default: **false**)  
     Generate a html body with the content of the text body if no html body is present.
-    Default: **false**
 
 * **store**  
   Store e-mail.
   * **type**  
     See section [Storages](#Storages).
-  * **original** (optional)  
+  * **original** (optional, default: **false**)  
     If set to true, store the message as received by the MTA instead of storing the current state of the message, that may was modified already by other actions.
-    Default: **false**
-  * **metadata** (optional)  
+  * **metadata** (optional, default: **false**)  
     Store metadata.
-    Default: **false**
   * **metavar**  (optional)
-    Prefix for the name of the following metavariables which are provided by the storage:
+    Prefix for the metavariable names. If not set, no metavariables will be provided.
+    The storage provides the following metavariables:
     * **ID** (the storage ID of the e-mail)  
     * **DATAFILE** (path to the data file)  
     * **METAFILE** (path to the meta file if **metadata** is set to **true**)  
-
-    If not set, no metavariables will be provided.
 
 * **notify**  
   Send notification to receiver.
@@ -194,9 +184,8 @@ The following action types and options are available.
     * **ACCEPT**   (Tell MTA to accept the e-mail, skip following rules/actions.)
     * **REJECT**   (Tell MTA to reject the e-mail.)
     * **DISCARD**  (Tell MTA to discard the e-mail.)
-  * **reject_reason** (optional)  
+  * **reject_reason** (optional, default: **Message rejected**)  
   Reject message used if milter_action is set to reject.
-  Default: **Message rejected**
   * **whitelist** (optional)  
   Options for a whitelist, see **whitelist** in section [Conditions](#Conditions).
 
@@ -205,12 +194,10 @@ The following storage types are and options are available:
 * **file**  
   * **directory**  
   Directory used to store e-mails.
-  * **metadata** (optional)  
+  * **metadata** (optional, default: **false**)  
   Store metadata file.
-  Default: **false**
-  * **mode**  (optional)  
+  * **mode**  (optional, default: system default)  
   File mode when new files are created.
-  Default: mode set by the system
 
 ### Notifications
 The following notification types and options are available:

@@ -37,7 +37,8 @@ Global config options:
   List of hosts and network addresses which are considered local. It is used for the condition option [local](#Conditions).  
   Default: **[fe80::/64, ::1/128, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]**
 * **loglevel**  (optional)  
-  Set the log level. This option may be overriden by any rule or action object. Possible values are:
+  Set the log level. This option may be overriden by any rule or action object.  
+  Possible values:
   * **error**  
   * **warning**  
   * **info**  
@@ -93,9 +94,10 @@ Config options for **conditions** objects:
 * **whitelist** (optional)  
   Matches e-mails for which the whitelist has no entry for the envelope-from and envelope-to address combination, see section [Whitelist](#Whitelist).
 * **var** (optional)  
-  Matches e-mails for which a previous action or condition has set the given meta variable.
+  Matches e-mails for which a previous action or condition has set the given metavariable.
 * **metavar** (optional)  
-  Prefix for the name of meta variables which are provided by the **envfrom**, **envto** and **headers** condition. If not set, no meta variables will be provided.
+  Prefix for the name of metavariables which are possibly provided by the **envfrom**, **envto** or **headers** condition. Meta variables will be provided if the regular expressions contain named subgroups, see [python.re](https://docs.python.org/3/library/re.html) for details.  
+  If not set, no metavariables will be provided.
 
 ### Whitelist
 Config options for **whitelist** objects:
@@ -130,7 +132,8 @@ The following action types and options are available.
 * **add_disclaimer**  
   Append or prepend disclaimer to text and/or html body parts.
   * **action**  
-    Action to perform with the disclaimer. Possible values are:
+    Action to perform with the disclaimer.  
+    Possible values:
     * append
     * prepend
   * **html_template**  
@@ -138,7 +141,8 @@ The following action types and options are available.
   * **text_template**  
     Path to a file which contains the text representation of the disclaimer.
   * **error_policy** (optional)  
-    Set the error policy in case the disclaimer cannot be added (e.g. if the html part cannot be parsed). Possible values are:
+    Set the error policy in case the disclaimer cannot be added (e.g. if the html part cannot be parsed).  
+    Possible values:
     * **wrap**  
       A new e-mail body is generated with the disclaimer as body and the original e-mail attached.
     * **ignore**  
@@ -162,7 +166,12 @@ The following action types and options are available.
     Store metadata.
     Default: **false**
   * **metavar**  (optional)
-    If set, some information (e.g. storage id) is saved as meta variables for later use.
+    Prefix for the name of the following metavariables which are provided by the storage:
+    * **ID** (the storage ID of the e-mail)  
+    * **DATAFILE** (path to the data file)  
+    * **METAFILE** (path to the meta file if **metadata** is set to **true**)  
+
+    If not set, no metavariables will be provided.
 
 * **notify**  
   Send notification to receiver.
@@ -180,7 +189,8 @@ The following action types and options are available.
   * **notify** (optional)  
   Options for e-mail notifications, see action **notify** in section [Actions](#Actions).
   * **milter_action** (optional)  
-  Milter action to perform. Possible values are:
+  Final milter action to perform. If set, no further rules or actions will be processed.  
+  Possible values:
     * **ACCEPT**   (Tell MTA to accept the e-mail, skip following rules/actions.)
     * **REJECT**   (Tell MTA to reject the e-mail.)
     * **DISCARD**  (Tell MTA to discard the e-mail.)

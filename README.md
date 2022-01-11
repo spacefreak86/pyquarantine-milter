@@ -196,11 +196,15 @@ Options:
 * **notify** (optional)  
   Options for e-mail notifications, see action **notify** in section [Action types](#Action-types).
 * **milter_action** (optional)  
-  Final milter action to perform. If set, no further rules or actions will be processed.  
+  Milter action to perform. If set, no further rules or actions will be processed.  
+  Please think carefully what you set here or your MTA may do something you do not want it to do.  
   Possible values:
-  * **ACCEPT**   (Tell MTA to accept the e-mail, skip following rules/actions.)
-  * **REJECT**   (Tell MTA to reject the e-mail.)
-  * **DISCARD**  (Tell MTA to discard the e-mail.)
+  * **ACCEPT**  
+    Tell the MTA to continue processing the e-mail.
+  * **REJECT**  
+    Tell the MTA to reject the e-mail.
+  * **DISCARD**  
+    Tell the MTA to silently discard the e-mail.
 * **reject_reason** (optional, default: "Message rejected")  
   Reject message sent to MTA if milter_action is set to reject.
 * **whitelist** (optional)  
@@ -221,7 +225,27 @@ Options:
 ### Notification types
 Available notification types:
 ##### email
-E-Mail notification.  
+Generate an e-mail notification based on a template and send it to the original recipient.  
+Available template variables:
+* **{ENVELOPE_FROM}**  
+  Sender address received by the milter.
+* **{ENVELOPE_FROM_URL}**  
+  Like ENVELOPE_FROM, but URL encoded.
+* **{ENVELOPE_TO}**  
+  Recipient address of this notification.
+* **{ENVELOPE_TO_URL}**  
+  Like ENVELOPE_TO, but URL encoded.
+* **{FROM}**  
+  Value of the FROM header of the e-mail.
+* **{TO}**  
+  Value of the TO header of the e-mail.
+* **{SUBJECT}**  
+  Configured e-mail notification subject.
+* **{HTML_TEXT}**  
+  Sanitized version of the e-mail text part of the e-mail. Only harmless HTML tags and attributes are included. Images are optionally stripped or replaced with the image set by **repl_img** option.
+
+Additionally, every metavariable set by previous conditions or actions are also available as template variables. This is useful to include additional information (e.g. virus names, spam points, ...) within the notification.  
+
 Options:
 * **smtp_host**  
   SMTP host used to send notifications.
@@ -230,15 +254,17 @@ Options:
 * **envelope_from**  
   Envelope-From address.
 * **from_header**  
-  Value of the From header.
+  Value of the From header. You may use the template variable **{FROM}**.
 * **subject**  
-  Subject of the notification.
+  Subject of the notification e-mail. You  may use the template variable **{SUBJECT}**.
 * **template**  
-  Notification template.
+  Path to the HTML template.  
+* **strip_imgs** (optional, default: false)  
+  Strip images from e-mail. This option superseeds **repl_img**.
 * **repl_img** (optional)  
-  Replacement image used to replace all images in the e-mail body.
+  Image used to replace all images in the e-mail HTML part.
 * **embed_imgs** (optional)  
-  List of images to embed into the notification e-mail.
+  List of images to embed into the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template.
 
 ### Whitelist types
 Available whitelist types:

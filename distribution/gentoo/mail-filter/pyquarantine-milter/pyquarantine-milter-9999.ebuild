@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
-PYTHON_COMPAT=( python3_{8,9} )
+PYTHON_COMPAT=( python3_{9,10} )
 DISTUTILS_USE_SETUPTOOLS=rdepend
 
 SCM=""
@@ -15,7 +15,7 @@ fi
 inherit ${SCM} distutils-r1 systemd
 
 DESCRIPTION="A pymilter based sendmail/postfix pre-queue filter."
-HOMEPAGE="https://github.com/spacefreak86/pyquarantine"
+HOMEPAGE="https://github.com/spacefreak86/pyquarantine-milter"
 if [ "${PV#9999}" != "${PV}" ] ; then
 	SRC_URI=""
 	KEYWORDS=""
@@ -44,7 +44,7 @@ python_install_all() {
 
 	dodir /etc/pyquarantine
 	insinto /etc/pyquarantine
-	doins pyquarantine/misc/pyquarantine.conf.example
+	newins pyquarantine/misc/pyquarantine.conf.default pyquarantine.conf
 	doins -r pyquarantine/misc/templates
 
 	use systemd && systemd_dounit pyquarantine/misc/${PN}.service

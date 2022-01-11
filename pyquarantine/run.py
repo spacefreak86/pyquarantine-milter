@@ -74,13 +74,6 @@ def main():
 
     args = parser.parse_args()
 
-    name = "pyquarantine"
-    if args.install:
-        sys.exit(install(name))
-
-    if args.uninstall:
-        sys.exit(uninstall(name))
-
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 
@@ -94,6 +87,13 @@ def main():
 
     if not args.debug:
         logger.setLevel(logging.INFO)
+
+    name = "pyquarantine"
+    if args.install:
+        sys.exit(install(name))
+
+    if args.uninstall:
+        sys.exit(uninstall(name))
 
     try:
         logger.debug("read milter configuration")

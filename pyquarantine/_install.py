@@ -144,10 +144,10 @@ def install(name):
     if _check_openrc():
         _install_files(_openrc_files(pkg_dir, name))
 
-    if not _create_dir(f"/etc/{name}"):
-        logging.error(" => unable to create config dir, giving up ...")
-        sys.exit(3)
-
+    for d in [f"/etc/{name}", f"/etc/{name}/templates"]:
+        if not _create_dir(d):
+            logging.error(" => unable to create config dir, giving up ...")
+            sys.exit(3)
     _install_files(_config_files(pkg_dir, name))
 
     logging.info(f"{name} successfully installed")
@@ -163,6 +163,7 @@ def uninstall(name):
     _uninstall_files(_openrc_files(pkg_dir, name))
     _uninstall_files(_config_files(pkg_dir, name))
 
+    _delete_dir(f"/etc/{name}/templates")
     _delete_dir(f"/etc/{name}")
 
     logging.info(f"{name} successfully uninstalled")

@@ -276,5 +276,144 @@ Options:
 * **table**  
   Database table to use.
 
+## Examples
+Here are some config examples.
+
+### Virus and spam quarantine for incoming e-mails (virus and spam detection is done by Rspamd)
+In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds headers to spam and virus e-mails.
+```json
+{
+    "socket": "unix:/tmp/pyquarantine.sock",
+    "rules": [
+        {
+            "name": "inbound",
+            "conditions": {
+                "local": false
+            },
+            "actions": [
+                {
+                    "name": "virus",
+                    "type": "quarantine",
+                    "conditions": {
+                        "headers": ["^X-Virus: Yes"],
+                    },
+                    "options": {
+                        "store": {
+                            "type": "file",
+                            "directory": "/mnt/data/quarantine/virus",
+                        },
+                        "notify": {
+                            "type": "email",
+                            "smtp_host": "localhost",
+                            "smtp_port": 2525,
+                            "envelope_from": "notifications@example.com",
+                            "from_header": "{FROM}",
+                            "subject": "[VIRUS] {SUBJECT}",
+                            "template": "/etc/pyquarantine/templates/notification.template",
+                            "repl_img": "/etc/pyquarantine/templates/removed.png"
+                        },
+                        "smtp_host": "localhost",
+                        "smtp_port": 2525,
+                        "milter_action": "REJECT",
+                        "reject_reason": "Message rejected due to virus"
+                    }
+                }, {
+                    "name": "spam",
+                    "type": "quarantine",
+                    "conditions": {
+                        "headers": ["^X-Spam: Yes"]
+                    },
+                    "options": {
+                        "store": {
+                            "type": "file",
+                            "directory": "/mnt/data/quarantine/spam",
+                        },
+                        "notify": {
+                            "type": "email",
+                            "smtp_host": "localhost",
+                            "smtp_port": 2525,
+                            "envelope_from": "notifications@example.com",
+                            "from_header": "{FROM}",
+                            "subject": "[SPAM] {SUBJECT}",
+                            "template": "/etc/pyquarantine/templates/notification.template",
+                            "repl_img": "/etc/pyquarantine/templates/removed.png"
+                        },
+                        "smtp_host": "localhost",
+                        "smtp_port": 2525,
+                        "milter_action": "DISCARD"
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+### Mark subject of incoming e-mails and remove the mark from subject of outgoing e-mails
+```json
+{
+    "socket": "unix:/tmp/pyquarantine.sock",
+    "rules": [
+        {
+            "name": "inbound",
+            "conditions": {
+                "local": false
+            },
+            "actions": [
+                {
+                    "name": "add_subject_prefix",
+                    "type": "mod_header",
+                    "options": {
+                        "field": "^(Subject|Thread-Topic)$",
+                        "search": "^(?P<subject>.*)",
+                        "value": "[EXTERNAL] \\g<subject>"
+                    }
+                }
+            ]
+        }, {
+            "name": "outbound",
+            "conditions": {
+                "local": true
+            },
+            "actions": [
+                {
+                    "name": "remove_subject_prefix",
+                    "type": "mod_header",
+                    "options": {
+                        "field": "^(Subject|Thread-Topic)$",
+                        "search": "^(?P<prefix>.*)\\[EXTERNAL\\] (?P<suffix>.*)$",
+                        "value": "\\g<prefix>\\g<suffix>"
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+### Store an exact copy of all incoming e-mails in directory
+```json
+{
+    "socket": "unix:/tmp/pyquarantine.sock",
+    "rules": [
+        {
+            "name": "inbound",
+            "conditions": {
+                "local": false
+            },
+            "actions": [
+                {
+                    "name": "store_original",
+                    "type": "store",
+                    "options": {
+                        "type": "file",
+                        "directory": "/mnt/data/incoming",
+                        "original": true,
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+
 ## Developer information
 Everyone who wants to improve or extend this project is very welcome.

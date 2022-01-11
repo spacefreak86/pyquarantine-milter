@@ -276,6 +276,10 @@ Options:
 * **table**  
   Database table to use.
 
+### Integration with MTA
+For integration with Postfix, see [Postix Milter Readme](http://www.postfix.org/MILTER_README.html).  
+For integration with sendmail, see [Pymilter Sendmail Readme](https://pythonhosted.org/pymilter/milter_api/installation.html#config).
+
 ## Examples
 Here are some config examples.
 

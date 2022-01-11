@@ -48,7 +48,7 @@ Global config options:
   List of rule objects.
 
 ### Rule
-Rule config options:
+Config options for rule objects:
 * **name**  
   Name of the rule.  
 * **actions**  
@@ -61,7 +61,7 @@ Rule config options:
   See section [Global](#Global).
 
 ### Action
-Action config options:
+Config options for action objects:
 * **name**  
   Name of the action.
 * **type**  
@@ -76,7 +76,7 @@ Action config options:
   See section [Global](#Global).
 
 ### Conditions
-Config options for **conditions** objects:
+Config options for conditions objects:
 * **local** (optional)  
   Matches outgoing e-mails (sender address matches **local_addrs**) if set to **true** or matches incoming e-mails if set to **false**.
 * **hosts** (optional)  
@@ -96,28 +96,31 @@ Config options for **conditions** objects:
   If not set, no metavariables will be provided.
 
 ### Whitelist
-Config options for **whitelist** objects:
+Config options for whitelist objects:
 * **type**  
   See section [Whitelists](#Whitelists).
 
 ### Actions
 The following action types and options are available.
 * **add_header**  
-  Add new header.
+  Add new header.  
+  Options:
   * **field**  
     Name of the header.
   * **value**  
     Value of the header.
 
 * **del_header**  
-  Delete header(s).
+  Delete header(s).  
+  Options:
   * **field**  
     Regular expression to match against header names.
   * **value** (optional)
     Regular expression to match against the headers value.
 
 * **mod_header**  
-  Modify header(s).
+  Modify header(s).  
+  Options:
   * **field**  
     Regular expression to match against header names.
   * **search** (optional)  
@@ -126,7 +129,8 @@ The following action types and options are available.
     New value of the header.
 
 * **add_disclaimer**  
-  Append or prepend disclaimer to text and/or html body parts.
+  Append or prepend disclaimer to text and/or html body parts.  
+  Options:
   * **action**  
     Action to perform with the disclaimer.  
     Possible values:
@@ -149,7 +153,8 @@ The following action types and options are available.
     Generate a html body with the content of the text body if no html body is present.
 
 * **store**  
-  Store e-mail.
+  Store e-mail.  
+  Options:
   * **type**  
     See section [Storages](#Storages).
   * **original** (optional, default: **false**)  
@@ -164,12 +169,14 @@ The following action types and options are available.
     * **METAFILE** (path to the meta file if **metadata** is set to **true**)  
 
 * **notify**  
-  Send notification to receiver.
+  Send notification.  
+  Options:
   * **type**  
     See section [Notifications](#Notifications).
 
 * **quarantine**  
-  Quarantine e-mail.
+  Quarantine e-mail.  
+  Options:
   * **store**  
   Options for e-mail storage, see action **store** in section [Actions](#Actions).
   * **smtp_host**  
@@ -192,6 +199,8 @@ The following action types and options are available.
 ### Storages
 The following storage types are and options are available:
 * **file**  
+  File storage.  
+  Options:
   * **directory**  
   Directory used to store e-mails.
   * **metadata** (optional, default: **false**)  
@@ -201,7 +210,9 @@ The following storage types are and options are available:
 
 ### Notifications
 The following notification types and options are available:
-* **email**
+* **email**  
+  E-Mail notification.  
+  Options:
   * **smtp_host**  
   SMTP host used to send notifications.
   * **smtp_port**  
@@ -222,7 +233,8 @@ The following notification types and options are available:
 ### Whitelists
 The following whitelist types and options are available.
 * **db**  
-  Whitelist stored in database. The table is created automatically if it does not exist yet.
+  Whitelist stored in database. The table is created automatically if it does not exist yet.  
+  Options:
   * **connection**  
     Database connection string, see [Peewee Playhouse Extension](https://docs.peewee-orm.com/en/latest/peewee/playhouse.html#db-url).
   * **table**  

@@ -1,9 +1,15 @@
 # pyquarantine-milter
-A pymilter based sendmail/postfix pre-queue filter with the ability to quarantine e-mails, sending notifications and modify e-mail headers and bodies.
+A pymilter based sendmail/postfix pre-queue filter with the ability to ...
+* modify e-mail headers (add, modify, delete)
+* store e-mails
+* send e-mail notifications
+* append and prepend disclaimers to e-mail text parts
+* quarantine e-mails (store e-mail, optionally notify receivers)
 
+It is useful in many cases due to its flexible configuration and the ability to handle any number of quarantines and modifications sequential and conditional. Storages and whitelists used by quarantines can be managed with the built-in CLI.  
 
-A pymilter based sendmail/postfix pre-queue filter with the ability to quarantine e-mails, send notifications and modify e-mail headers and/or bodies.
-It is useful in many cases due to its flexible configuration and the ability to handle any number of quarantines and/or modifications sequential and conditional.  
+Addionally, pyquarantine-milter provides a sanitized, harmless version of the text parts of e-mails as template variable, which can be embedded in e-mail notifications. This makes it easier for users to decide, if a match is a false-positive or not.  
+It is also possible to use any metavariable as template variable (e.g. storage ID, envelope-from address, ...). This may be used to give your users the ability to release e-mails or whitelist the from-address for example. A webservice then releases the e-mail from the quarantine.  
 
 The project is currently in beta status, but it is already used in a productive enterprise environment that processes about a million e-mails per month.
 
@@ -30,9 +36,9 @@ pyquarantine-milter -t
 ## Configuration
 pyquarantine uses a config file in JSON format. It has to be JSON valid with the exception of allowed comment lines starting with **#**.  
 
-The basic idea is to configure rules that contain actions. Both rules and actions may have conditions. An example of using rules is separating incoming and outgoing e-mails using the **local** condition. Rules and actions are always processed in the given order.  
+The basic idea is to configure rules that contain actions. Both rules and actions may have conditions. An example of using rules is separating incoming and outgoing e-mails using the local condition. Rules and actions are always processed in the given order.  
 
-#### Global
+### Global
 Global config options:
 * **socket** (optional)  
   Socket used to communicate with the MTA. If it is not specified in the config, it has to be set as command line option.
@@ -50,7 +56,7 @@ Global config options:
 * **rules**  
   List of rule objects.
 
-#### Rule
+### Rule
 Config options for rule objects:
 * **name**  
   Name of the rule.  
@@ -63,7 +69,7 @@ Config options for rule objects:
 * **pretend** (optional)  
   See section [Global](#Global).
 
-#### Action
+### Action
 Config options for action objects:
 * **name**  
   Name of the action.
@@ -78,7 +84,7 @@ Config options for action objects:
 * **pretend** (optional)  
   See section [Global](#Global).
 
-#### Conditions
+### Conditions
 Config options for conditions objects:
 * **local** (optional)  
   Matches outgoing e-mails (sender address matches **local_addrs**) if set to **true** or matches incoming e-mails if set to **false**.
@@ -98,12 +104,12 @@ Config options for conditions objects:
   Prefix for the name of metavariables which are possibly provided by the **envfrom**, **envto** or **headers** condition. Meta variables will be provided if the regular expressions contain named subgroups, see [python.re](https://docs.python.org/3/library/re.html) for details.  
   If not set, no metavariables will be provided.
 
-#### Whitelist
+### Whitelist
 Config options for whitelist objects:
 * **type**  
   See section [Whitelists](#Whitelists).
 
-#### Actions
+### Actions
 Available action types:
 ##### add_header
 Add new header.  
@@ -175,13 +181,14 @@ Options:
 Send notification.  
 Options:
 * **type**  
-  See section [Notifications](#Notifications).
+  See section [Notification types](#Notification types).
 
 ##### quarantine
 Quarantine e-mail.  
 Options:
 * **store**  
-Options for e-mail storage, see action **store** in section [Actions](#Actions).
+  Options for e-mail storage, see action **store** in section [Actions](#Actions).  
+  If the option **metadata** is not specificall set for this storage, it will be set to true.
 * **smtp_host**  
   SMTP host used to release e-mails from quarantine.
 * **smtp_port**  
@@ -195,11 +202,11 @@ Options for e-mail storage, see action **store** in section [Actions](#Actions).
   * **REJECT**   (Tell MTA to reject the e-mail.)
   * **DISCARD**  (Tell MTA to discard the e-mail.)
 * **reject_reason** (optional, default: "Message rejected")  
-  Reject message used if milter_action is set to reject.
+  Reject message sent to MTA if milter_action is set to reject.
 * **whitelist** (optional)  
   Options for a whitelist, see **whitelist** in section [Conditions](#Conditions).
 
-#### Storages
+### Storages
 Available storage types:
 ##### file
 File storage.  
@@ -211,7 +218,7 @@ Options:
 * **mode**  (optional, default: system default)  
   File mode when new files are created.
 
-#### Notifications
+### Notification types
 Available notification types:
 ##### email
 E-Mail notification.  
@@ -233,7 +240,7 @@ Options:
 * **embed_imgs** (optional)  
   List of images to embed into the notification e-mail.
 
-#### Whitelists
+### Whitelists
 Available whitelist types:
 ##### db
 Whitelist stored in database. The table is created automatically if it does not exist yet.  

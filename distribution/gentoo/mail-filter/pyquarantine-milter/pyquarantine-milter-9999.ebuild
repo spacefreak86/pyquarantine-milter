@@ -41,13 +41,12 @@ RDEPEND="
 
 python_install_all() {
 	distutils-r1_python_install_all
-
-	dodir /etc/pyquarantine
-	insinto /etc/pyquarantine
-	newins pyquarantine/misc/pyquarantine.conf.default pyquarantine.conf
-	doins -r pyquarantine/misc/templates
-
-	use systemd && systemd_dounit pyquarantine/misc/${PN}.service
+	use systemd && systemd_dounit pyquarantine/misc/systemd/${PN}.service
 	newinitd pyquarantine/misc/openrc/${PN}.initd ${PN}
 	newconfd pyquarantine/misc/openrc/${PN}.confd ${PN}
+}
+
+pkg_postinst() {
+	elog "You will need to set up your /etc/pyquarantine/pyquarantine.conf file before"
+	elog "running pyquarantine-milter for the first time."
 }

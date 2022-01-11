@@ -23,14 +23,34 @@ pyquarantine is depending on these python packages, they are installed automatic
 
 ## Installation
 ```sh
-# Install pyquarantine with pip.
+# install pyquarantine with pip.
 pip install pyquarantine
 
-# Copy the example config file and modify it according to your needs.
-cp /etc/pyquarantine/pyquarantine.conf.example /etc/pyquarantine/pyquarantine.conf
+# install service files, default config and templates
+pyquarantine-milter --install
 
-# Check the validity of the config file.
+# Check the validity of the your config file.
 pyquarantine-milter -t
+```
+## Autostart
+The following init systems are supported.
+
+### systemd
+```sh
+# start the daemon at boot time
+systemctl enable pyquarantine-milter.service
+
+# start the daemon immediately
+systemctl start pyquarantine-milter.service
+```
+
+### OpenRC (Gentoo)
+```sh
+# start the daemon at boot time
+rc-update add pyquarantine-milter default
+
+# start the daemon immediately
+rc-service pyquarantine-milter start
 ```
 
 ## Configuration

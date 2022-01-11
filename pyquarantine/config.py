@@ -225,6 +225,7 @@ class NotifyConfig(BaseConfig):
                 "subject": {"type": "string"},
                 "template": {"type": "string"},
                 "repl_img": {"type": "string"},
+                "strip_imgs": {"type": "boolean", "default": False},
                 "embed_imgs": {
                     "type": "array",
                     "items": {"type": "string"},

@@ -120,7 +120,7 @@ Config options for conditions objects:
 * **headers** (optional)  
   Matches e-mails for which all regular expressions in the given list are matching at least one e-mail header.
 * **whitelist** (optional)  
-  Matches e-mails for which the whitelist has no entry for the envelope-from and envelope-to address combination, see section [Whitelist](#Whitelist).
+  Matches e-mails for which the whitelist has no entry for the envelope-from and envelope-to address combination, see section [Whitelist](#Whitelist) for details.
 * **var** (optional)  
   Matches e-mails for which a previous action or condition has set the given metavariable.
 * **metavar** (optional)  
@@ -210,14 +210,14 @@ Options:
 Quarantine e-mail.  
 Options:
 * **store**  
-  Options for e-mail storage, see action **store** in section [Action types](#Action-types).  
+  Options for e-mail storage, see action [store](#store).  
   If the option **metadata** is not specificall set for this storage, it will be set to true.
 * **smtp_host**  
   SMTP host used to release e-mails from quarantine.
 * **smtp_port**  
   SMTP port used to release e-mails from quarantine.
 * **notify** (optional)  
-  Options for e-mail notifications, see action **notify** in section [Action types](#Action-types).
+  Options for e-mail notifications, see action [notify](#notify).
 * **milter_action** (optional)  
   Milter action to perform. If set, no further rules or actions will be processed.  
   Please think carefully what you set here or your MTA may do something you do not want it to do.  
@@ -231,7 +231,7 @@ Options:
 * **reject_reason** (optional, default: "Message rejected")  
   Reject message sent to MTA if milter_action is set to reject.
 * **whitelist** (optional)  
-  Options for a whitelist, see **whitelist** in section [Conditions](#Conditions).
+  Options for a whitelist object, see section [Whitelist](#Whitelist).
 
 ### Storage types
 Available storage types:

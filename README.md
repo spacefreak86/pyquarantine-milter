@@ -29,6 +29,9 @@ pip install pyquarantine
 # install service files, default config and templates
 pyquarantine-milter --install
 
+# copy default config file
+cp /etc/pyquarantine/pyquarantine.conf.default /etc/pyquarantine/pyquarantine.conf
+
 # Check the validity of the your config file.
 pyquarantine-milter -t
 ```

@@ -39,7 +39,7 @@ def _openrc_files(pkg_dir, name):
 
 def _config_files(pkg_dir, name):
     return [
-        (f"{pkg_dir}/misc/{name}.conf.default", f"/etc/{name}/{name}.conf", False),
+        (f"{pkg_dir}/misc/{name}.conf.default", f"/etc/{name}/{name}.conf.default", False),
         (f"{pkg_dir}/misc/templates/removed.png", f"/etc/{name}/templates/removed.png", False),
         (f"{pkg_dir}/misc/templates/disclaimer_html.template", f"/etc/{name}/templates/disclaimer_html.template", False),
         (f"{pkg_dir}/misc/templates/disclaimer_text.template", f"/etc/{name}/templates/disclaimer_text.template", False),

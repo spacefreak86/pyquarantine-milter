@@ -74,9 +74,9 @@ Config options for action objects:
 * **name**  
   Name of the action.
 * **type**  
-  See section [Actions](#Actions).
+  See section [Action types](#Action-types).
 * **options**  
-  Options depending on the action type, see section [Actions](#Actions).
+  Options depending on the action type, see section [Action types](#Action-types).
 * **conditions** (optional)  
   See section [Conditions](#Conditions).
 * **loglevel** (optional)  
@@ -107,9 +107,9 @@ Config options for conditions objects:
 ### Whitelist
 Config options for whitelist objects:
 * **type**  
-  See section [Whitelists](#Whitelists).
+  See section [Whitelist types](#Whitelist-types).
 
-### Actions
+### Action types
 Available action types:
 ##### add_header
 Add new header.  
@@ -165,7 +165,7 @@ Options:
 Store e-mail.  
 Options:
 * **type**  
-  See section [Storages](#Storages).
+  See section [Storage types](#Storage-types).
 * **original** (optional, default: false)  
   If set to true, store the message as received by the MTA instead of storing the current state of the message, that may was modified already by other actions.
 * **metadata** (optional, default: false)  
@@ -187,14 +187,14 @@ Options:
 Quarantine e-mail.  
 Options:
 * **store**  
-  Options for e-mail storage, see action **store** in section [Actions](#Actions).  
+  Options for e-mail storage, see action **store** in section [Action types](#Action-types).  
   If the option **metadata** is not specificall set for this storage, it will be set to true.
 * **smtp_host**  
   SMTP host used to release e-mails from quarantine.
 * **smtp_port**  
   SMTP port used to release e-mails from quarantine.
 * **notify** (optional)  
-  Options for e-mail notifications, see action **notify** in section [Actions](#Actions).
+  Options for e-mail notifications, see action **notify** in section [Action types](#Action-types).
 * **milter_action** (optional)  
   Final milter action to perform. If set, no further rules or actions will be processed.  
   Possible values:
@@ -206,7 +206,7 @@ Options:
 * **whitelist** (optional)  
   Options for a whitelist, see **whitelist** in section [Conditions](#Conditions).
 
-### Storages
+### Storage types
 Available storage types:
 ##### file
 File storage.  
@@ -240,7 +240,7 @@ Options:
 * **embed_imgs** (optional)  
   List of images to embed into the notification e-mail.
 
-### Whitelists
+### Whitelist types
 Available whitelist types:
 ##### db
 Whitelist stored in database. The table is created automatically if it does not exist yet.  

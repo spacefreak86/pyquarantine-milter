@@ -36,7 +36,7 @@ setup(name = "pyquarantine",
         (
             "/etc/pyquarantine",
             [
-                "pyquarantine/misc/pyquarantine.conf.example"
+                "pyquarantine/misc/pyquarantine.conf.default"
             ]
         ), (
             "/etc/pyquarantine/templates",

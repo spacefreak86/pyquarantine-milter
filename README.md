@@ -348,7 +348,7 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
     ]
 }
 ```
-### Mark subject of incoming e-mails and remove the mark from subject of outgoing e-mails
+### Mark subject of incoming e-mails and remove the mark from outgoing e-mails
 ```json
 {
     "socket": "unix:/tmp/pyquarantine.sock",

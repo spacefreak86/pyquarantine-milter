@@ -181,7 +181,7 @@ Options:
 Send notification.  
 Options:
 * **type**  
-  See section [Notification types](#Notification types).
+  See section [Notification types](#Notification-types).
 
 ##### quarantine
 Quarantine e-mail.  

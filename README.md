@@ -279,7 +279,7 @@ Options:
 ## Examples
 Here are some config examples.
 
-### Virus and spam quarantine for incoming e-mails (virus and spam detection is done by Rspamd)
+### Virus and spam quarantine for incoming e-mails
 In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds headers to spam and virus e-mails.
 ```json
 {

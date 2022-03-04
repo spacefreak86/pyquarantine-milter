@@ -183,26 +183,6 @@ def _has_content_before_body_tag(soup):
     return False
 
 
-def _inject_body(milter, text_content="", html_content=None):
-    if not milter.msg.is_multipart():
-        milter.msg.make_mixed()
-
-    attachments = []
-    for attachment in milter.msg.iter_attachments():
-        if "content-disposition" not in attachment:
-            attachment["Content-Disposition"] = "attachment"
-        attachments.append(attachment)
-
-    milter.msg.clear_content()
-    milter.msg.set_content(text_content)
-    if html_content is not None:
-        milter.msg.add_alternative(html_content, subtype="html")
-    milter.msg.make_mixed()
-
-    for attachment in attachments:
-        milter.msg.attach(attachment)
-
-
 def _wrap_message(milter):
     attachment = MIMEPart(policy=SMTP)
     attachment.set_content(milter.msg_as_bytes(),
@@ -248,29 +228,28 @@ class AddDisclaimer:
         self.pretend = pretend
 
     def patch_message_body(self, milter, logger):
-        text_body, text_content = _get_body_content(milter.msg, "plain")
-        html_body, html_content = _get_body_content(milter.msg, "html")
+        text_body, text_content = milter.msg.get_body_content("plain")
+        html_body, html_content = milter.msg.get_body_content("html")
 
         if text_content is None and html_content is None:
-            logger.info("message contains only attachment(s), "
-                        "inject empty body")
+            logger.info("message contains no body, inject it")
             if self.add_html_body:
-                _inject_body(milter, "", "")
-                html_body, html_content = _get_body_content(milter.msg, "html")
+                milter.msg.set_body("", "")
+                html_body, html_content = milter.msg.get_body_content("html")
             else:
-                _inject_body(milter, "")
-            text_body, text_content = _get_body_content(milter.msg, "plain")
+                milter.msg.set_body("")
+            text_body, text_content = milter.msg.get_body_content("plain")
 
         if html_content is None and self.add_html_body:
-            logger.info("inject html body part generated from plain body")
+            logger.info("inject html body based on plain body")
             header = '<meta http-equiv="Content-Type" content="text/html; ' \
                      'charset=utf-8">'
             html_text = re.sub(r"^(.*)$", r"\1<br/>",
                                escape(text_content, quote=False),
                                flags=re.MULTILINE)
-            _inject_body(milter, text_content, f"{header}{html_text}")
-            text_body, text_content = _get_body_content(milter.msg, "plain")
-            html_body, html_content = _get_body_content(milter.msg, "html")
+            milter.msg.set_body(None, f"{header}{html_text}")
+            text_body, text_content = milter.msg.get_body_content("plain")
+            html_body, html_content = milter.msg.get_body_content("html")
 
         variables = defaultdict(str, milter.msginfo["vars"])
         variables["ENVELOPE_FROM"] = escape(

@@ -563,7 +563,5 @@ class Quarantine:
 
         if self._milter_action is not None:
             milter.delrcpt(rcpts)
-            #if self._milter_action in ["ACCEPT", "REJECT"] and \
-            #        not milter.msginfo["rcpts"]:
             if not milter.msginfo["rcpts"]:
                 return (self._milter_action, self._reason)

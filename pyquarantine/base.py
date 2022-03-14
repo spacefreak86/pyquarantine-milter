@@ -135,12 +135,9 @@ class MilterMessage(MIMEPart):
             else:
                 parent.make_mixed()
                 maintype, subtype = ("multipart", "mixed")
-        elif subtype == "related":
-            parent.make_alternative()
-            maintype, subtype = ("multipart", "alternative")
 
         text_body = parent.get_body(preferencelist=("plain"))
-        html_body = parent.get_body(preferencelist=("related", "html"))
+        html_body = parent.get_body(preferencelist=("html"))
 
         if text_content is not None:
             if text_body:

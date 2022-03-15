@@ -149,7 +149,7 @@ def main():
 
     # increase the recursion limit so that BeautifulSoup can
     # parse larger html content
-    sys.setrecursionlimit(2000)
+    sys.setrecursionlimit(4000)
 
     rc = 0
     try:

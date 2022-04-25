@@ -549,7 +549,7 @@ class Quarantine:
             if not rcpts:
                 # all recipients whitelisted
                 return
-            milter.msginfo["rcpts"] = rcpts
+            milter.msginfo["rcpts"] = rcpts.copy()
 
         if self._milter_action in ["REJECT", "DISCARD"]:
             logger.info(f"quarantine message for {rcpts}")

@@ -162,8 +162,9 @@ class MilterMessage(MIMEPart):
 def inject_body_part(part, content, subtype="plain"):
     parts = []
     text_body = None
+    text_content = None
     if subtype == "html":
-        text_body = part.get_body(preferencelist=("plain"))
+        text_body, text_content = part.get_body_content("plain")
 
     for p in part.iter_parts():
         if text_body and p == text_body:
@@ -173,8 +174,8 @@ def inject_body_part(part, content, subtype="plain"):
     boundary = part.get_boundary()
     p_subtype = part.get_content_subtype()
     part.clear_content()
-    if text_body:
-        part.set_content(content)
+    if text_content != None:
+        part.set_content(text_content)
         part.add_alternative(content, subtype=subtype)
     else:
         part.set_content(content, subtype=subtype)

@@ -18,7 +18,7 @@ setup(name = "pyquarantine",
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
@@ -49,5 +49,5 @@ setup(name = "pyquarantine",
         )
     ],
     install_requires = ["pymilter", "jsonschema", "netaddr", "beautifulsoup4[lxml]", "peewee"],
-    python_requires = ">=3.8"
+    python_requires = ">=3.9"
 )

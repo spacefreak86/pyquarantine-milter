@@ -100,7 +100,7 @@ class QuarantineMilter(Milter.Base):
             self.logger.warning(f"unable to serialize message as bytes: {e}")
             try:
                 self.logger.warning("try to serialize as str and encode")
-                data = self.msg.as_string().encode("ascii", errors="replace")
+                data = self.msg.as_string().encode(errors="replace")
             except Exception as e:
                 self.logger.error(
                     f"unable to serialize message, giving up: {e}")
@@ -208,6 +208,7 @@ class QuarantineMilter(Milter.Base):
 
         return Milter.CONTINUE
 
+    @Milter.decode("replace")
     def envfrom(self, mailfrom, *str):
         try:
             self.mailfrom = "@".join(parse_addr(mailfrom)).lower()
@@ -219,6 +220,7 @@ class QuarantineMilter(Milter.Base):
 
         return Milter.CONTINUE
 
+    @Milter.decode("replace")
     def envrcpt(self, to, *str):
         try:
             self.rcpts.add("@".join(parse_addr(to)).lower())
@@ -243,6 +245,7 @@ class QuarantineMilter(Milter.Base):
 
         return Milter.CONTINUE
 
+    @Milter.decode("replace")
     def header(self, field, value):
         try:
             # remove CR and LF from address fields, otherwise pythons
@@ -258,11 +261,7 @@ class QuarantineMilter(Milter.Base):
                         v = v.replace("\r", "").replace("\n", "")
                         value = Header(s=v).encode()
 
-            # remove surrogates
-            field = field.encode("ascii", errors="replace")
-            value = value.encode("ascii", errors="replace")
-
-            self.fp.write(field + b": " + value + b"\r\n")
+            self.fp.write(field.encode() + b": " + value.encode() + b"\r\n")
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in header method: {e}")

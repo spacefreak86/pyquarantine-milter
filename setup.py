@@ -48,6 +48,6 @@ setup(name = "pyquarantine",
             ]
         )
     ],
-    install_requires = ["pymilter", "jsonschema", "netaddr", "beautifulsoup4[lxml]", "peewee"],
+    install_requires = ["pymilter >= 1.5", "jsonschema", "netaddr", "beautifulsoup4[lxml]", "peewee"],
     python_requires = ">=3.9"
 )

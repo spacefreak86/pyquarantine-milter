@@ -37,7 +37,7 @@ RDEPEND="
 	lxml? ( dev-python/lxml[${PYTHON_USEDEP}] )
 	dev-python/netaddr[${PYTHON_USEDEP}]
 	dev-python/peewee[${PYTHON_USEDEP}]
-	dev-python/pymilter[${PYTHON_USEDEP}]"
+	>=dev-python/pymilter-1.5[${PYTHON_USEDEP}]"
 
 python_install_all() {
 	distutils-r1_python_install_all

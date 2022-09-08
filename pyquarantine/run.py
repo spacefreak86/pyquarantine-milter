@@ -135,7 +135,7 @@ def main():
     sysloghandler = logging.handlers.SysLogHandler(
         address="/dev/log", facility=logging.handlers.SysLogHandler.LOG_MAIL)
     sysloghandler.setFormatter(
-        logging.Formatter("pyquarantine: %(message)s"))
+        logging.Formatter(f"{name}[%(process)d]: %(message)s"))
     root_logger.addHandler(sysloghandler)
 
     logger.info("milter starting")

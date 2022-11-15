@@ -100,7 +100,7 @@ class QuarantineMilter(Milter.Base):
             self.logger.warning(f"unable to serialize message as bytes: {e}")
             try:
                 self.logger.warning("try to serialize as str and encode")
-                data = self.msg.as_string().encode(errors="replace")
+                data = self.msg.as_string().encode("ascii", errors="replace")
             except Exception as e:
                 self.logger.error(
                     f"unable to serialize message, giving up: {e}")
@@ -265,7 +265,7 @@ class QuarantineMilter(Milter.Base):
             field = field.encode("ascii", errors="replace")
             value = value.encode("ascii", errors="replace")
 
-            self.fp.write(field.encode() + b": " + value.encode() + b"\r\n")
+            self.fp.write(field + b": " + value + b"\r\n")
         except Exception as e:
             self.logger.exception(
                 f"an exception occured in header method: {e}")

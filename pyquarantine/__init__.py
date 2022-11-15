@@ -261,6 +261,10 @@ class QuarantineMilter(Milter.Base):
                         v = v.replace("\r", "").replace("\n", "")
                         value = Header(s=v).encode()
 
+            # remove surrogates
+            field = field.encode("ascii", errors="replace")
+            value = value.encode("ascii", errors="replace")
+
             self.fp.write(field.encode() + b": " + value.encode() + b"\r\n")
         except Exception as e:
             self.logger.exception(

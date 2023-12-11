@@ -13,8 +13,8 @@
 #
 
 __all__ = [
-    "DatabaseWhitelist",
-    "WhitelistBase"]
+    "DatabaseList",
+    "ListBase"]
 
 import logging
 import peewee
@@ -24,8 +24,8 @@ from datetime import datetime
 from playhouse.db_url import connect
 
 
-class WhitelistBase:
-    "Whitelist base class"
+class ListBase:
+    "List base class"
     def __init__(self, cfg, debug):
         self.cfg = cfg
         self.logger = logging.getLogger(cfg["name"])
@@ -47,15 +47,15 @@ class WhitelistBase:
         return self.batv_regex.sub(r"\g<LEFT_PART>@", addr, count=1)
 
     def check(self, mailfrom, recipient):
-        "Check if mailfrom/recipient combination is whitelisted."
+        "Check if mailfrom/recipient combination is listed."
         return
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
-        "Find whitelist entries."
+        "Find list entries."
         return
 
     def add(self, mailfrom, recipient, comment, permanent):
-        "Add entry to whitelist."
+        "Add entry to list."
         # check if mailfrom and recipient are valid
         if not self.valid_entry_regex.match(mailfrom):
             raise RuntimeError("invalid from address")
@@ -63,12 +63,12 @@ class WhitelistBase:
             raise RuntimeError("invalid recipient")
         return
 
-    def delete(self, whitelist_id):
-        "Delete entry from whitelist."
+    def delete(self, list_id):
+        "Delete entry from list."
         return
 
 
-class WhitelistModel(peewee.Model):
+class DatabaseListModel(peewee.Model):
     mailfrom = peewee.CharField()
     recipient = peewee.CharField()
     created = peewee.DateTimeField(default=datetime.now)
@@ -84,9 +84,9 @@ class Meta:
     )
 
 
-class DatabaseWhitelist(WhitelistBase):
-    "Whitelist class to store whitelist in a database"
-    whitelist_type = "db"
+class DatabaseList(ListBase):
+    "List class to store lists in a database"
+    list_type = "db"
     _db_connections = {}
     _db_tables = {}
 
@@ -96,8 +96,8 @@ class DatabaseWhitelist(WhitelistBase):
         tablename = cfg["table"]
         connection_string = cfg["connection"]
 
-        if connection_string in DatabaseWhitelist._db_connections.keys():
-            db = DatabaseWhitelist._db_connections[connection_string]
+        if connection_string in DatabaseList._db_connections.keys():
+            db = DatabaseList._db_connections[connection_string]
         else:
             try:
                 # connect to database
@@ -112,22 +112,22 @@ class DatabaseWhitelist(WhitelistBase):
                 raise RuntimeError(
                     f"unable to connect to database: {e}")
 
-            DatabaseWhitelist._db_connections[connection_string] = db
+            DatabaseList._db_connections[connection_string] = db
 
         # generate model meta class
         self.meta = Meta
         self.meta.database = db
         self.meta.table_name = tablename
         self.model = type(
-            f"WhitelistModel_{self.cfg['name']}",
-            (WhitelistModel,),
+            f"DatabaseListModel_{self.cfg['name']}",
+            (DatabaseListModel,),
             {"Meta": self.meta})
 
-        if connection_string not in DatabaseWhitelist._db_tables.keys():
-            DatabaseWhitelist._db_tables[connection_string] = []
+        if connection_string not in DatabaseList._db_tables.keys():
+            DatabaseList._db_tables[connection_string] = []
 
-        if tablename not in DatabaseWhitelist._db_tables[connection_string]:
-            DatabaseWhitelist._db_tables[connection_string].append(tablename)
+        if tablename not in DatabaseList._db_tables[connection_string]:
+            DatabaseList._db_tables[connection_string].append(tablename)
             try:
                 db.create_tables([self.model])
             except Exception as e:
@@ -139,7 +139,7 @@ class DatabaseWhitelist(WhitelistBase):
         for arg in ("connection", "table"):
             if arg in self.cfg:
                 cfg.append(f"{arg}={self.cfg[arg]}")
-        return "DatabaseWhitelist(" + ", ".join(cfg) + ")"
+        return "DatabaseList(" + ", ".join(cfg) + ")"
 
     def _entry_to_dict(self, entry):
         result = {}
@@ -164,14 +164,14 @@ class DatabaseWhitelist(WhitelistBase):
         return value
 
     def check(self, mailfrom, recipient, logger):
-        # check if mailfrom/recipient combination is whitelisted
+        # check if mailfrom/recipient combination is listed
         super().check(mailfrom, recipient)
         mailfrom = self.remove_batv(mailfrom)
         recipient = self.remove_batv(recipient)
 
         # generate list of possible mailfroms
         logger.debug(
-            f"query database for whitelist entries from <{mailfrom}> "
+            f"query database for list entries from <{mailfrom}> "
             f"to <{recipient}>")
         mailfroms = [""]
         if "@" in mailfrom and not mailfrom.startswith("@"):
@@ -196,7 +196,7 @@ class DatabaseWhitelist(WhitelistBase):
             raise RuntimeError(f"unable to query database: {e}")
 
         if not entries:
-            # no whitelist entry found
+            # no list entry found
             return {}
 
         if len(entries) > 1:
@@ -213,7 +213,7 @@ class DatabaseWhitelist(WhitelistBase):
         return result
 
     def find(self, mailfrom=None, recipients=None, older_than=None):
-        "Find whitelist entries."
+        "Find list entries."
         super().find(mailfrom, recipients, older_than)
 
         if isinstance(mailfrom, str):
@@ -244,7 +244,7 @@ class DatabaseWhitelist(WhitelistBase):
         return entries
 
     def add(self, mailfrom, recipient, comment, permanent):
-        "Add entry to whitelist."
+        "Add entry to list."
         super().add(
             mailfrom,
             recipient,
@@ -263,16 +263,16 @@ class DatabaseWhitelist(WhitelistBase):
         except Exception as e:
             raise RuntimeError(f"unable to add entry to database: {e}")
 
-    def delete(self, whitelist_id):
-        "Delete entry from whitelist."
-        super().delete(whitelist_id)
+    def delete(self, list_id):
+        "Delete entry from list."
+        super().delete(list_id)
 
         try:
-            query = self.model.delete().where(self.model.id == whitelist_id)
+            query = self.model.delete().where(self.model.id == list_id)
             deleted = query.execute()
         except Exception as e:
             raise RuntimeError(
                 f"unable to delete entry from database: {e}")
 
         if deleted == 0:
-            raise RuntimeError("invalid whitelist id")
+            raise RuntimeError("invalid list id")

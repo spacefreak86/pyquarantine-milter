@@ -22,7 +22,7 @@ __all__ = [
     "RewriteLinksConfig",
     "StoreConfig",
     "NotifyConfig",
-    "WhitelistConfig",
+    "AllowListConfig",
     "QuarantineConfig",
     "ActionConfig",
     "RuleConfig",
@@ -89,7 +89,7 @@ class BaseConfig:
         return self._config
 
 
-class WhitelistConfig(BaseConfig):
+class AllowListConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
         "required": ["type"],
@@ -121,14 +121,14 @@ class ConditionsConfig(BaseConfig):
             "headers": {"type": "array",
                         "items": {"type": "string"}},
             "var": {"type": "string"},
-            "whitelist": {"type": "object"}}}
+            "allowlist": {"type": "object"}}}
 
     def __init__(self, config, rec=True):
         super().__init__(config)
         if not rec:
             return
-        if "whitelist" in self:
-            self["whitelist"] = WhitelistConfig(self["whitelist"])
+        if "allowlist" in self:
+            self["allowlist"] = AllowListConfig(self["allowlist"])
 
 
 class AddHeaderConfig(BaseConfig):
@@ -242,7 +242,7 @@ class QuarantineConfig(BaseConfig):
             "notify": {"type": "object"},
             "milter_action": {"type": "string"},
             "reject_reason": {"type": "string"},
-            "whitelist": {"type": "object"},
+            "allowlist": {"type": "object"},
             "store": {"type": "object"},
             "smtp_host": {"type": "string"},
             "smtp_port": {"type": "number"}}}
@@ -256,9 +256,9 @@ class QuarantineConfig(BaseConfig):
         self["store"] = StoreConfig(self["store"])
         if "notify" in self:
             self["notify"] = NotifyConfig(self["notify"])
-        if "whitelist" in self:
-            self["whitelist"] = ConditionsConfig(
-                {"whitelist": self["whitelist"]}, rec)
+        if "allowlist" in self:
+            self["allowlist"] = ConditionsConfig(
+                {"allowlist": self["allowlist"]}, rec)
 
 
 class ActionConfig(BaseConfig):

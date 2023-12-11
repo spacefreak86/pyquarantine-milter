@@ -203,14 +203,14 @@ class EMailNotification(BaseNotification):
                 f"and its content")
             element.extract()
 
-        # remove not whitelisted elements, but keep their content
+        # remove not allowed elements, but keep their content
         for element in soup.find_all(True):
             if element.name not in EMailNotification._good_tags:
                 logger.debug(
                     f"removing tag '{element.name}', keep its content")
                 element.replaceWithChildren()
 
-        # remove not whitelisted attributes
+        # remove not allowed attributes
         for element in soup.find_all(True):
             for attribute in list(element.attrs.keys()):
                 if attribute not in EMailNotification._good_attributes:

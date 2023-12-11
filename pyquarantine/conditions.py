@@ -19,7 +19,7 @@ import re
 
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 from pyquarantine import CustomLogger
-from pyquarantine.whitelist import DatabaseWhitelist
+from pyquarantine.list import DatabaseList
 
 
 class Conditions:
@@ -62,14 +62,14 @@ class Conditions:
             else:
                 setattr(self, arg, cfg[arg])
 
-        self.whitelist = cfg["whitelist"] if "whitelist" in cfg else None
-        if self.whitelist is not None:
-            self.whitelist["name"] = f"{cfg['name']}: whitelist"
-            self.whitelist["loglevel"] = cfg["loglevel"]
-            if self.whitelist["type"] == "db":
-                self.whitelist = DatabaseWhitelist(self.whitelist, debug)
+        self.allowlist = cfg["allowlist"] if "allowlist" in cfg else None
+        if self.allowlist is not None:
+            self.allowlist["name"] = f"{cfg['name']}: allowlist"
+            self.allowlist["loglevel"] = cfg["loglevel"]
+            if self.allowlist["type"] == "db":
+                self.allowlist = DatabaseList(self.allowlist, debug)
             else:
-                raise RuntimeError("invalid whitelist type")
+                raise RuntimeError("invalid allowlist type")
 
     def __str__(self):
         cfg = []
@@ -77,12 +77,12 @@ class Conditions:
                     "var", "metavar"):
             if arg in self.cfg:
                 cfg.append(f"{arg}={self.cfg[arg]}")
-        if self.whitelist is not None:
-            cfg.append(f"whitelist={self.whitelist}")
+        if self.allowlist is not None:
+            cfg.append(f"allowlist={self.allowlist}")
         return "Conditions(" + ", ".join(cfg) + ")"
 
-    def get_whitelist(self):
-        return self.whitelist
+    def get_allowlist(self):
+        return self.allowlist
 
     def match_host(self, host):
         logger = CustomLogger(
@@ -124,12 +124,12 @@ class Conditions:
         return True
 
     def get_wl_rcpts(self, mailfrom, rcpts, logger):
-        if not self.whitelist:
+        if not self.allowlist:
             return {}
 
         wl_rcpts = []
         for rcpt in rcpts:
-            if self.whitelist.check(mailfrom, rcpt, logger):
+            if self.allowlist.check(mailfrom, rcpt, logger):
                 wl_rcpts.append(rcpt)
 
         return wl_rcpts

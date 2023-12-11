@@ -42,12 +42,12 @@ def _get_notification(quarantines, name, debug):
     return notification
 
 
-def _get_whitelist(quarantines, name, debug):
-    whitelist = _get_quarantine(quarantines, name, debug).whitelist
-    if not whitelist:
+def _get_allowlist(quarantines, name, debug):
+    allowlist = _get_quarantine(quarantines, name, debug).allowlist
+    if not allowlist:
         raise RuntimeError(
-                "whitelist type is set to NONE")
-    return whitelist
+                "allowlist type is set to NONE")
+    return allowlist
 
 
 def print_table(columns, rows):
@@ -105,10 +105,10 @@ def list_quarantines(quarantines, args):
             else:
                 notification_type = "NONE"
 
-            if "whitelist" in cfg:
-                whitelist_type = cfg["whitelist"]["type"]
+            if "allowlist" in cfg:
+                allowlist_type = cfg["allowlist"]["type"]
             else:
-                whitelist_type = "NONE"
+                allowlist_type = "NONE"
 
             if "milter_action" in cfg:
                 milter_action = cfg["milter_action"]
@@ -119,14 +119,14 @@ def list_quarantines(quarantines, args):
                 "name": q["name"],
                 "storage": storage_type,
                 "notification": notification_type,
-                "whitelist": whitelist_type,
+                "allowlist": allowlist_type,
                 "action": milter_action})
 
         print_table(
             [("Name", "name"),
              ("Storage", "storage"),
              ("Notification", "notification"),
-             ("Whitelist", "whitelist"),
+             ("Allowlist", "allowlist"),
              ("Action", "action")],
             qlist
         )
@@ -180,16 +180,16 @@ def list_quarantine_emails(quarantines, args):
     )
 
 
-def list_whitelist(quarantines, args):
-    whitelist = _get_whitelist(quarantines, args.quarantine, args.debug)
+def list_allowlist(quarantines, args):
+    allowlist = _get_allowlist(quarantines, args.quarantine, args.debug)
 
-    # find whitelist entries
-    entries = whitelist.find(
+    # find allowlist entries
+    entries = allowlist.find(
         mailfrom=args.mailfrom,
         recipients=args.recipients,
         older_than=args.older_than)
     if not entries:
-        print(f"whitelist of quarantine '{args.quarantine}' is empty")
+        print(f"allowlist of quarantine '{args.quarantine}' is empty")
         return
 
     # transform some values to strings
@@ -210,12 +210,12 @@ def list_whitelist(quarantines, args):
     )
 
 
-def add_whitelist_entry(quarantines, args):
+def add_allowlist_entry(quarantines, args):
     logger = logging.getLogger(__name__)
-    whitelist = _get_whitelist(quarantines, args.quarantine, args.debug)
+    allowlist = _get_allowlist(quarantines, args.quarantine, args.debug)
 
     # check existing entries
-    entries = whitelist.check(args.mailfrom, args.recipient, logger)
+    entries = allowlist.check(args.mailfrom, args.recipient, logger)
     if entries:
         # check if the exact entry exists already
         for entry in entries.values():
@@ -245,15 +245,15 @@ def add_whitelist_entry(quarantines, args):
                 "from/to combination is already covered by the entries above, "
                 "use --force to override.")
 
-    # add entry to whitelist
-    whitelist.add(args.mailfrom, args.recipient, args.comment, args.permanent)
-    print("whitelist entry added successfully")
+    # add entry to allowlist
+    allowlist.add(args.mailfrom, args.recipient, args.comment, args.permanent)
+    print("allowlist entry added successfully")
 
 
-def delete_whitelist_entry(quarantines, args):
-    whitelist = _get_whitelist(quarantines, args.quarantine, args.debug)
-    whitelist.delete(args.whitelist_id)
-    print("whitelist entry deleted successfully")
+def delete_allowlist_entry(quarantines, args):
+    allowlist = _get_allowlist(quarantines, args.quarantine, args.debug)
+    allowlist.delete(args.allowlist_id)
+    print("allowlist entry deleted successfully")
 
 
 def notify(quarantines, args):
@@ -509,86 +509,86 @@ def main():
         help="Quarantine ID.")
     quar_metadata_parser.set_defaults(func=metadata)
 
-    # whitelist command group
-    whitelist_parser = subparsers.add_parser(
-        "whitelist",
-        description="Manage whitelists.",
-        help="Manage whitelists.",
+    # allowlist command group
+    allowlist_parser = subparsers.add_parser(
+        "allowlist",
+        description="Manage allowlists.",
+        help="Manage allowlists.",
         formatter_class=formatter_class)
-    whitelist_parser.add_argument(
+    allowlist_parser.add_argument(
         "quarantine",
         metavar="QUARANTINE",
         help="Quarantine name.")
-    whitelist_subparsers = whitelist_parser.add_subparsers(
+    allowlist_subparsers = allowlist_parser.add_subparsers(
         dest="command",
-        title="Whitelist commands")
-    whitelist_subparsers.required = True
-    # whitelist list command
-    whitelist_list_parser = whitelist_subparsers.add_parser(
+        title="Allowlist commands")
+    allowlist_subparsers.required = True
+    # allowlist list command
+    allowlist_list_parser = allowlist_subparsers.add_parser(
         "list",
-        description="List whitelist entries.",
-        help="List whitelist entries.",
+        description="List allowlist entries.",
+        help="List allowlist entries.",
         formatter_class=formatter_class)
-    whitelist_list_parser.add_argument(
+    allowlist_list_parser.add_argument(
         "-f", "--from",
         dest="mailfrom",
         help="Filter entries by from address.",
         default=None,
         nargs="+")
-    whitelist_list_parser.add_argument(
+    allowlist_list_parser.add_argument(
         "-t", "--to",
         dest="recipients",
         help="Filter entries by recipient address.",
         default=None,
         nargs="+")
-    whitelist_list_parser.add_argument(
+    allowlist_list_parser.add_argument(
         "-o", "--older-than",
         dest="older_than",
         help="Filter emails by last used date (days).",
         default=None,
         type=float)
-    whitelist_list_parser.set_defaults(func=list_whitelist)
-    # whitelist add command
-    whitelist_add_parser = whitelist_subparsers.add_parser(
+    allowlist_list_parser.set_defaults(func=list_allowlist)
+    # allowlist add command
+    allowlist_add_parser = allowlist_subparsers.add_parser(
         "add",
-        description="Add whitelist entry.",
-        help="Add whitelist entry.",
+        description="Add allowlist entry.",
+        help="Add allowlist entry.",
         formatter_class=formatter_class)
-    whitelist_add_parser.add_argument(
+    allowlist_add_parser.add_argument(
         "-f", "--from",
         dest="mailfrom",
         help="From address.",
         required=True)
-    whitelist_add_parser.add_argument(
+    allowlist_add_parser.add_argument(
         "-t", "--to",
         dest="recipient",
         help="Recipient address.",
         required=True)
-    whitelist_add_parser.add_argument(
+    allowlist_add_parser.add_argument(
         "-c", "--comment",
         help="Comment.",
         default="added by CLI")
-    whitelist_add_parser.add_argument(
+    allowlist_add_parser.add_argument(
         "-p", "--permanent",
         help="Add a permanent entry.",
         action="store_true")
-    whitelist_add_parser.add_argument(
+    allowlist_add_parser.add_argument(
         "--force",
         help="Force adding an entry, "
              "even if already covered by another entry.",
         action="store_true")
-    whitelist_add_parser.set_defaults(func=add_whitelist_entry)
-    # whitelist delete command
-    whitelist_delete_parser = whitelist_subparsers.add_parser(
+    allowlist_add_parser.set_defaults(func=add_allowlist_entry)
+    # allowlist delete command
+    allowlist_delete_parser = allowlist_subparsers.add_parser(
         "delete",
-        description="Delete whitelist entry.",
-        help="Delete whitelist entry.",
+        description="Delete allowlist entry.",
+        help="Delete allowlist entry.",
         formatter_class=formatter_class)
-    whitelist_delete_parser.add_argument(
-        "whitelist_id",
+    allowlist_delete_parser.add_argument(
+        "allowlist_id",
         metavar="ID",
-        help="Whitelist ID.")
-    whitelist_delete_parser.set_defaults(func=delete_whitelist_entry)
+        help="List ID.")
+    allowlist_delete_parser.set_defaults(func=delete_allowlist_entry)
 
     args = parser.parse_args()
 

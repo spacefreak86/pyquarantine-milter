@@ -24,7 +24,7 @@ __all__ = [
     "rule",
     "run",
     "storage",
-    "whitelist",
+    "list",
     "QuarantineMilter"]
 
 __version__ = "2.0.8"

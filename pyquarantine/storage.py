@@ -428,13 +428,13 @@ class Quarantine:
                 "options": cfg["options"]["notify"].get_config()})
             self._notification = Notify(notify_cfg, local_addrs, debug)
 
-        self._whitelist = None
-        if "whitelist" in cfg["options"]:
-            whitelist_cfg = cfg["options"]["whitelist"]
-            whitelist_cfg["name"] = cfg["name"]
-            whitelist_cfg["loglevel"] = cfg["loglevel"]
-            self._whitelist = Conditions(
-                whitelist_cfg,
+        self._allowlist = None
+        if "allowlist" in cfg["options"]:
+            allowlist_cfg = cfg["options"]["allowlist"]
+            allowlist_cfg["name"] = cfg["name"]
+            allowlist_cfg["loglevel"] = cfg["loglevel"]
+            self._allowlist = Conditions(
+                allowlist_cfg,
                 local_addrs=[],
                 debug=debug)
 
@@ -456,8 +456,8 @@ class Quarantine:
         cfg.append(f"store={str(self._storage)}")
         if self._notification is not None:
             cfg.append(f"notify={str(self._notification)}")
-        if self._whitelist is not None:
-            cfg.append(f"whitelist={str(self._whitelist)}")
+        if self._allowlist is not None:
+            cfg.append(f"allowlist={str(self._allowlist)}")
         for key in ["milter_action", "reject_reason"]:
             if key not in self.cfg["options"]:
                 continue
@@ -481,10 +481,10 @@ class Quarantine:
         return self._notification.get_notification()
 
     @property
-    def whitelist(self):
-        if self._whitelist is None:
+    def allowlist(self):
+        if self._allowlist is None:
             return None
-        return self._whitelist.get_whitelist()
+        return self._allowlist.get_allowlist()
 
     @property
     def milter_action(self):
@@ -554,14 +554,14 @@ class Quarantine:
             self.logger, {"name": self.cfg["name"], "qid": milter.qid})
         rcpts = milter.msginfo["rcpts"]
         wl_rcpts = []
-        if self._whitelist:
-            wl_rcpts = self._whitelist.get_wl_rcpts(
+        if self._allowlist:
+            wl_rcpts = self._allowlist.get_wl_rcpts(
                 milter.msginfo["mailfrom"], rcpts, logger)
             if wl_rcpts:
-                logger.info(f"whitelisted recipients: {wl_rcpts}")
+                logger.info(f"allowed recipients: {wl_rcpts}")
             rcpts = [rcpt for rcpt in rcpts if rcpt not in wl_rcpts]
             if not rcpts:
-                # all recipients whitelisted
+                # all recipients allowed
                 return
             milter.msginfo["rcpts"] = rcpts.copy()
 

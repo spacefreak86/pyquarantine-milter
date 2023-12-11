@@ -6,10 +6,10 @@ A pymilter based sendmail/postfix pre-queue filter with the ability to ...
 * append and prepend disclaimers to e-mail text parts
 * quarantine e-mails (store e-mail, optionally notify receivers)
 
-It is useful in many cases due to its flexible configuration and the ability to handle any number of quarantines and modifications sequential and conditional. Storages and whitelists used by quarantines can be managed with the built-in CLI.  
+It is useful in many cases due to its flexible configuration and the ability to handle any number of quarantines and modifications sequential and conditional. Storages and lists used by quarantines can be managed with the built-in CLI.  
 
 Addionally, pyquarantine-milter provides a sanitized, harmless version of the text parts of e-mails as template variable, which can be embedded in e-mail notifications. This makes it easier for users to decide, if a match is a false-positive or not.  
-It is also possible to use any metavariable as template variable (e.g. storage ID, envelope-from address, ...). This may be used to give your users the ability to release e-mails or whitelist the from-address for example. A webservice then releases the e-mail from the quarantine.  
+It is also possible to use any metavariable as template variable (e.g. storage ID, envelope-from address, ...). This may be used to give your users the ability to release e-mails or add the from-address to an allowlist. A webservice then releases the e-mail from the quarantine.  
 
 The project is currently in beta status, but it is already used in a productive enterprise environment that processes about a million e-mails per month.
 
@@ -119,18 +119,18 @@ Config options for conditions objects:
   Matches e-mails for which all envelope-to addresses match the given regular expression.
 * **headers** (optional)  
   Matches e-mails for which all regular expressions in the given list are matching at least one e-mail header.
-* **whitelist** (optional)  
-  Matches e-mails for which the whitelist has no entry for the envelope-from and envelope-to address combination, see section [Whitelist](#Whitelist) for details.
+* **allowlist** (optional)  
+  Matches e-mails for which the allowlist has no entry for the envelope-from and envelope-to address combination, see section [Allowlist](#Allowlist) for details.
 * **var** (optional)  
   Matches e-mails for which a previous action or condition has set the given metavariable.
 * **metavar** (optional)  
   Prefix for the name of metavariables which are possibly provided by the **envfrom**, **envto** or **headers** condition. Meta variables will be provided if the regular expressions contain named subgroups, see [python.re](https://docs.python.org/3/library/re.html) for details.  
   If not set, no metavariables will be provided.
 
-### Whitelist
-Config options for whitelist objects:
+### Allowlist
+Config options for allowlist objects:
 * **type**  
-  See section [Whitelist types](#Whitelist-types).
+  See section [Allowlist types](#Allowlist-types).
 
 ### Action types
 Available action types:
@@ -230,8 +230,8 @@ Options:
     Tell the MTA to silently discard the e-mail.
 * **reject_reason** (optional, default: "Message rejected")  
   Reject message sent to MTA if milter_action is set to reject.
-* **whitelist** (optional)  
-  Options for a whitelist object, see section [Whitelist](#Whitelist).
+* **allowlist** (optional)  
+  Options for a allowlist object, see section [Allowlist](#Allowlist).
 
 ### Storage types
 Available storage types:
@@ -289,10 +289,10 @@ Options:
 * **embed_imgs** (optional)  
   List of images to embed into the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template.
 
-### Whitelist types
-Available whitelist types:
+### Allowlist types
+Available list types:
 ##### db
-Whitelist stored in database. The table is created automatically if it does not exist yet.  
+Allowlist stored in database. The table is created automatically if it does not exist yet.  
 Options:
 * **connection**  
   Database connection string, see [Peewee Playhouse Extension](https://docs.peewee-orm.com/en/latest/peewee/playhouse.html#db-url).

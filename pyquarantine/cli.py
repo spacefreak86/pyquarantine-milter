@@ -271,6 +271,13 @@ def release(quarantines, args):
         f"{args.quarantine}: released message with id {args.quarantine_id} "
         f"for {rcpts}")
 
+def copy(quarantines, args):
+    logger = logging.getLogger(__name__)
+    quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
+    quarantine.copy(args.quarantine_id, args.recipient)
+    logger.info(
+        f"{args.quarantine}: sent a copy of message with id {args.quarantine_id} "
+        f"to {args.recipient}")
 
 def delete(quarantines, args):
     storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
@@ -432,6 +439,27 @@ def main():
         help="Release email for all recipients.",
         action="store_true")
     quar_release_parser.set_defaults(func=release)
+    # quarantine copy command
+    quar_copy_parser = quar_subparsers.add_parser(
+        "copy",
+        description="Send a copy of email to another recipient.",
+        help="Send a copy of email to another recipient.",
+        formatter_class=formatter_class)
+    quar_copy_parser.add_argument(
+        "quarantine_id",
+        metavar="ID",
+        help="Quarantine ID.")
+    quar_copy_parser.add_argument(
+        "-n",
+        "--disable-syslog",
+        dest="syslog",
+        help="Disable syslog messages.",
+        action="store_false")
+    quar_copy_parser_grp.add_argument(
+        "-t", "--to",
+        dest="recipient",
+        help="Release email for one recipient address.")
+    quar_copy_parser.set_defaults(func=copy)
     # quarantine delete command
     quar_delete_parser = quar_subparsers.add_parser(
         "delete",

@@ -535,6 +535,20 @@ class Quarantine:
 
         return recipients
 
+    def copy(self, storage_id, recipient):
+        metadata, msg = self.storage.get_mail(storage_id)
+        try:
+            mailer.smtp_send(
+                self.smtp_host,
+                self.smtp_port,
+                metadata["mailfrom"],
+                recipient,
+                msg.as_string())
+
+        except Exception as e:
+            raise RuntimeError(
+                f"error while sending message to '{recipient}': {e}")
+
     def execute(self, milter):
         logger = CustomLogger(
             self.logger, {"name": self.cfg["name"], "qid": milter.qid})

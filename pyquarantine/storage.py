@@ -407,12 +407,14 @@ class Quarantine:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        storage_cfg = ActionConfig({
-            "name": cfg["name"],
-            "loglevel": cfg["loglevel"],
-            "pretend": cfg["pretend"],
-            "type": "store",
-            "options": cfg["options"]["store"].get_config()})
+        storage_cfg = ActionConfig(
+            {
+                "name": cfg["name"],
+                "loglevel": cfg["loglevel"],
+                "pretend": cfg["pretend"],
+                "type": "store",
+                "options": cfg["options"]["store"].get_config()},
+            {})
         self._storage = Store(storage_cfg, local_addrs, debug)
 
         self.smtp_host = cfg["options"]["smtp_host"]
@@ -421,11 +423,12 @@ class Quarantine:
         self._notification = None
         if "notify" in cfg["options"]:
             notify_cfg = ActionConfig({
-                "name": cfg["name"],
-                "loglevel": cfg["loglevel"],
-                "pretend": cfg["pretend"],
-                "type": "notify",
-                "options": cfg["options"]["notify"].get_config()})
+                    "name": cfg["name"],
+                    "loglevel": cfg["loglevel"],
+                    "pretend": cfg["pretend"],
+                    "type": "notify",
+                    "options": cfg["options"]["notify"].get_config()},
+                {})
             self._notification = Notify(notify_cfg, local_addrs, debug)
 
         self._allowlist = None

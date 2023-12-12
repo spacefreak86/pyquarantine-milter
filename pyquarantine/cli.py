@@ -21,29 +21,41 @@ import logging.handlers
 import sys
 import time
 
-from pyquarantine.config import get_milter_config, ActionConfig
+from pyquarantine.config import get_milter_config, ActionConfig, ListConfig
 from pyquarantine.storage import Quarantine
 from pyquarantine import __version__ as version
 
 
-def _get_quarantine(quarantines, name, debug):
+def _get_quarantines(cfg):
+    quarantines = []
+    for rule in cfg["rules"]:
+        for action in rule["actions"]:
+            if action["type"] == "quarantine":
+                quarantines.append(action)
+    return quarantines
+
+
+def _get_quarantine(cfg, name, debug):
     try:
-        quarantine = next((q for q in quarantines if q["name"] == name))
+        quarantine = next(
+            (q for q in _get_quarantines(cfg) if q["name"] == name))
     except StopIteration:
         raise RuntimeError(f"invalid quarantine '{name}'")
-    return Quarantine(ActionConfig(quarantine), [], debug)
+    for name, lst in cfg["lists"].items():
+        cfg["lists"][name] = ListConfig(lst, {})
+    return Quarantine(ActionConfig(quarantine, cfg["lists"]), [], debug)
 
 
-def _get_notification(quarantines, name, debug):
-    notification = _get_quarantine(quarantines, name, debug).notification
+def _get_notification(cfg, name, debug):
+    notification = _get_quarantine(cfg, name, debug).notification
     if not notification:
         raise RuntimeError(
                 "notification type is set to NONE")
     return notification
 
 
-def _get_allowlist(quarantines, name, debug):
-    allowlist = _get_quarantine(quarantines, name, debug).allowlist
+def _get_allowlist(cfg, name, debug):
+    allowlist = _get_quarantine(cfg, name, debug).allowlist
     if not allowlist:
         raise RuntimeError(
                 "allowlist type is set to NONE")
@@ -91,7 +103,8 @@ def print_table(columns, rows):
         print(row_format.format(*row))
 
 
-def list_quarantines(quarantines, args):
+def list_quarantines(cfg, args):
+    quarantines = _get_quarantines(cfg)
     if args.batch:
         print("\n".join([q["name"] for q in quarantines]))
     else:
@@ -132,8 +145,8 @@ def list_quarantines(quarantines, args):
         )
 
 
-def list_quarantine_emails(quarantines, args):
-    storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
+def list_quarantine_emails(cfg, args):
+    storage = _get_quarantine(cfg, args.quarantine, args.debug).storage
 
     # find emails and transform some metadata values to strings
     rows = []
@@ -180,8 +193,8 @@ def list_quarantine_emails(quarantines, args):
     )
 
 
-def list_allowlist(quarantines, args):
-    allowlist = _get_allowlist(quarantines, args.quarantine, args.debug)
+def list_allowlist(cfg, args):
+    allowlist = _get_allowlist(cfg, args.quarantine, args.debug)
 
     # find allowlist entries
     entries = allowlist.find(
@@ -210,9 +223,9 @@ def list_allowlist(quarantines, args):
     )
 
 
-def add_allowlist_entry(quarantines, args):
+def add_allowlist_entry(cfg, args):
     logger = logging.getLogger(__name__)
-    allowlist = _get_allowlist(quarantines, args.quarantine, args.debug)
+    allowlist = _get_allowlist(cfg, args.quarantine, args.debug)
 
     # check existing entries
     entries = allowlist.check(args.mailfrom, args.recipient, logger)
@@ -250,21 +263,21 @@ def add_allowlist_entry(quarantines, args):
     print("allowlist entry added successfully")
 
 
-def delete_allowlist_entry(quarantines, args):
-    allowlist = _get_allowlist(quarantines, args.quarantine, args.debug)
+def delete_allowlist_entry(cfg, args):
+    allowlist = _get_allowlist(cfg, args.quarantine, args.debug)
     allowlist.delete(args.allowlist_id)
     print("allowlist entry deleted successfully")
 
 
-def notify(quarantines, args):
-    quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
+def notify(cfg, args):
+    quarantine = _get_quarantine(cfg, args.quarantine, args.debug)
     quarantine.notify(args.quarantine_id, args.recipient)
     print("notification sent successfully")
 
 
-def release(quarantines, args):
+def release(cfg, args):
     logger = logging.getLogger(__name__)
-    quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
+    quarantine = _get_quarantine(cfg, args.quarantine, args.debug)
     rcpts = quarantine.release(args.quarantine_id, args.recipient)
     rcpts = ", ".join(rcpts)
     logger.info(
@@ -272,29 +285,29 @@ def release(quarantines, args):
         f"for {rcpts}")
 
 
-def copy(quarantines, args):
+def copy(cfg, args):
     logger = logging.getLogger(__name__)
-    quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
+    quarantine = _get_quarantine(cfg, args.quarantine, args.debug)
     quarantine.copy(args.quarantine_id, args.recipient)
     logger.info(
-        f"{args.quarantine}: sent a copy of message with id {args.quarantine_id} "
-        f"to {args.recipient}")
+        f"{args.quarantine}: sent a copy of message with id "
+        f"{args.quarantine_id} to {args.recipient}")
 
 
-def delete(quarantines, args):
-    storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
+def delete(cfg, args):
+    storage = _get_quarantine(cfg, args.quarantine, args.debug).storage
     storage.delete(args.quarantine_id, args.recipient)
     print("quarantined message deleted successfully")
 
 
-def get(quarantines, args):
-    storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
+def get(cfg, args):
+    storage = _get_quarantine(cfg, args.quarantine, args.debug).storage
     data = storage.get_mail_bytes(args.quarantine_id)
     sys.stdout.buffer.write(data)
 
 
-def metadata(quarantines, args):
-    storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
+def metadata(cfg, args):
+    storage = _get_quarantine(cfg, args.quarantine, args.debug).storage
     metadata = storage.get_metadata(args.quarantine_id)
     print(json.dumps(metadata))
 
@@ -622,6 +635,7 @@ def main():
     try:
         logger.debug("read milter configuration")
         cfg = get_milter_config(args.config, raw=True)
+
         if "rules" not in cfg or not cfg["rules"]:
             raise RuntimeError("no rules configured")
 
@@ -629,15 +643,10 @@ def main():
             if "actions" not in rule or not rule["actions"]:
                 raise RuntimeError(
                     f"{rule['name']}: no actions configured")
+
     except (RuntimeError, AssertionError) as e:
         logger.error(f"config error: {e}")
         sys.exit(255)
-
-    quarantines = []
-    for rule in cfg["rules"]:
-        for action in rule["actions"]:
-            if action["type"] == "quarantine":
-                quarantines.append(action)
 
     if args.syslog:
         # setup syslog
@@ -655,7 +664,7 @@ def main():
 
     # call the commands function
     try:
-        args.func(quarantines, args)
+        args.func(cfg, args)
     except RuntimeError as e:
         logger.error(e)
         sys.exit(1)

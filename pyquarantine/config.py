@@ -43,7 +43,7 @@ class BaseConfig:
         "properties": {
             "loglevel": {"type": "string", "default": "info"}}}
 
-    def __init__(self, config):
+    def __init__(self, config, lists):
         required = self.JSON_SCHEMA["required"]
         properties = self.JSON_SCHEMA["properties"]
         for p in properties.keys():
@@ -92,16 +92,18 @@ class BaseConfig:
 class ListConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
-        "required": ["type"],
+        "required": ["name", "type"],
         "additionalProperties": True,
         "properties": {
-            "type": {"enum": ["db"]}},
+            "type": {"enum": ["db"]},
+            "name": {"type": "string"}},
         "if": {"properties": {"type": {"const": "db"}}},
         "then": {
             "required": ["connection", "table"],
             "additionalProperties": False,
             "properties": {
                 "type": {"type": "string"},
+                "name": {"type": "string"},
                 "connection": {"type": "string"},
                 "table": {"type": "string"}}}}
 
@@ -121,14 +123,18 @@ class ConditionsConfig(BaseConfig):
             "headers": {"type": "array",
                         "items": {"type": "string"}},
             "var": {"type": "string"},
-            "list": {"type": "object"}}}
+            "list": {"type": "string"}}}
 
-    def __init__(self, config, rec=True):
-        super().__init__(config)
+    def __init__(self, config, lists, rec=True):
+        super().__init__(config, lists)
+        if "list" in self:
+            lst = self["list"]
+            try:
+                self["list"] = lists[lst]
+            except KeyError:
+                raise RuntimeError(f"list '{lst}' is not configured")
         if not rec:
             return
-        if "list" in self:
-            self["list"] = ListConfig(self["list"])
 
 
 class AddHeaderConfig(BaseConfig):
@@ -242,22 +248,26 @@ class QuarantineConfig(BaseConfig):
             "notify": {"type": "object"},
             "milter_action": {"type": "string"},
             "reject_reason": {"type": "string"},
-            "allowlist": {"type": "object"},
+            "allowlist": {"type": "string"},
             "store": {"type": "object"},
             "smtp_host": {"type": "string"},
             "smtp_port": {"type": "number"}}}
 
-    def __init__(self, config, rec=True):
-        super().__init__(config)
+    def __init__(self, config, lists, rec=True):
+        super().__init__(config, lists)
         if not rec:
             return
         if "metadata" not in self["store"]:
             self["store"]["metadata"] = True
-        self["store"] = StoreConfig(self["store"])
+        self["store"] = StoreConfig(self["store"], lists)
         if "notify" in self:
-            self["notify"] = NotifyConfig(self["notify"])
+            self["notify"] = NotifyConfig(self["notify"], lists)
         if "allowlist" in self:
-            self["allowlist"] = ListConfig(self["allowlist"])
+            allowlist = self["allowlist"]
+            try:
+                self["allowlist"] = lists[allowlist]
+            except KeyError:
+                raise RuntimeError(f"list '{allowlist}' is not configured")
 
 
 class ActionConfig(BaseConfig):
@@ -283,13 +293,13 @@ class ActionConfig(BaseConfig):
             "type": {"enum": list(ACTION_TYPES.keys())},
             "options": {"type": "object"}}}
 
-    def __init__(self, config, rec=True):
-        super().__init__(config)
+    def __init__(self, config, lists, rec=True):
+        super().__init__(config, lists)
         if not rec:
             return
         if "conditions" in self:
-            self["conditions"] = ConditionsConfig(self["conditions"])
-        self["action"] = self.ACTION_TYPES[self["type"]](self["options"])
+            self["conditions"] = ConditionsConfig(self["conditions"], lists)
+        self["action"] = self.ACTION_TYPES[self["type"]](self["options"], lists)
 
 
 class RuleConfig(BaseConfig):
@@ -304,20 +314,20 @@ class RuleConfig(BaseConfig):
             "conditions": {"type": "object"},
             "actions": {"type": "array"}}}
 
-    def __init__(self, config, rec=True):
-        super().__init__(config)
+    def __init__(self, config, lists, rec=True):
+        super().__init__(config, lists)
         if not rec:
             return
         if "conditions" in self:
-            self["conditions"] = ConditionsConfig(self["conditions"])
+            self["conditions"] = ConditionsConfig(self["conditions"], lists)
 
         actions = []
-        for idx, action in enumerate(self["actions"]):
+        for action in self["actions"]:
             if "loglevel" not in action:
                 action["loglevel"] = config["loglevel"]
             if "pretend" not in action:
                 action["pretend"] = config["pretend"]
-            actions.append(ActionConfig(action, rec))
+            actions.append(ActionConfig(action, lists, rec))
         self["actions"] = actions
 
 
@@ -339,19 +349,25 @@ class QuarantineMilterConfig(BaseConfig):
                                 "192.168.0.0/16"]},
             "loglevel": {"type": "string", "default": "info"},
             "pretend": {"type": "boolean", "default": False},
-            "rules": {"type": "array"}}}
+            "rules": {"type": "array"},
+            "lists": {"type": "array",
+                      "default": []}}}
 
     def __init__(self, config, rec=True):
-        super().__init__(config)
+        super().__init__(config, {})
         if not rec:
             return
+        lists = {}
+        for lst in self["lists"]:
+            lists[lst["name"]] = ListConfig(lst, rec)
+        self["lists"] = lists
         rules = []
-        for idx, rule in enumerate(self["rules"]):
+        for rule in self["rules"]:
             if "loglevel" not in rule:
                 rule["loglevel"] = config["loglevel"]
             if "pretend" not in rule:
                 rule["pretend"] = config["pretend"]
-            rules.append(RuleConfig(rule, rec))
+            rules.append(RuleConfig(rule, lists, rec))
         self["rules"] = rules
 
 
@@ -371,5 +387,9 @@ def get_milter_config(cfgfile, raw=False):
         msg = "\n".join(cfg_text)
         raise RuntimeError(f"{e}\n{msg}")
     if raw:
+        lists = {}
+        for lst in cfg["lists"]:
+            lists[lst["name"]] = lst
+        cfg["lists"] = lists
         return cfg
     return QuarantineMilterConfig(cfg)

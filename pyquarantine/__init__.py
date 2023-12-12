@@ -71,7 +71,7 @@ class QuarantineMilter(Milter.Base):
 
         logger = logging.getLogger(__name__)
         logger.setLevel(QuarantineMilter._loglevel)
-        for idx, rule_cfg in enumerate(cfg["rules"]):
+        for rule_cfg in cfg["rules"]:
             rule = Rule(rule_cfg, local_addrs, debug)
             logger.debug(rule)
             QuarantineMilter._rules.append(rule)

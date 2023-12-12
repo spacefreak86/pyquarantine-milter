@@ -271,6 +271,7 @@ def release(quarantines, args):
         f"{args.quarantine}: released message with id {args.quarantine_id} "
         f"for {rcpts}")
 
+
 def copy(quarantines, args):
     logger = logging.getLogger(__name__)
     quarantine = _get_quarantine(quarantines, args.quarantine, args.debug)
@@ -278,6 +279,7 @@ def copy(quarantines, args):
     logger.info(
         f"{args.quarantine}: sent a copy of message with id {args.quarantine_id} "
         f"to {args.recipient}")
+
 
 def delete(quarantines, args):
     storage = _get_quarantine(quarantines, args.quarantine, args.debug).storage
@@ -455,7 +457,7 @@ def main():
         dest="syslog",
         help="Disable syslog messages.",
         action="store_false")
-    quar_copy_parser_grp.add_argument(
+    quar_copy_parser.add_argument(
         "-t", "--to",
         dest="recipient",
         help="Release email for one recipient address.")

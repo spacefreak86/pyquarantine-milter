@@ -71,7 +71,7 @@ class MilterMessage(MIMEPart):
         maintype, subtype = part.get_content_type().split("/")
         if maintype == "text":
             if subtype in preferencelist:
-                yield(preferencelist.index(subtype), parent)
+                yield (preferencelist.index(subtype), parent)
             return
         if maintype != "multipart" or not self.is_multipart():
             return
@@ -81,7 +81,7 @@ class MilterMessage(MIMEPart):
                     subpart, preferencelist, part)
             return
         if 'related' in preferencelist:
-            yield(preferencelist.index('related'), parent)
+            yield (preferencelist.index('related'), parent)
         candidate = None
         start = part.get_param('start')
         if start:
@@ -174,7 +174,7 @@ def inject_body_part(part, content, subtype="plain"):
     boundary = part.get_boundary()
     p_subtype = part.get_content_subtype()
     part.clear_content()
-    if text_content != None:
+    if text_content is not None:
         part.set_content(text_content)
         part.add_alternative(content, subtype=subtype)
     else:

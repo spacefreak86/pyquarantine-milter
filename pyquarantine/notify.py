@@ -223,7 +223,7 @@ class EMailNotification(BaseNotification):
                         logger.debug(
                             f"removing attribute '{attribute}' "
                             f"from tag '{element.name}'")
-                        del(element.attrs[attribute])
+                        del element.attrs[attribute]
         return soup
 
     def notify(self, msg, qid, mailfrom, recipients, logger,

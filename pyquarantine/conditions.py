@@ -62,14 +62,12 @@ class Conditions:
             else:
                 setattr(self, arg, cfg[arg])
 
-        self.allowlist = cfg["allowlist"] if "allowlist" in cfg else None
-        if self.allowlist is not None:
-            self.allowlist["name"] = f"{cfg['name']}: allowlist"
-            self.allowlist["loglevel"] = cfg["loglevel"]
-            if self.allowlist["type"] == "db":
-                self.allowlist = DatabaseList(self.allowlist, debug)
+        self.list = cfg["list"] if "list" in cfg else None
+        if self.list is not None:
+            if self.list["type"] == "db":
+                self.list = DatabaseList(self.list, debug)
             else:
-                raise RuntimeError("invalid allowlist type")
+                raise RuntimeError("invalid list type")
 
     def __str__(self):
         cfg = []
@@ -77,12 +75,12 @@ class Conditions:
                     "var", "metavar"):
             if arg in self.cfg:
                 cfg.append(f"{arg}={self.cfg[arg]}")
-        if self.allowlist is not None:
-            cfg.append(f"allowlist={self.allowlist}")
+        if self.list is not None:
+            cfg.append(f"list={self.list}")
         return "Conditions(" + ", ".join(cfg) + ")"
 
-    def get_allowlist(self):
-        return self.allowlist
+    def get_list(self):
+        return self.list
 
     def match_host(self, host):
         logger = CustomLogger(
@@ -122,28 +120,6 @@ class Conditions:
                 f"hosts matches for host {host}")
 
         return True
-
-    def get_wl_rcpts(self, mailfrom, rcpts, logger):
-        if not self.allowlist:
-            return {}
-
-        wl_rcpts = []
-        for rcpt in rcpts:
-            if self.allowlist.check(mailfrom, rcpt, logger):
-                wl_rcpts.append(rcpt)
-
-        return wl_rcpts
-
-    def update_msginfo_from_match(self, milter, match):
-        if self.metavar is None:
-            return
-
-        named_subgroups = match.groupdict(default=None)
-        for group, value in named_subgroups.items():
-            if value is None:
-                continue
-            name = f"{self.metavar}_{group}"
-            milter.msginfo["vars"][name] = value
 
     def match(self, milter):
         logger = CustomLogger(
@@ -199,5 +175,15 @@ class Conditions:
         if self.var is not None:
             if self.var not in milter.msginfo["vars"]:
                 return False
+
+        if self.list is not None:
+            envfrom = milter.msginfo["mailfrom"]
+            envto = milter.msginfo["rcpts"]
+            if not isinstance(envto, list):
+                envto = [envto]
+
+            for to in envto:
+                if not self.list.check(envfrom, to, logger):
+                    return False
 
         return True

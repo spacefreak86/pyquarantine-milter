@@ -22,7 +22,7 @@ __all__ = [
     "RewriteLinksConfig",
     "StoreConfig",
     "NotifyConfig",
-    "AllowListConfig",
+    "ListConfig",
     "QuarantineConfig",
     "ActionConfig",
     "RuleConfig",
@@ -89,7 +89,7 @@ class BaseConfig:
         return self._config
 
 
-class AllowListConfig(BaseConfig):
+class ListConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
         "required": ["type"],
@@ -121,14 +121,14 @@ class ConditionsConfig(BaseConfig):
             "headers": {"type": "array",
                         "items": {"type": "string"}},
             "var": {"type": "string"},
-            "allowlist": {"type": "object"}}}
+            "list": {"type": "object"}}}
 
     def __init__(self, config, rec=True):
         super().__init__(config)
         if not rec:
             return
-        if "allowlist" in self:
-            self["allowlist"] = AllowListConfig(self["allowlist"])
+        if "list" in self:
+            self["list"] = ListConfig(self["list"])
 
 
 class AddHeaderConfig(BaseConfig):
@@ -257,8 +257,7 @@ class QuarantineConfig(BaseConfig):
         if "notify" in self:
             self["notify"] = NotifyConfig(self["notify"])
         if "allowlist" in self:
-            self["allowlist"] = ConditionsConfig(
-                {"allowlist": self["allowlist"]}, rec)
+            self["allowlist"] = ListConfig(self["allowlist"])
 
 
 class ActionConfig(BaseConfig):

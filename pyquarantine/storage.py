@@ -31,8 +31,8 @@ from time import gmtime
 
 from pyquarantine import mailer
 from pyquarantine.base import CustomLogger, MilterMessage
-from pyquarantine.conditions import Conditions
 from pyquarantine.config import ActionConfig
+from pyquarantine.list import DatabaseList
 from pyquarantine.notify import Notify
 
 
@@ -334,7 +334,7 @@ class FileMailStorage(BaseMailStorage):
 
         metafile, _ = self._get_file_paths(storage_id)
 
-        if type(recipients) == str:
+        if isinstance(recipients, str):
             recipients = [recipients]
 
         for recipient in recipients:
@@ -430,13 +430,11 @@ class Quarantine:
 
         self._allowlist = None
         if "allowlist" in cfg["options"]:
-            allowlist_cfg = cfg["options"]["allowlist"]
-            allowlist_cfg["name"] = cfg["name"]
-            allowlist_cfg["loglevel"] = cfg["loglevel"]
-            self._allowlist = Conditions(
-                allowlist_cfg,
-                local_addrs=[],
-                debug=debug)
+            allowlist = cfg["options"]["allowlist"]
+            if allowlist["type"] == "db":
+                self._allowlist = DatabaseList(allowlist, debug)
+            else:
+                raise RuntimeError("invalid allowlist type")
 
         self._milter_action = None
         if "milter_action" in cfg["options"]:
@@ -482,9 +480,7 @@ class Quarantine:
 
     @property
     def allowlist(self):
-        if self._allowlist is None:
-            return None
-        return self._allowlist.get_allowlist()
+        return self._allowlist
 
     @property
     def milter_action(self):
@@ -512,7 +508,7 @@ class Quarantine:
 
     def release(self, storage_id, recipients=None):
         metadata, msg = self.storage.get_mail(storage_id)
-        if recipients and type(recipients) == str:
+        if recipients and isinstance(recipients, str):
             recipients = [recipients]
         else:
             recipients = metadata["recipients"]
@@ -552,14 +548,18 @@ class Quarantine:
     def execute(self, milter):
         logger = CustomLogger(
             self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+
         rcpts = milter.msginfo["rcpts"]
-        wl_rcpts = []
+        allowed_rcpts = []
         if self._allowlist:
-            wl_rcpts = self._allowlist.get_wl_rcpts(
-                milter.msginfo["mailfrom"], rcpts, logger)
-            if wl_rcpts:
-                logger.info(f"allowed recipients: {wl_rcpts}")
-            rcpts = [rcpt for rcpt in rcpts if rcpt not in wl_rcpts]
+            allowed_rcpts = []
+            for rcpt in rcpts:
+                if self._allowlist.check(
+                        milter.msginfo["mailfrom"], rcpt, logger):
+                    allowed_rcpts.append(rcpt)
+            if allowed_rcpts:
+                logger.info(f"allowed recipients: {allowed_rcpts}")
+            rcpts = [rcpt for rcpt in rcpts if rcpt not in allowed_rcpts]
             if not rcpts:
                 # all recipients allowed
                 return
@@ -573,7 +573,7 @@ class Quarantine:
         if self._notification is not None:
             self._notification.execute(milter)
 
-        milter.msginfo["rcpts"].extend(wl_rcpts)
+        milter.msginfo["rcpts"].extend(allowed_rcpts)
 
         if self._milter_action is not None:
             milter.delrcpt(rcpts)

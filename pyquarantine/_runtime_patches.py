@@ -12,7 +12,6 @@
 # along with pyquarantine.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from sys import version_info
 import encodings
 
 

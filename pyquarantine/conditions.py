@@ -33,7 +33,7 @@ class Conditions:
         self.logger.setLevel(cfg.get_loglevel(debug))
 
         for arg in ("local", "hosts", "envfrom", "envto", "headers", "metavar",
-                    "var"):
+                    "var", "list"):
             if arg not in cfg:
                 setattr(self, arg, None)
                 continue
@@ -59,15 +59,15 @@ class Conditions:
                             header, re.IGNORECASE + re.DOTALL + re.MULTILINE))
                 except re.error as e:
                     raise RuntimeError(e)
+            elif arg == "list":
+                if cfg["list"]["type"] == "db":
+                    cfg["list"]["name"] = cfg["name"]
+                    cfg["list"]["loglevel"] = cfg["loglevel"]
+                    self.list = DatabaseList(cfg["list"], debug)
+                else:
+                    raise RuntimeError("invalid list type")
             else:
                 setattr(self, arg, cfg[arg])
-
-        self.list = cfg["list"] if "list" in cfg else None
-        if self.list is not None:
-            if self.list["type"] == "db":
-                self.list = DatabaseList(self.list, debug)
-            else:
-                raise RuntimeError("invalid list type")
 
     def __str__(self):
         cfg = []

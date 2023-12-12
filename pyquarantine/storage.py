@@ -432,6 +432,8 @@ class Quarantine:
         if "allowlist" in cfg["options"]:
             allowlist = cfg["options"]["allowlist"]
             if allowlist["type"] == "db":
+                allowlist["name"] = f"{cfg['name']}: allowlist"
+                allowlist["loglevel"] = cfg["loglevel"]
                 self._allowlist = DatabaseList(allowlist, debug)
             else:
                 raise RuntimeError("invalid allowlist type")

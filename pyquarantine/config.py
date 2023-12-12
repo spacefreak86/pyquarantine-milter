@@ -299,7 +299,8 @@ class ActionConfig(BaseConfig):
             return
         if "conditions" in self:
             self["conditions"] = ConditionsConfig(self["conditions"], lists)
-        self["action"] = self.ACTION_TYPES[self["type"]](self["options"], lists)
+        self["action"] = self.ACTION_TYPES[self["type"]](
+            self["options"], lists)
 
 
 class RuleConfig(BaseConfig):

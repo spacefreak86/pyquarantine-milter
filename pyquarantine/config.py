@@ -20,7 +20,9 @@ __all__ = [
     "DelHeaderConfig",
     "AddDisclaimerConfig",
     "RewriteLinksConfig",
+    "StorageConfig",
     "StoreConfig",
+    "NotificationConfig",
     "NotifyConfig",
     "ListConfig",
     "QuarantineConfig",
@@ -43,7 +45,7 @@ class BaseConfig:
         "properties": {
             "loglevel": {"type": "string", "default": "info"}}}
 
-    def __init__(self, config, lists):
+    def __init__(self, config, *args, **kwargs):
         required = self.JSON_SCHEMA["required"]
         properties = self.JSON_SCHEMA["properties"]
         for p in properties.keys():
@@ -126,15 +128,13 @@ class ConditionsConfig(BaseConfig):
             "list": {"type": "string"}}}
 
     def __init__(self, config, lists, rec=True):
-        super().__init__(config, lists)
+        super().__init__(config)
         if "list" in self:
             lst = self["list"]
             try:
                 self["list"] = lists[lst]
             except KeyError:
-                raise RuntimeError(f"list '{lst}' is not configured")
-        if not rec:
-            return
+                raise RuntimeError(f"list '{lst}' not found in config")
 
 
 class AddHeaderConfig(BaseConfig):
@@ -190,7 +190,7 @@ class RewriteLinksConfig(BaseConfig):
             "repl": {"type": "string"}}}
 
 
-class StoreConfig(BaseConfig):
+class StorageConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
         "required": ["type"],
@@ -203,6 +203,7 @@ class StoreConfig(BaseConfig):
             "additionalProperties": False,
             "properties": {
                 "type": {"type": "string"},
+                "name": {"type": "string"},
                 "directory": {"type": "string"},
                 "mode": {"type": "string"},
                 "metavar": {"type": "string"},
@@ -210,7 +211,16 @@ class StoreConfig(BaseConfig):
                 "original": {"type": "boolean", "default": False}}}}
 
 
-class NotifyConfig(BaseConfig):
+class StoreConfig(BaseConfig):
+    JSON_SCHEMA = {
+        "type": "object",
+        "required": ["storage"],
+        "additionalProperties": False,
+        "properties": {
+            "storage": {"type": "string"}}}
+
+
+class NotificationConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
         "required": ["type"],
@@ -224,6 +234,7 @@ class NotifyConfig(BaseConfig):
             "additionalProperties": False,
             "properties": {
                 "type": {"type": "string"},
+                "name": {"type": "string"},
                 "smtp_host": {"type": "string"},
                 "smtp_port": {"type": "number"},
                 "envelope_from": {"type": "string"},
@@ -238,6 +249,15 @@ class NotifyConfig(BaseConfig):
                     "default": []}}}}
 
 
+class NotifyConfig(BaseConfig):
+    JSON_SCHEMA = {
+        "type": "object",
+        "required": ["notification"],
+        "additionalProperties": False,
+        "properties": {
+            "notification": {"type": "string"}}}
+
+
 class QuarantineConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
@@ -245,29 +265,38 @@ class QuarantineConfig(BaseConfig):
         "additionalProperties": False,
         "properties": {
             "name": {"type": "string"},
-            "notify": {"type": "object"},
+            "notify": {"type": "string"},
             "milter_action": {"type": "string"},
             "reject_reason": {"type": "string"},
             "allowlist": {"type": "string"},
-            "store": {"type": "object"},
+            "store": {"type": "string"},
             "smtp_host": {"type": "string"},
             "smtp_port": {"type": "number"}}}
 
-    def __init__(self, config, lists, rec=True):
-        super().__init__(config, lists)
-        if not rec:
-            return
+    def __init__(self, config, milter_config, rec=True):
+        super().__init__(config)
+        storage = self["store"]
+        try:
+            self["store"] = milter_config["storages"][storage]
+        except KeyError:
+            raise RuntimeError(f"storage '{storage}' not found")
         if "metadata" not in self["store"]:
             self["store"]["metadata"] = True
-        self["store"] = StoreConfig(self["store"], lists)
         if "notify" in self:
-            self["notify"] = NotifyConfig(self["notify"], lists)
+            notify = self["notify"]
+            try:
+                self["notify"] = milter_config["notifications"][notify]
+            except KeyError:
+                raise RuntimeError(f"notification '{notify}' not found")
         if "allowlist" in self:
             allowlist = self["allowlist"]
             try:
-                self["allowlist"] = lists[allowlist]
+                self["allowlist"] = milter_config["lists"][allowlist]
             except KeyError:
-                raise RuntimeError(f"list '{allowlist}' is not configured")
+                raise RuntimeError(f"list '{allowlist}' not found")
+
+        if not rec:
+            return
 
 
 class ActionConfig(BaseConfig):
@@ -293,14 +322,31 @@ class ActionConfig(BaseConfig):
             "type": {"enum": list(ACTION_TYPES.keys())},
             "options": {"type": "object"}}}
 
-    def __init__(self, config, lists, rec=True):
-        super().__init__(config, lists)
+    def __init__(self, config, milter_config, rec=True):
+        super().__init__(config)
         if not rec:
             return
+        lists = milter_config["lists"]
         if "conditions" in self:
             self["conditions"] = ConditionsConfig(self["conditions"], lists)
-        self["action"] = self.ACTION_TYPES[self["type"]](
-            self["options"], lists)
+
+        if self["type"] == "store":
+            storage = StoreConfig(self["options"])["storage"]
+            try:
+                self["action"] = milter_config["storages"][storage]
+            except KeyError:
+                raise RuntimeError(f"storage '{storage}' not found")
+
+        elif self["type"] == "notify":
+            notify = NotifyConfig(self["options"])["notification"]
+            try:
+                self["action"] = milter_config["notifications"][notify]
+            except KeyError:
+                raise RuntimeError(f"notification '{notify}' not found")
+
+        else:
+            self["action"] = self.ACTION_TYPES[self["type"]](
+                self["options"], milter_config)
 
 
 class RuleConfig(BaseConfig):
@@ -315,10 +361,11 @@ class RuleConfig(BaseConfig):
             "conditions": {"type": "object"},
             "actions": {"type": "array"}}}
 
-    def __init__(self, config, lists, rec=True):
-        super().__init__(config, lists)
+    def __init__(self, config, milter_config, rec=True):
+        super().__init__(config)
         if not rec:
             return
+        lists = milter_config["lists"]
         if "conditions" in self:
             self["conditions"] = ConditionsConfig(self["conditions"], lists)
 
@@ -328,7 +375,7 @@ class RuleConfig(BaseConfig):
                 action["loglevel"] = config["loglevel"]
             if "pretend" not in action:
                 action["pretend"] = config["pretend"]
-            actions.append(ActionConfig(action, lists, rec))
+            actions.append(ActionConfig(action, milter_config, rec))
         self["actions"] = actions
 
 
@@ -350,29 +397,52 @@ class QuarantineMilterConfig(BaseConfig):
                                 "192.168.0.0/16"]},
             "loglevel": {"type": "string", "default": "info"},
             "pretend": {"type": "boolean", "default": False},
-            "rules": {"type": "array"},
-            "lists": {"type": "array",
-                      "default": []}}}
+            "lists": {
+                "type": "object",
+                "patternProperties": {"^(.+)$": {"type": "object"}},
+                "additionalProperties": False,
+                "default": {}},
+            "storages": {
+                "type": "object",
+                "patternProperties": {"^(.+)$": {"type": "object"}},
+                "additionalProperties": False,
+                "default": {}},
+            "notifications": {
+                "type": "object",
+                "patternProperties": {"^(.+)$": {"type": "object"}},
+                "additionalProperties": False,
+                "default": {}},
+            "rules": {"type": "array"}}}
 
     def __init__(self, config, rec=True):
-        super().__init__(config, {})
+        super().__init__(config)
+        for param in ["lists", "storages", "notifications"]:
+            for name, cfg in self[param].items():
+                if "name" not in cfg:
+                    cfg["name"] = name
+        for name, cfg in self["lists"].items():
+            self["lists"][name] = ListConfig(cfg)
+
+        for name, cfg in self["storages"].items():
+            self["storages"][name] = StorageConfig(cfg)
+
+        for name, cfg in self["notifications"].items():
+            self["notifications"][name] = NotificationConfig(cfg)
+
         if not rec:
             return
-        lists = {}
-        for lst in self["lists"]:
-            lists[lst["name"]] = ListConfig(lst, rec)
-        self["lists"] = lists
+
         rules = []
         for rule in self["rules"]:
             if "loglevel" not in rule:
                 rule["loglevel"] = config["loglevel"]
             if "pretend" not in rule:
                 rule["pretend"] = config["pretend"]
-            rules.append(RuleConfig(rule, lists, rec))
+            rules.append(RuleConfig(rule, self, rec))
         self["rules"] = rules
 
 
-def get_milter_config(cfgfile, raw=False):
+def get_milter_config(cfgfile, rec=True):
     try:
         with open(cfgfile, "r") as fh:
             # remove lines with leading # (comments), they
@@ -387,10 +457,4 @@ def get_milter_config(cfgfile, raw=False):
         cfg_text = [f"{n+1}: {l}" for n, l in enumerate(cfg.splitlines())]
         msg = "\n".join(cfg_text)
         raise RuntimeError(f"{e}\n{msg}")
-    if raw:
-        lists = {}
-        for lst in cfg["lists"]:
-            lists[lst["name"]] = lst
-        cfg["lists"] = lists
-        return cfg
-    return QuarantineMilterConfig(cfg)
+    return QuarantineMilterConfig(cfg, rec)

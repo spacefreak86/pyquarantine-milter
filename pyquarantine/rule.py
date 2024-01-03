@@ -46,8 +46,9 @@ class Rule:
         actions = []
         for action in self.actions:
             actions.append(str(action))
-        cfg.append("actions=[" + ", ".join(actions) + "]")
-        return "Rule(" + ", ".join(cfg) + ")"
+        cfg.append("actions=[\n        " +
+                   ",\n        ".join(actions) + "\n    ]")
+        return "Rule(\n    " + ",\n    ".join(cfg) + "\n)"
 
     def execute(self, milter):
         """Execute all actions of this rule."""

@@ -39,8 +39,7 @@ class Action:
             self.conditions["loglevel"] = cfg["loglevel"]
             self.conditions = Conditions(self.conditions, local_addrs, debug)
 
-        action_type = cfg["type"]
-        self.action = self.ACTION_TYPES[action_type](
+        self.action = self.ACTION_TYPES[cfg["type"]](
             cfg, local_addrs, debug)
 
     def __str__(self):

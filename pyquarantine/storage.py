@@ -31,7 +31,6 @@ from time import gmtime
 
 from pyquarantine import mailer
 from pyquarantine.base import CustomLogger, MilterMessage
-from pyquarantine.config import ActionConfig
 from pyquarantine.list import DatabaseList
 from pyquarantine.notify import Notify
 
@@ -373,18 +372,17 @@ class Store:
     def __init__(self, cfg, local_addrs, debug):
         self.cfg = cfg
         self.logger = logging.getLogger(cfg["name"])
+        del cfg["name"]
         self.logger.setLevel(cfg.get_loglevel(debug))
-
-        storage_type = cfg["options"]["type"]
-        del cfg["options"]["type"]
-        cfg["options"]["pretend"] = cfg["pretend"]
-        self._storage = self.STORAGE_TYPES[storage_type](
-            **cfg["options"])
+        del cfg["loglevel"]
+        storage_type = cfg["type"]
+        del cfg["type"]
+        self._storage = self.STORAGE_TYPES[storage_type](**cfg)
         self._headersonly = self._storage._headersonly
 
     def __str__(self):
         cfg = []
-        for key, value in self.cfg["options"].items():
+        for key, value in self.cfg.items():
             cfg.append(f"{key}={value}")
         class_name = type(self._storage).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"
@@ -407,29 +405,17 @@ class Quarantine:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        storage_cfg = ActionConfig(
-            {
-                "name": cfg["name"],
-                "loglevel": cfg["loglevel"],
-                "pretend": cfg["pretend"],
-                "type": "store",
-                "options": cfg["options"]["store"].get_config()},
-            {})
-        self._storage = Store(storage_cfg, local_addrs, debug)
+        cfg["options"]["store"]["loglevel"] = cfg["loglevel"]
+        self._storage = Store(cfg["options"]["store"], local_addrs, debug)
 
         self.smtp_host = cfg["options"]["smtp_host"]
         self.smtp_port = cfg["options"]["smtp_port"]
 
         self._notification = None
         if "notify" in cfg["options"]:
-            notify_cfg = ActionConfig({
-                    "name": cfg["name"],
-                    "loglevel": cfg["loglevel"],
-                    "pretend": cfg["pretend"],
-                    "type": "notify",
-                    "options": cfg["options"]["notify"].get_config()},
-                {})
-            self._notification = Notify(notify_cfg, local_addrs, debug)
+            cfg["options"]["notify"]["loglevel"] = cfg["loglevel"]
+            self._notification = Notify(
+                cfg["options"]["notify"], local_addrs, debug)
 
         self._allowlist = None
         if "allowlist" in cfg["options"]:

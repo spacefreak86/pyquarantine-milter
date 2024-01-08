@@ -495,6 +495,7 @@ def main():
     quar_copy_parser.add_argument(
         "-t", "--to",
         dest="recipient",
+        required=True,
         help="Release email for one recipient address.")
     quar_copy_parser.set_defaults(func=copy)
     # quarantine delete command

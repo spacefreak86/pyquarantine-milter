@@ -19,7 +19,7 @@ import re
 
 from netaddr import IPAddress, IPNetwork, AddrFormatError
 from pyquarantine import CustomLogger
-from pyquarantine.list import DatabaseList
+from pyquarantine.lists import DatabaseList
 
 
 class Conditions:
@@ -120,6 +120,17 @@ class Conditions:
                 f"hosts matches for host {host}")
 
         return True
+
+    def update_msginfo_from_match(self, milter, match):
+        if self.metavar is None:
+            return
+
+        named_subgroups = match.groupdict(default=None)
+        for group, value in named_subgroups.items():
+            if value is None:
+                continue
+            name = f"{self.metavar}_{group}"
+            milter.msginfo["vars"][name] = value
 
     def match(self, milter):
         logger = CustomLogger(

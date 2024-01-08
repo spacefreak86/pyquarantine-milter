@@ -31,7 +31,7 @@ from time import gmtime
 
 from pyquarantine import mailer
 from pyquarantine.base import CustomLogger, MilterMessage
-from pyquarantine.list import DatabaseList
+from pyquarantine.lists import DatabaseList
 from pyquarantine.notify import Notify
 
 
@@ -371,6 +371,7 @@ class Store:
 
     def __init__(self, cfg, local_addrs, debug):
         self.cfg = cfg
+        self.name = cfg["name"]
         self.logger = logging.getLogger(cfg["name"])
         del cfg["name"]
         self.logger.setLevel(cfg.get_loglevel(debug))
@@ -392,7 +393,7 @@ class Store:
 
     def execute(self, milter):
         logger = CustomLogger(
-            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+            self.logger, {"name": self.name, "qid": milter.qid})
         self._storage.execute(milter, logger)
 
 

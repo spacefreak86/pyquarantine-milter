@@ -24,7 +24,7 @@ import time
 from pyquarantine.action import Action
 from pyquarantine.config import get_milter_config, ActionConfig, StorageConfig, NotificationConfig, ListConfig
 from pyquarantine.storage import Quarantine
-from pyquarantine.list import DatabaseList
+from pyquarantine.lists import DatabaseList
 from pyquarantine import __version__ as version
 
 
@@ -110,7 +110,7 @@ def print_table(columns, rows):
         print(row_format.format(*row))
 
 
-def llist(cfg, args):
+def show(cfg, args):
     quarantines = _get_quarantines(cfg)
     if args.batch:
         print("\n".join([q["name"] for q in quarantines]))
@@ -120,9 +120,9 @@ def llist(cfg, args):
             qcfg = q["options"]
 
             if "notify" in qcfg:
-                notification = cfg["notifications"][qcfg["notify"]]["name"]
+                notify_type = cfg["notifications"][qcfg["notify"]]["type"]
             else:
-                notification = "NONE"
+                notify_type = "NONE"
 
             if "allowlist" in qcfg:
                 allowlist = qcfg["allowlist"]
@@ -134,12 +134,12 @@ def llist(cfg, args):
             else:
                 milter_action = "NONE"
 
-            storage_name = cfg["storages"][qcfg["store"]]["name"]
+            storage_type = cfg["storages"][qcfg["store"]]["type"]
 
             qlist.append({
                 "name": q["name"],
-                "storage": storage_name,
-                "notification": notification,
+                "storage": storage_type,
+                "notification": notify_type,
                 "lists": allowlist,
                 "action": milter_action})
 
@@ -151,34 +151,6 @@ def llist(cfg, args):
              ("Action", "action")],
             qlist
         )
-
-        if "storages" in cfg:
-            storages = []
-            for name, options in cfg["storages"].items():
-                storages.append({
-                    "name": name,
-                    "type": options["type"]})
-
-            print("\n")
-            print_table(
-                [("Storage", "name"),
-                 ("Type", "type")],
-                storages
-            )
-
-        if "notifications" in cfg:
-            notifications = []
-            for name, options in cfg["notifications"].items():
-                notifications.append({
-                    "name": name,
-                    "type": options["type"]})
-
-            print("\n")
-            print_table(
-                [("Notification", "name"),
-                 ("Type", "type")],
-                notifications
-            )
 
         if "lists" in cfg:
             lst_list = []
@@ -244,10 +216,10 @@ def list_quarantine_emails(cfg, args):
 
 
 def list_list(cfg, args):
-    lists = _get_list(cfg, args.list, args.debug)
+    lst = _get_list(cfg, args.list, args.debug)
 
     # find lists entries
-    entries = lists.find(
+    entries = lst.find(
         mailfrom=args.mailfrom,
         recipients=args.recipients,
         older_than=args.older_than)
@@ -275,10 +247,10 @@ def list_list(cfg, args):
 
 def add_list_entry(cfg, args):
     logger = logging.getLogger(__name__)
-    lists = _get_list(cfg, args.list, args.debug)
+    lst = _get_list(cfg, args.list, args.debug)
 
     # check existing entries
-    entries = lists.check(args.mailfrom, args.recipient, logger)
+    entries = lst.check(args.mailfrom, args.recipient, logger)
     if entries:
         # check if the exact entry exists already
         for entry in entries.values():
@@ -309,13 +281,13 @@ def add_list_entry(cfg, args):
                 "use --force to override.")
 
     # add entry to lists
-    lists.add(args.mailfrom, args.recipient, args.comment, args.permanent)
+    lst.add(args.mailfrom, args.recipient, args.comment, args.permanent)
     print("list entry added successfully")
 
 
 def delete_list_entry(cfg, args):
-    lists = _get_list(cfg, args.list, args.debug)
-    lists.delete(args.lists_id)
+    lst = _get_list(cfg, args.list, args.debug)
+    lst.delete(args.list_id)
     print("list entry deleted successfully")
 
 
@@ -402,15 +374,15 @@ def main():
     subparsers.required = True
 
     # list command
-    list_parser = subparsers.add_parser(
-        "list",
-        help="List available quarantines.",
+    show_parser = subparsers.add_parser(
+        "show",
+        help="Show quarantines.",
         formatter_class=formatter_class)
-    list_parser.add_argument(
+    show_parser.add_argument(
         "-b", "--batch",
         help="Print results using only quarantine names, each on a new line.",
         action="store_true")
-    list_parser.set_defaults(func=llist)
+    show_parser.set_defaults(func=show)
 
     # quarantine command group
     quar_parser = subparsers.add_parser(
@@ -574,86 +546,86 @@ def main():
         help="Quarantine ID.")
     quar_metadata_parser.set_defaults(func=metadata)
 
-    # lists command group
-    lists_parser = subparsers.add_parser(
-        "lists",
+    # list command group
+    list_parser = subparsers.add_parser(
+        "list",
         description="Manage lists.",
         help="Manage lists.",
         formatter_class=formatter_class)
-    lists_parser.add_argument(
+    list_parser.add_argument(
         "list",
         metavar="LIST",
         help="List name.")
-    lists_subparsers = lists_parser.add_subparsers(
+    list_subparsers = list_parser.add_subparsers(
         dest="command",
         title="Lists commands.")
-    lists_subparsers.required = True
+    list_subparsers.required = True
     # lists list command
-    lists_list_parser = lists_subparsers.add_parser(
+    list_list_parser = list_subparsers.add_parser(
         "list",
         description="List list entries.",
         help="List list entries.",
         formatter_class=formatter_class)
-    lists_list_parser.add_argument(
+    list_list_parser.add_argument(
         "-f", "--from",
         dest="mailfrom",
         help="Filter entries by from address.",
         default=None,
         nargs="+")
-    lists_list_parser.add_argument(
+    list_list_parser.add_argument(
         "-t", "--to",
         dest="recipients",
         help="Filter entries by recipient address.",
         default=None,
         nargs="+")
-    lists_list_parser.add_argument(
+    list_list_parser.add_argument(
         "-o", "--older-than",
         dest="older_than",
         help="Filter emails by last used date (days).",
         default=None,
         type=float)
-    lists_list_parser.set_defaults(func=list_list)
+    list_list_parser.set_defaults(func=list_list)
     # lists add command
-    lists_add_parser = lists_subparsers.add_parser(
+    list_add_parser = list_subparsers.add_parser(
         "add",
         description="Add list entry.",
         help="Add list entry.",
         formatter_class=formatter_class)
-    lists_add_parser.add_argument(
+    list_add_parser.add_argument(
         "-f", "--from",
         dest="mailfrom",
         help="From address.",
         required=True)
-    lists_add_parser.add_argument(
+    list_add_parser.add_argument(
         "-t", "--to",
         dest="recipient",
         help="Recipient address.",
         required=True)
-    lists_add_parser.add_argument(
+    list_add_parser.add_argument(
         "-c", "--comment",
         help="Comment.",
         default="added by CLI")
-    lists_add_parser.add_argument(
+    list_add_parser.add_argument(
         "-p", "--permanent",
         help="Add a permanent entry.",
         action="store_true")
-    lists_add_parser.add_argument(
+    list_add_parser.add_argument(
         "--force",
         help="Force adding an entry, "
              "even if already covered by another entry.",
         action="store_true")
-    lists_add_parser.set_defaults(func=add_list_entry)
+    list_add_parser.set_defaults(func=add_list_entry)
     # lists delete command
-    lists_delete_parser = lists_subparsers.add_parser(
+    list_delete_parser = list_subparsers.add_parser(
         "delete",
         description="Delete list entry.",
         help="Delete list entry.",
         formatter_class=formatter_class)
-    lists_delete_parser.add_argument(
-        "lists_id",
+    list_delete_parser.add_argument(
+        "list_id",
         metavar="ID",
         help="List ID.")
-    lists_delete_parser.set_defaults(func=delete_list_entry)
+    list_delete_parser.set_defaults(func=delete_list_entry)
 
     args = parser.parse_args()
 

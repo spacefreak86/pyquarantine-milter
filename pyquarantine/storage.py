@@ -406,6 +406,8 @@ class Quarantine:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
+        name = cfg["options"]["store"]["name"]
+        cfg["options"]["store"]["name"] = f"{cfg['name']}: {name}"
         cfg["options"]["store"]["loglevel"] = cfg["loglevel"]
         self._storage = Store(cfg["options"]["store"], local_addrs, debug)
 
@@ -414,6 +416,8 @@ class Quarantine:
 
         self._notification = None
         if "notify" in cfg["options"]:
+            name = cfg["options"]["notify"]["name"]
+            cfg["options"]["notify"]["name"] = f"{cfg['name']}: {name}"
             cfg["options"]["notify"]["loglevel"] = cfg["loglevel"]
             self._notification = Notify(
                 cfg["options"]["notify"], local_addrs, debug)
@@ -559,6 +563,8 @@ class Quarantine:
 
         if self._milter_action in ["REJECT", "DISCARD"]:
             logger.info(f"quarantine message for {rcpts}")
+        else:
+            logger.info(f"save message for {rcpts}")
 
         self._storage.execute(milter)
 

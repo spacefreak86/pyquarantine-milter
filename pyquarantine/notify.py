@@ -317,6 +317,7 @@ class EMailNotification(BaseNotification):
     def execute(self, milter, logger):
         super().execute(milter, logger)
 
+        logger.info(f"send notification(s) to {milter.msginfo['rcpts']}")
         self.notify(msg=milter.msg, qid=milter.qid,
                     mailfrom=milter.msginfo["mailfrom"],
                     recipients=milter.msginfo["rcpts"],
@@ -330,6 +331,7 @@ class Notify:
 
     def __init__(self, cfg, local_addrs, debug):
         self.cfg = cfg
+        self.name = cfg["name"]
         self.logger = logging.getLogger(cfg["name"])
         del cfg["name"]
         self.logger.setLevel(cfg.get_loglevel(debug))
@@ -351,5 +353,5 @@ class Notify:
 
     def execute(self, milter):
         logger = CustomLogger(
-            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
+            self.logger, {"name": self.name, "qid": milter.qid})
         self._notification.execute(milter, logger)

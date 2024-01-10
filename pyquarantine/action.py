@@ -14,6 +14,7 @@
 
 __all__ = ["Action"]
 
+from copy import deepcopy
 from pyquarantine import modify, notify, storage
 from pyquarantine.conditions import Conditions
 
@@ -40,7 +41,7 @@ class Action:
             self.conditions = Conditions(self.conditions, local_addrs, debug)
 
         self.action = self.ACTION_TYPES[cfg["type"]](
-            cfg, local_addrs, debug)
+            deepcopy(cfg), local_addrs, debug)
 
     def __str__(self):
         cfg = []

@@ -185,6 +185,9 @@ class Conditions:
 
         if self.var is not None:
             if self.var not in milter.msginfo["vars"]:
+                logger.debug(
+                    "ignore message, "
+                    "vars does not match")
                 return False
 
         if self.list is not None:
@@ -195,6 +198,9 @@ class Conditions:
 
             for to in envto:
                 if not self.list.check(envfrom, to, logger):
+                    logger.debug(
+                        "ignore message, "
+                        "list does not match")
                     return False
 
         return True

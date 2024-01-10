@@ -21,8 +21,7 @@ import logging.handlers
 import sys
 import time
 
-from pyquarantine.action import Action
-from pyquarantine.config import get_milter_config, ActionConfig, StorageConfig, NotificationConfig, ListConfig
+from pyquarantine.config import get_milter_config, ActionConfig
 from pyquarantine.storage import Quarantine
 from pyquarantine.lists import DatabaseList
 from pyquarantine import __version__ as version

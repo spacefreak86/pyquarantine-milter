@@ -36,6 +36,7 @@ import jsonschema
 import logging
 import re
 
+
 class BaseConfig:
     JSON_SCHEMA = {
         "type": "object",

@@ -162,9 +162,9 @@ class Conditions:
                         f"envto does not match")
                     return False
 
-            logger.debug(
-                f"envto matches for "
-                f"envelope-to address {envto}")
+                logger.debug(
+                    f"envto matches for "
+                    f"envelope-to address {envto}")
             self.update_msginfo_from_match(milter, match)
 
         if self.headers is not None:
@@ -190,6 +190,8 @@ class Conditions:
                     "vars does not match")
                 return False
 
+            logger.debug(f"vars matches, variable {self.var} is available")
+
         if self.list is not None:
             envfrom = milter.msginfo["mailfrom"]
             envto = milter.msginfo["rcpts"]
@@ -202,5 +204,8 @@ class Conditions:
                         "ignore message, "
                         "list does not match")
                     return False
+
+                logger.debug(
+                    "list matches envelope-from and envelope-to address")
 
         return True

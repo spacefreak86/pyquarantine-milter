@@ -302,8 +302,8 @@ def release(cfg, args):
     rcpts = quarantine.release(args.quarantine_id, args.recipient)
     rcpts = ", ".join(rcpts)
     logger.info(
-        f"{quarantine._storage.name}: released message with id {args.quarantine_id} "
-        f"for {rcpts}")
+        f"{quarantine._storage.name}: released message with id "
+        f"{args.quarantine_id} for {rcpts}")
 
 
 def copy(cfg, args):

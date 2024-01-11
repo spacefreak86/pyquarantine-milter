@@ -328,6 +328,38 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
 ```json
 {
     "socket": "unix:/tmp/pyquarantine.sock",
+    "storages": {
+        "virus": {
+            "type": "file",
+            "directory": "/mnt/data/quarantine/virus",
+        },
+        "spam": {
+            "type": "file",
+            "directory": "/mnt/data/quarantine/spam",
+        }
+    },
+    "notifications": {
+        "virus": {
+            "type": "email",
+            "smtp_host": "localhost",
+            "smtp_port": 2525,
+            "envelope_from": "notifications@example.com",
+            "from_header": "{FROM}",
+            "subject": "[VIRUS] {SUBJECT}",
+            "template": "/etc/pyquarantine/templates/notification.template",
+            "repl_img": "/etc/pyquarantine/templates/removed.png"
+        },
+        "spam": {
+            "type": "email",
+            "smtp_host": "localhost",
+            "smtp_port": 2525,
+            "envelope_from": "notifications@example.com",
+            "from_header": "{FROM}",
+            "subject": "[SPAM] {SUBJECT}",
+            "template": "/etc/pyquarantine/templates/notification.template",
+            "repl_img": "/etc/pyquarantine/templates/removed.png"
+        }
+    },
     "rules": [
         {
             "name": "inbound",
@@ -342,20 +374,8 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
                         "headers": ["^X-Virus: Yes"],
                     },
                     "options": {
-                        "store": {
-                            "type": "file",
-                            "directory": "/mnt/data/quarantine/virus",
-                        },
-                        "notify": {
-                            "type": "email",
-                            "smtp_host": "localhost",
-                            "smtp_port": 2525,
-                            "envelope_from": "notifications@example.com",
-                            "from_header": "{FROM}",
-                            "subject": "[VIRUS] {SUBJECT}",
-                            "template": "/etc/pyquarantine/templates/notification.template",
-                            "repl_img": "/etc/pyquarantine/templates/removed.png"
-                        },
+                        "store" = "virus",
+                        "notify" = "virus",
                         "smtp_host": "localhost",
                         "smtp_port": 2525,
                         "milter_action": "REJECT",
@@ -368,20 +388,8 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
                         "headers": ["^X-Spam: Yes"]
                     },
                     "options": {
-                        "store": {
-                            "type": "file",
-                            "directory": "/mnt/data/quarantine/spam",
-                        },
-                        "notify": {
-                            "type": "email",
-                            "smtp_host": "localhost",
-                            "smtp_port": 2525,
-                            "envelope_from": "notifications@example.com",
-                            "from_header": "{FROM}",
-                            "subject": "[SPAM] {SUBJECT}",
-                            "template": "/etc/pyquarantine/templates/notification.template",
-                            "repl_img": "/etc/pyquarantine/templates/removed.png"
-                        },
+                        "store" = "spam",
+                        "notify" = "spam",
                         "smtp_host": "localhost",
                         "smtp_port": 2525,
                         "milter_action": "DISCARD"

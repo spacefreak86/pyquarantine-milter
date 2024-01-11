@@ -76,8 +76,39 @@ Global config options:
   * **debug**  
 * **pretend** (optional, default: false)  
   Pretend actions, for test purposes. This option may be overriden by any rule or action object.  
+* **storages**  
+  Object containing Storage objects.
+* **notifications**  
+  Object containing Notification objects.
+* **lists**  
+  Object containing List objects.
 * **rules**  
   List of rule objects.
+
+### Storage
+Config options for Storage objects:
+* **type**  
+  See section [Storage types](#Storage-types).
+* **original** (optional, default: false)  
+  If set to true, store the message as received by the MTA instead of storing the current state of the message, that may was modified already by other actions.
+* **metadata** (optional, default: false)  
+  Store metadata.
+* **metavar**  (optional)  
+  Prefix for the metavariable names. If not set, no metavariables will be provided.  
+  The storage provides the following metavariables:
+  * **ID** (the storage ID of the e-mail)  
+  * **DATAFILE** (path to the data file)  
+  * **METAFILE** (path to the meta file if **metadata** is set to **true**)  
+
+### Notification
+Config options for Notification objects:
+* **type**  
+  See section [Notification types](#Notification-types).
+
+### List
+Config options for List objects:
+* **type**  
+  See section [List types](#List-types).
 
 ### Rule
 Config options for rule objects:
@@ -119,18 +150,13 @@ Config options for conditions objects:
   Matches e-mails for which all envelope-to addresses match the given regular expression.
 * **headers** (optional)  
   Matches e-mails for which all regular expressions in the given list are matching at least one e-mail header.
-* **allowlist** (optional)  
-  Matches e-mails for which the allowlist has no entry for the envelope-from and envelope-to address combination, see section [Allowlist](#Allowlist) for details.
+* **list** (optional)  
+  Matches e-mails for which the given list has an entry for the envelope-from and envelope-to address combination, see section [List](#List) for details.
 * **var** (optional)  
   Matches e-mails for which a previous action or condition has set the given metavariable.
 * **metavar** (optional)  
-  Prefix for the name of metavariables which are possibly provided by the **envfrom**, **envto** or **headers** condition. Meta variables will be provided if the regular expressions contain named subgroups, see [python.re](https://docs.python.org/3/library/re.html) for details.  
+  Prefix for the name of metavariables which are possibly provided by the **envfrom**, **envto** or **headers** condition. Meta variables will be provided if the regular expressions contain named subgroups, see [python.re](https://docs.python.org/3/library/re.html) for details.
   If not set, no metavariables will be provided.
-
-### Allowlist
-Config options for allowlist objects:
-* **type**  
-  See section [Allowlist types](#Allowlist-types).
 
 ### Action types
 Available action types:
@@ -187,37 +213,27 @@ Options:
 ##### store
 Store e-mail.  
 Options:
-* **type**  
-  See section [Storage types](#Storage-types).
-* **original** (optional, default: false)  
-  If set to true, store the message as received by the MTA instead of storing the current state of the message, that may was modified already by other actions.
-* **metadata** (optional, default: false)  
-  Store metadata.
-* **metavar**  (optional)  
-  Prefix for the metavariable names. If not set, no metavariables will be provided.  
-  The storage provides the following metavariables:
-  * **ID** (the storage ID of the e-mail)  
-  * **DATAFILE** (path to the data file)  
-  * **METAFILE** (path to the meta file if **metadata** is set to **true**)  
+* **storage**  
+  Index of a Storage object in the global storages object.
 
 ##### notify
 Send notification.  
 Options:
-* **type**  
-  See section [Notification types](#Notification-types).
+* **notification**  
+  Index of a Notification object in the global notifications object.
 
 ##### quarantine
 Quarantine e-mail.  
 Options:
 * **store**  
-  Options for e-mail storage, see action [store](#store).  
-  If the option **metadata** is not specificall set for this storage, it will be set to true.
+  Index of a Storage object in the global storages object.
+  If the option **metadata** is not specifically set for this storage, it will be set to true.
 * **smtp_host**  
   SMTP host used to release e-mails from quarantine.
 * **smtp_port**  
   SMTP port used to release e-mails from quarantine.
 * **notify** (optional)  
-  Options for e-mail notifications, see action [notify](#notify).
+  Index of a Notification object in the global notifications object.
 * **milter_action** (optional)  
   Milter action to perform. If set, no further rules or actions will be processed.  
   Please think carefully what you set here or your MTA may do something you do not want it to do.  
@@ -231,7 +247,8 @@ Options:
 * **reject_reason** (optional, default: "Message rejected")  
   Reject message sent to MTA if milter_action is set to reject.
 * **allowlist** (optional)  
-  Options for a allowlist object, see section [Allowlist](#Allowlist).
+  Ignore e-mails for which the given list has an entry for the envelope-from and envelope-to address combination, see section [List](#List) for details.  
+  If an e-mail as multiple recipients, the decision is made per recipient.
 
 ### Storage types
 Available storage types:
@@ -289,10 +306,10 @@ Options:
 * **embed_imgs** (optional)  
   List of images to embed into the notification e-mail. The Content-ID of each image will be set to the filename, so you can reference it from the e-mail template.
 
-### Allowlist types
+### List types
 Available list types:
 ##### db
-Allowlist stored in database. The table is created automatically if it does not exist yet.  
+List stored in database. The table is created automatically if it does not exist yet.  
 Options:
 * **connection**  
   Database connection string, see [Peewee Playhouse Extension](https://docs.peewee-orm.com/en/latest/peewee/playhouse.html#db-url).

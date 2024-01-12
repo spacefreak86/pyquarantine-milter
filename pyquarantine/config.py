@@ -94,7 +94,7 @@ class BaseConfig:
 class ListConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
-        "required": ["name", "type"],
+        "required": ["type"],
         "additionalProperties": True,
         "properties": {
             "type": {"enum": ["db"]},
@@ -203,7 +203,6 @@ class StorageConfig(BaseConfig):
             "additionalProperties": False,
             "properties": {
                 "type": {"type": "string"},
-                "name": {"type": "string"},
                 "directory": {"type": "string"},
                 "mode": {"type": "string"},
                 "metavar": {"type": "string"},
@@ -242,7 +241,6 @@ class NotificationConfig(BaseConfig):
             "additionalProperties": False,
             "properties": {
                 "type": {"type": "string"},
-                "name": {"type": "string"},
                 "smtp_host": {"type": "string"},
                 "smtp_port": {"type": "number"},
                 "envelope_from": {"type": "string"},
@@ -422,11 +420,9 @@ class QuarantineMilterConfig(BaseConfig):
 
     def __init__(self, config, rec=True):
         super().__init__(config)
-        for param in ["lists", "storages", "notifications"]:
-            for name, cfg in self[param].items():
-                if "name" not in cfg:
-                    cfg["name"] = name
         for name, cfg in self["lists"].items():
+            if "name" not in cfg:
+                cfg["name"] = name
             self["lists"][name] = ListConfig(cfg)
 
         for name, cfg in self["storages"].items():

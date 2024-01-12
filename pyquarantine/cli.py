@@ -118,8 +118,8 @@ def show(cfg, args):
         for q in quarantines:
             qcfg = q["options"]
 
-            if "notify" in qcfg:
-                notify_type = cfg["notifications"][qcfg["notify"]]["type"]
+            if "notification" in qcfg:
+                notify_type = cfg["notifications"][qcfg["notification"]]["type"]
             else:
                 notify_type = "NONE"
 
@@ -133,7 +133,7 @@ def show(cfg, args):
             else:
                 milter_action = "NONE"
 
-            storage_type = cfg["storages"][qcfg["store"]]["type"]
+            storage_type = cfg["storages"][qcfg["storage"]]["type"]
 
             qlist.append({
                 "name": q["name"],

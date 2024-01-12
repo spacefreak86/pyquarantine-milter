@@ -334,9 +334,6 @@ class Notify:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        self.name = f"{cfg['name']}: {cfg['options']['notification']['name']}"
-        del cfg["options"]["notification"]["name"]
-
         nodification_type = cfg["options"]["notification"]["type"]
         del cfg["options"]["notification"]["type"]
 
@@ -355,5 +352,5 @@ class Notify:
 
     def execute(self, milter):
         logger = CustomLogger(
-            self.logger, {"name": self.name, "qid": milter.qid})
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
         self._notification.execute(milter, logger)

@@ -374,9 +374,6 @@ class Store:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        self.name = f"{cfg['name']}: {cfg['options']['storage']['name']}"
-        del cfg["options"]["storage"]["name"]
-
         storage_type = cfg["options"]["storage"]["type"]
         del cfg["options"]["storage"]["type"]
 
@@ -395,7 +392,7 @@ class Store:
 
     def execute(self, milter):
         logger = CustomLogger(
-            self.logger, {"name": self.name, "qid": milter.qid})
+            self.logger, {"name": self.cfg["name"], "qid": milter.qid})
         self._storage.execute(milter, logger)
 
 
@@ -415,11 +412,7 @@ class Quarantine:
 
         self._notification = None
         if "notification" in cfg["options"]:
-            #name = cfg["options"]["notification"]["name"]
-            #cfg["options"]["notify"]["name"] = f"{cfg['name']}: {name}"
-            #cfg["options"]["notify"]["loglevel"] = cfg["loglevel"]
-            self._notification = Notify(
-                cfg, local_addrs, debug)
+            self._notification = Notify(cfg, local_addrs, debug)
 
         self._allowlist = None
         if "allowlist" in cfg["options"]:

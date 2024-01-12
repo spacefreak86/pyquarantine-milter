@@ -371,19 +371,21 @@ class Store:
 
     def __init__(self, cfg, local_addrs, debug):
         self.cfg = cfg
-        self.name = cfg["name"]
         self.logger = logging.getLogger(cfg["name"])
-        del cfg["name"]
         self.logger.setLevel(cfg.get_loglevel(debug))
-        del cfg["loglevel"]
-        storage_type = cfg["type"]
-        del cfg["type"]
-        self._storage = self.STORAGE_TYPES[storage_type](**cfg)
+
+        self.name = f"{cfg['name']}: {cfg['options']['storage']['name']}"
+        del cfg["options"]["storage"]["name"]
+
+        storage_type = cfg["options"]["storage"]["type"]
+        del cfg["options"]["storage"]["type"]
+
+        self._storage = self.STORAGE_TYPES[storage_type](**cfg["options"]["storage"])
         self._headersonly = self._storage._headersonly
 
     def __str__(self):
         cfg = []
-        for key, value in self.cfg.items():
+        for key, value in self.cfg["options"]["storage"].items():
             cfg.append(f"{key}={value}")
         class_name = type(self._storage).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"
@@ -406,10 +408,7 @@ class Quarantine:
         self.logger = logging.getLogger(cfg["name"])
         self.logger.setLevel(cfg.get_loglevel(debug))
 
-        name = cfg["options"]["store"]["name"]
-        cfg["options"]["store"]["name"] = f"{cfg['name']}: {name}"
-        cfg["options"]["store"]["loglevel"] = cfg["loglevel"]
-        self._storage = Store(cfg["options"]["store"], local_addrs, debug)
+        self._storage = Store(cfg, local_addrs, debug)
 
         self.smtp_host = cfg["options"]["smtp_host"]
         self.smtp_port = cfg["options"]["smtp_port"]

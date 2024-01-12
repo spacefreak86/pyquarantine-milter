@@ -225,14 +225,14 @@ Options:
 ##### quarantine
 Quarantine e-mail.  
 Options:
-* **store**  
+* **storage**  
   Index of a Storage object in the global storages object.
   If the option **metadata** is not specifically set for this storage, it will be set to true.
 * **smtp_host**  
   SMTP host used to release e-mails from quarantine.
 * **smtp_port**  
   SMTP port used to release e-mails from quarantine.
-* **notify** (optional)  
+* **notification** (optional)  
   Index of a Notification object in the global notifications object.
 * **milter_action** (optional)  
   Milter action to perform. If set, no further rules or actions will be processed.  
@@ -331,11 +331,11 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
     "storages": {
         "virus": {
             "type": "file",
-            "directory": "/mnt/data/quarantine/virus",
+            "directory": "/mnt/data/quarantine/virus"
         },
         "spam": {
             "type": "file",
-            "directory": "/mnt/data/quarantine/spam",
+            "directory": "/mnt/data/quarantine/spam"
         }
     },
     "notifications": {
@@ -371,11 +371,11 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
                     "name": "virus",
                     "type": "quarantine",
                     "conditions": {
-                        "headers": ["^X-Virus: Yes"],
+                        "headers": ["^X-Virus: Yes"]
                     },
                     "options": {
-                        "store": "virus",
-                        "notify": "virus",
+                        "storage": "virus",
+                        "notification": "virus",
                         "smtp_host": "localhost",
                         "smtp_port": 2525,
                         "milter_action": "REJECT",
@@ -388,8 +388,8 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
                         "headers": ["^X-Spam: Yes"]
                     },
                     "options": {
-                        "store": "spam",
-                        "notify": "spam",
+                        "storage": "spam",
+                        "notification": "spam",
                         "smtp_host": "localhost",
                         "smtp_port": 2525,
                         "milter_action": "DISCARD"
@@ -449,7 +449,7 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
         "orig": {
             "type": "file",
             "directory": "/mnt/data/incoming",
-            "original": true,
+            "original": true
         }
     },
     "rules": [

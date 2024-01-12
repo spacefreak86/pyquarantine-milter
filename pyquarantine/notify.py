@@ -331,19 +331,21 @@ class Notify:
 
     def __init__(self, cfg, local_addrs, debug):
         self.cfg = cfg
-        self.name = cfg["name"]
         self.logger = logging.getLogger(cfg["name"])
-        del cfg["name"]
         self.logger.setLevel(cfg.get_loglevel(debug))
-        del cfg["loglevel"]
-        nodification_type = cfg["type"]
-        del cfg["type"]
-        self._notification = self.NOTIFICATION_TYPES[nodification_type](**cfg)
+
+        self.name = f"{cfg['name']}: {cfg['options']['notification']['name']}"
+        del cfg["options"]["notification"]["name"]
+
+        nodification_type = cfg["options"]["notification"]["type"]
+        del cfg["options"]["notification"]["type"]
+
+        self._notification = self.NOTIFICATION_TYPES[nodification_type](**cfg["options"]["notification"])
         self._headersonly = self._notification._headersonly
 
     def __str__(self):
         cfg = []
-        for key, value in self.cfg.items():
+        for key, value in self.cfg["options"]["notification"].items():
             cfg.append(f"{key}={value}")
         class_name = type(self._notification).__name__
         return f"{class_name}(" + ", ".join(cfg) + ")"

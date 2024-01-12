@@ -219,6 +219,14 @@ class StoreConfig(BaseConfig):
         "properties": {
             "storage": {"type": "string"}}}
 
+    def __init__(self, config, milter_config):
+        super().__init__(config)
+        storage = self["storage"]
+        try:
+            self["storage"] = milter_config["storages"][storage]
+        except KeyError:
+            raise RuntimeError(f"storage '{storage}' not found")
+
 
 class NotificationConfig(BaseConfig):
     JSON_SCHEMA = {
@@ -257,37 +265,45 @@ class NotifyConfig(BaseConfig):
         "properties": {
             "notification": {"type": "string"}}}
 
+    def __init__(self, config, milter_config):
+        super().__init__(config)
+        notification = self["notification"]
+        try:
+            self["notification"] = milter_config["notifications"][notification]
+        except KeyError:
+            raise RuntimeError(f"notification '{notification}' not found")
+
 
 class QuarantineConfig(BaseConfig):
     JSON_SCHEMA = {
         "type": "object",
-        "required": ["store", "smtp_host", "smtp_port"],
+        "required": ["storage", "smtp_host", "smtp_port"],
         "additionalProperties": False,
         "properties": {
             "name": {"type": "string"},
-            "notify": {"type": "string"},
+            "notification": {"type": "string"},
             "milter_action": {"type": "string"},
             "reject_reason": {"type": "string"},
             "allowlist": {"type": "string"},
-            "store": {"type": "string"},
+            "storage": {"type": "string"},
             "smtp_host": {"type": "string"},
             "smtp_port": {"type": "number"}}}
 
     def __init__(self, config, milter_config, rec=True):
         super().__init__(config)
-        storage = self["store"]
+        storage = self["storage"]
         try:
-            self["store"] = milter_config["storages"][storage]
+            self["storage"] = milter_config["storages"][storage]
         except KeyError:
             raise RuntimeError(f"storage '{storage}' not found")
-        if "metadata" not in self["store"]:
-            self["store"]["metadata"] = True
-        if "notify" in self:
-            notify = self["notify"]
+        if "metadata" not in self["storage"]:
+            self["storage"]["metadata"] = True
+        if "notification" in self:
+            notification = self["notification"]
             try:
-                self["notify"] = milter_config["notifications"][notify]
+                self["notification"] = milter_config["notifications"][notification]
             except KeyError:
-                raise RuntimeError(f"notification '{notify}' not found")
+                raise RuntimeError(f"notification '{notification}' not found")
         if "allowlist" in self:
             allowlist = self["allowlist"]
             try:
@@ -331,19 +347,9 @@ class ActionConfig(BaseConfig):
             self["conditions"] = ConditionsConfig(self["conditions"], lists)
 
         if self["type"] == "store":
-            storage = StoreConfig(self["options"])["storage"]
-            try:
-                self["action"] = milter_config["storages"][storage]
-            except KeyError:
-                raise RuntimeError(f"storage '{storage}' not found")
-
+            storage = StoreConfig(self["options"], milter_config)["storage"]
         elif self["type"] == "notify":
-            notify = NotifyConfig(self["options"])["notification"]
-            try:
-                self["action"] = milter_config["notifications"][notify]
-            except KeyError:
-                raise RuntimeError(f"notification '{notify}' not found")
-
+            notify = NotifyConfig(self["options"], milter_config)["notification"]
         else:
             self["action"] = self.ACTION_TYPES[self["type"]](
                 self["options"], milter_config)

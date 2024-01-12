@@ -414,12 +414,12 @@ class Quarantine:
         self.smtp_port = cfg["options"]["smtp_port"]
 
         self._notification = None
-        if "notify" in cfg["options"]:
-            name = cfg["options"]["notify"]["name"]
-            cfg["options"]["notify"]["name"] = f"{cfg['name']}: {name}"
-            cfg["options"]["notify"]["loglevel"] = cfg["loglevel"]
+        if "notification" in cfg["options"]:
+            #name = cfg["options"]["notification"]["name"]
+            #cfg["options"]["notify"]["name"] = f"{cfg['name']}: {name}"
+            #cfg["options"]["notify"]["loglevel"] = cfg["loglevel"]
             self._notification = Notify(
-                cfg["options"]["notify"], local_addrs, debug)
+                cfg, local_addrs, debug)
 
         self._allowlist = None
         if "allowlist" in cfg["options"]:

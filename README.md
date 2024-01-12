@@ -374,8 +374,8 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
                         "headers": ["^X-Virus: Yes"],
                     },
                     "options": {
-                        "store" = "virus",
-                        "notify" = "virus",
+                        "store": "virus",
+                        "notify": "virus",
                         "smtp_host": "localhost",
                         "smtp_port": 2525,
                         "milter_action": "REJECT",
@@ -388,8 +388,8 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
                         "headers": ["^X-Spam: Yes"]
                     },
                     "options": {
-                        "store" = "spam",
-                        "notify" = "spam",
+                        "store": "spam",
+                        "notify": "spam",
                         "smtp_host": "localhost",
                         "smtp_port": 2525,
                         "milter_action": "DISCARD"

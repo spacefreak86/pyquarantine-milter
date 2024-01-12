@@ -119,7 +119,8 @@ def show(cfg, args):
             qcfg = q["options"]
 
             if "notification" in qcfg:
-                notify_type = cfg["notifications"][qcfg["notification"]]["type"]
+                notification = cfg["notifications"][qcfg["notification"]]
+                notify_type = notification["type"]
             else:
                 notify_type = "NONE"
 

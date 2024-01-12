@@ -377,7 +377,8 @@ class Store:
         storage_type = cfg["options"]["storage"]["type"]
         del cfg["options"]["storage"]["type"]
 
-        self._storage = self.STORAGE_TYPES[storage_type](**cfg["options"]["storage"])
+        scfg = cfg["options"]["storage"]
+        self._storage = self.STORAGE_TYPES[storage_type](**scfg)
         self._headersonly = self._storage._headersonly
 
     def __str__(self):

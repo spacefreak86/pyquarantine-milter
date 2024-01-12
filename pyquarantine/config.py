@@ -297,11 +297,11 @@ class QuarantineConfig(BaseConfig):
         if "metadata" not in self["storage"]:
             self["storage"]["metadata"] = True
         if "notification" in self:
-            notification = self["notification"]
+            name = self["notification"]
             try:
-                self["notification"] = milter_config["notifications"][notification]
+                self["notification"] = milter_config["notifications"][name]
             except KeyError:
-                raise RuntimeError(f"notification '{notification}' not found")
+                raise RuntimeError(f"notification '{name}' not found")
         if "allowlist" in self:
             allowlist = self["allowlist"]
             try:
@@ -344,13 +344,8 @@ class ActionConfig(BaseConfig):
         if "conditions" in self:
             self["conditions"] = ConditionsConfig(self["conditions"], lists)
 
-        if self["type"] == "store":
-            storage = StoreConfig(self["options"], milter_config)["storage"]
-        elif self["type"] == "notify":
-            notify = NotifyConfig(self["options"], milter_config)["notification"]
-        else:
-            self["action"] = self.ACTION_TYPES[self["type"]](
-                self["options"], milter_config)
+        self["action"] = self.ACTION_TYPES[self["type"]](
+            self["options"], milter_config)
 
 
 class RuleConfig(BaseConfig):

@@ -337,7 +337,8 @@ class Notify:
         nodification_type = cfg["options"]["notification"]["type"]
         del cfg["options"]["notification"]["type"]
 
-        self._notification = self.NOTIFICATION_TYPES[nodification_type](**cfg["options"]["notification"])
+        ncfg = cfg["options"]["notification"]
+        self._notification = self.NOTIFICATION_TYPES[nodification_type](**ncfg)
         self._headersonly = self._notification._headersonly
 
     def __str__(self):

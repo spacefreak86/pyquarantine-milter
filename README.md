@@ -445,6 +445,13 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
 ```json
 {
     "socket": "unix:/tmp/pyquarantine.sock",
+    "storages": {
+        "orig": {
+            "type": "file",
+            "directory": "/mnt/data/incoming",
+            "original": true,
+        }
+    },
     "rules": [
         {
             "name": "inbound",
@@ -456,9 +463,7 @@ In this example it is assumed, that another milter (e.g. Amavisd or Rspamd) adds
                     "name": "store_original",
                     "type": "store",
                     "options": {
-                        "type": "file",
-                        "directory": "/mnt/data/incoming",
-                        "original": true,
+                        "storage": "orig"
                     }
                 }
             ]

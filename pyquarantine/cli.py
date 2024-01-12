@@ -302,7 +302,7 @@ def release(cfg, args):
     rcpts = quarantine.release(args.quarantine_id, args.recipient)
     rcpts = ", ".join(rcpts)
     logger.info(
-        f"{quarantine._storage.name}: released message with id "
+        f"{quarantine.cfg['name']}: released message with id "
         f"{args.quarantine_id} for {rcpts}")
 
 

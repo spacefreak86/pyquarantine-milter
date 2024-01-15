@@ -14,4 +14,4 @@ select version in $(find . -maxdepth 1 -type f -name "pyquarantine-*.*.*.tar.gz"
   [ -n "${version}" ] && break
   echo -e "\ninvalid choice\n\n${msg}"
 done
-${TWINE} upload "${version}"{.tar.gz,-*.whl}
+${TWINE} upload -u __token__ "${version}"{.tar.gz,-*.whl}

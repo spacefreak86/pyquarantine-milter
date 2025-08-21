@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=8
-PYTHON_COMPAT=( python3_{10..13} )
+PYTHON_COMPAT=( python3_{11..13} )
 DISTUTILS_USE_PEP517=setuptools
 
 SCM=""
@@ -31,19 +31,21 @@ LICENSE="GPL-3"
 SLOT="0"
 IUSE="+lxml systemd"
 
-RDEPEND="
-	dev-python/beautifulsoup4[${PYTHON_USEDEP}]
+RDEPEND="dev-python/beautifulsoup4[${PYTHON_USEDEP}]
 	dev-python/jsonschema[${PYTHON_USEDEP}]
 	lxml? ( dev-python/lxml[${PYTHON_USEDEP}] )
 	dev-python/netaddr[${PYTHON_USEDEP}]
 	dev-python/peewee[${PYTHON_USEDEP}]
-	>=dev-python/pymilter-1.5[${PYTHON_USEDEP}]"
+	>=dev-python/pymilter-1.0.5[${PYTHON_USEDEP}]"
 
 python_install_all() {
-	distutils-r1_python_install_all
 	use systemd && systemd_dounit pyquarantine/misc/systemd/${PN}.service
 	newinitd pyquarantine/misc/openrc/${PN}.initd ${PN}
 	newconfd pyquarantine/misc/openrc/${PN}.confd ${PN}
+	insinto /etc/pyquarantine
+	doins pyquarantine/misc/pyquarantine.conf.default
+	doins -r pyquarantine/misc/templates
+	distutils-r1_python_install_all
 }
 
 pkg_postinst() {

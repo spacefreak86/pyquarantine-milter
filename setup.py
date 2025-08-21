@@ -32,22 +32,6 @@ setup(name = "pyquarantine",
             "pyquarantine=pyquarantine.cli:main",
         ]
     },
-    data_files = [
-        (
-            "/etc/pyquarantine",
-            [
-                "pyquarantine/misc/pyquarantine.conf.default"
-            ]
-        ), (
-            "/etc/pyquarantine/templates",
-            [
-                "pyquarantine/misc/templates/disclaimer_html.template",
-                "pyquarantine/misc/templates/disclaimer_text.template",
-                "pyquarantine/misc/templates/notification.template",
-                "pyquarantine/misc/templates/removed.png"
-            ]
-        )
-    ],
     install_requires = ["pymilter >= 1.5", "jsonschema", "netaddr", "beautifulsoup4[lxml]", "peewee"],
     python_requires = ">=3.10"
 )

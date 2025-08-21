@@ -27,7 +27,7 @@ __all__ = [
     "lists",
     "QuarantineMilter"]
 
-__version__ = "2.1.1"
+__version__ = "2.1.2"
 
 from pyquarantine import _runtime_patches
 
